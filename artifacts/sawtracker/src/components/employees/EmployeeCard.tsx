@@ -1,0 +1,2400 @@
+import { useState, useEffect, useRef } from 'react'
+import { createPortal } from 'react-dom'
+import { Employee, Company, Project, ObligationType, supabase } from '@/lib/supabase'
+import { useEmployeeCardData } from '@/hooks/useEmployeeCardData'
+import { EmployeeExpirySection } from './EmployeeExpirySection'
+import {
+  X,
+  AlertTriangle,
+  Pencil,
+  Trash2,
+  Calendar,
+  Phone,
+  MapPin,
+  Briefcase,
+  CreditCard,
+  FileText,
+  Save,
+  RotateCcw,
+  Search,
+  ChevronDown,
+  FolderKanban,
+  Plus,
+  Loader2,
+  History,
+} from 'lucide-react'
+import { formatDateShortWithHijri } from '@/utils/dateFormatter'
+import { HijriDateDisplay } from '@/components/ui/HijriDateDisplay'
+import { toast } from 'sonner'
+import { usePermissions } from '@/utils/permissions'
+import { logger } from '@/utils/logger'
+import {
+  useCreateEmployeeObligationPlan,
+  useUpdateObligationPlan,
+  useDeleteObligationPlan,
+  useEmployeeObligations,
+  useUpdateObligationLinePayment,
+  type EmployeeObligationPlan,
+} from '@/hooks/useEmployeeObligations'
+import { EmployeeHistoryModal } from './EmployeeHistoryModal'
+import {
+  HIRED_WORKER_CONTRACT_STATUS_OPTIONS,
+  buildEmployeeBusinessAdditionalFields,
+  getEmployeeBusinessFields,
+} from '@/utils/employeeBusinessFields'
+import {
+  getPayrollObligationBucketFromType,
+  getPayrollObligationBucketLabel,
+} from '@/utils/payrollObligationBuckets'
+
+const formatMoney = (value: number): string => {
+  return value.toLocaleString('en-US', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  })
+}
+
+const OBLIGATION_TYPE_LABELS: Record<string, string> = {
+  advance: 'سلفة',
+  transfer: 'نقل كفالة',
+  renewal: 'تجديد',
+  penalty: 'غرامة',
+  other: 'أخرى',
+}
+
+const buildInstallmentAmounts = (totalAmount: number, installmentCount: number): number[] => {
+  const totalHalalas = Math.round(totalAmount * 100)
+  const baseAmount = Math.floor(totalHalalas / installmentCount)
+  let remainder = totalHalalas % installmentCount
+
+  return Array.from({ length: installmentCount }, () => {
+    const nextAmount = baseAmount + (remainder > 0 ? 1 : 0)
+    if (remainder > 0) {
+      remainder -= 1
+    }
+    return nextAmount / 100
+  })
+}
+
+interface EmployeeCardProps {
+  employee: Employee & { company: Company }
+  onClose: () => void
+  onUpdate: () => void
+  onDelete?: (employee: Employee & { company: Company }) => void
+  defaultFinancialOverlayOpen?: boolean
+}
+
+export default function EmployeeCard({
+  employee,
+  onClose,
+  onUpdate,
+  onDelete,
+  defaultFinancialOverlayOpen = false,
+}: EmployeeCardProps) {
+  const { canEdit, canDelete } = usePermissions()
+  const { companies, projects } = useEmployeeCardData()
+  const currentMonth = new Date().toISOString().slice(0, 7)
+
+  // Define form data type with precise field types
+  type EmployeeFormData = {
+    id?: string
+    company_id: string
+    name?: string
+    profession?: string
+    nationality?: string
+    birth_date?: string
+    phone?: string
+    passport_number?: string
+    residence_number: number
+    joining_date?: string
+    contract_expiry?: string
+    hired_worker_contract_expiry: string
+    residence_expiry?: string
+    project_id: string | null
+    project_name?: string | null
+    project?: Project
+    bank_account?: string
+    residence_image_url: string
+    health_insurance_expiry: string
+    salary: number
+    notes: string
+    additional_fields: Record<string, string | number | boolean | null>
+    company?: Company
+    created_at?: string
+    updated_at?: string
+  }
+
+
+  const [formData, setFormData] = useState<EmployeeFormData>({
+    ...employee,
+    company_id: employee?.company_id ?? '',
+    project_id: employee?.project_id ?? employee?.project?.id ?? null,
+    additional_fields: (employee?.additional_fields ?? {}) as Record<
+      string,
+      string | number | boolean | null
+    >,
+    health_insurance_expiry: employee?.health_insurance_expiry ?? '',
+    hired_worker_contract_expiry: employee?.hired_worker_contract_expiry ?? '',
+    salary: employee?.salary ?? 0,
+    notes: employee?.notes ?? '',
+    residence_image_url: employee?.residence_image_url ?? '',
+    birth_date: employee?.birth_date ?? '',
+    joining_date: employee?.joining_date ?? '',
+    residence_expiry: employee?.residence_expiry ?? '',
+    contract_expiry: employee?.contract_expiry ?? '',
+    residence_number: employee?.residence_number ?? 0,
+  })
+
+  // حفظ البيانات الأصلية من employee مباشرة (بدون معالجة) لاستخدامها في المقارنة
+  const [originalData] = useState(employee)
+  const [saving, setSaving] = useState(false)
+  const [isEditMode, setIsEditMode] = useState(false)
+  const [showUnsavedConfirm, setShowUnsavedConfirm] = useState(false)
+  const [companySearchQuery, setCompanySearchQuery] = useState('')
+  const [isCompanyDropdownOpen, setIsCompanyDropdownOpen] = useState(false)
+  const companyDropdownRef = useRef<HTMLDivElement>(null)
+  const [projectSearchQuery, setProjectSearchQuery] = useState('')
+  const [isProjectDropdownOpen, setIsProjectDropdownOpen] = useState(false)
+  const projectDropdownRef = useRef<HTMLDivElement>(null)
+  const [showCreateProjectModal, setShowCreateProjectModal] = useState(false)
+  const [newProjectName, setNewProjectName] = useState('')
+  const [creatingProject, setCreatingProject] = useState(false)
+  const [showFinancialOverlay, setShowFinancialOverlay] = useState(defaultFinancialOverlayOpen)
+  const [showHistoryModal, setShowHistoryModal] = useState(false)
+  const [showObligationForm, setShowObligationForm] = useState(false)
+  const [editingObligationLineId, setEditingObligationLineId] = useState<string | null>(null)
+  const [obligationPaymentForm, setObligationPaymentForm] = useState({
+    amount_paid: 0,
+    notes: '',
+  })
+  const [obligationForm, setObligationForm] = useState<{
+    obligation_type: ObligationType
+    total_amount: number
+    start_month: string
+    installment_count: number
+    notes: string
+  }>({
+    obligation_type: 'advance',
+    total_amount: employee.salary || 0,
+    start_month: currentMonth,
+    installment_count: 1,
+    notes: '',
+  })
+  const [startMonthConflict, setStartMonthConflict] = useState(false)
+  const [checkingStartMonth, setCheckingStartMonth] = useState(false)
+  const [editingPlanId, setEditingPlanId] = useState<string | null>(null)
+  const [editPlanForm, setEditPlanForm] = useState<{
+    obligation_type: ObligationType
+    title: string
+    total_amount: number
+    notes: string
+  }>({ obligation_type: 'advance', title: '', total_amount: 0, notes: '' })
+  const [deletingPlanId, setDeletingPlanId] = useState<string | null>(null)
+
+  // إغلاق القوائم عند النقر خارجها
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (
+        companyDropdownRef.current &&
+        !companyDropdownRef.current.contains(event.target as Node)
+      ) {
+        setIsCompanyDropdownOpen(false)
+      }
+      if (
+        projectDropdownRef.current &&
+        !projectDropdownRef.current.contains(event.target as Node)
+      ) {
+        setIsProjectDropdownOpen(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [])
+
+  // معالجة ESC لإغلاق الكارت
+  useEffect(() => {
+    function handleKeyDown(e: KeyboardEvent) {
+      if (e.key === 'Escape') {
+        const target = e.target as HTMLElement
+        if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA') {
+          return
+        }
+        if (showCreateProjectModal) {
+          setShowCreateProjectModal(false)
+          setNewProjectName('')
+          return
+        }
+        if (isEditMode) {
+          return
+        }
+        onClose()
+      }
+    }
+    document.addEventListener('keydown', handleKeyDown)
+    return () => document.removeEventListener('keydown', handleKeyDown)
+  }, [isEditMode, onClose, showCreateProjectModal])
+
+  // قفل سكرول الصفحة الخلفية أثناء فتح الكارت لضمان بقاءه عائمًا داخل الإطار الحالي.
+  useEffect(() => {
+    const originalBodyOverflow = document.body.style.overflow
+    const originalHtmlOverflow = document.documentElement.style.overflow
+
+    document.body.style.overflow = 'hidden'
+    document.documentElement.style.overflow = 'hidden'
+
+    return () => {
+      document.body.style.overflow = originalBodyOverflow
+      document.documentElement.style.overflow = originalHtmlOverflow
+    }
+  }, [])
+
+  // تحديث نص البحث عند تغيير الشركة المختارة
+  useEffect(() => {
+    if (formData.company_id && companies.length > 0) {
+      const selectedCompany = companies.find((c) => c.id === formData.company_id)
+      if (selectedCompany) {
+        const displayText = `${selectedCompany.name} (${selectedCompany.unified_number})`
+        // تحديث فقط إذا كان النص مختلف (لتجنب التداخل مع الكتابة)
+        if (companySearchQuery !== displayText) {
+          setCompanySearchQuery(displayText)
+        }
+      }
+    } else if (!formData.company_id && companySearchQuery) {
+      // إعادة تعيين فقط إذا لم تكن هناك شركة مختارة
+      setCompanySearchQuery('')
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [formData.company_id, companies])
+
+  // تحديث نص البحث عند تغيير المشروع المختار
+  useEffect(() => {
+    if (formData.project_id && projects.length > 0) {
+      const selectedProject = projects.find((p) => p.id === formData.project_id)
+      if (selectedProject) {
+        const displayText = selectedProject.name
+        if (projectSearchQuery !== displayText) {
+          setProjectSearchQuery(displayText)
+        }
+      }
+    } else if (!formData.project_id && projectSearchQuery) {
+      setProjectSearchQuery('')
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [formData.project_id, projects])
+
+  // تصفية المؤسسات: البحث في الاسم أو الرقم الموحد
+  const filteredCompanies = companies.filter((company) => {
+    if (companySearchQuery.trim()) {
+      const query = companySearchQuery.toLowerCase().trim()
+      const nameMatch = company.name?.toLowerCase().includes(query)
+      const unifiedNumberMatch = company.unified_number?.toString().includes(query)
+      return nameMatch || unifiedNumberMatch
+    }
+    return true
+  })
+
+  // تصفية المشاريع: البحث في الاسم
+  const filteredProjects = projects.filter((project) => {
+    if (projectSearchQuery.trim()) {
+      const query = projectSearchQuery.toLowerCase().trim()
+      return project.name?.toLowerCase().includes(query)
+    }
+    return true
+  })
+
+  // التحقق من وجود مشروع بالاسم المدخل
+  const hasExactMatch =
+    projectSearchQuery.trim() &&
+    projects.some((p) => p.name.toLowerCase() === projectSearchQuery.toLowerCase().trim())
+
+  const showCreateOption = projectSearchQuery.trim() && !hasExactMatch && isProjectDropdownOpen
+
+  // دالة إنشاء مشروع جديد
+  const handleCreateProject = async () => {
+    if (!newProjectName.trim()) {
+      toast.error('يرجى إدخال اسم المشروع')
+      return
+    }
+
+    // التحقق من عدم وجود مشروع بنفس الاسم
+    const existingProject = projects.find(
+      (p) => p.name.toLowerCase() === newProjectName.trim().toLowerCase()
+    )
+
+    if (existingProject) {
+      toast.error('يوجد مشروع بنفس الاسم بالفعل')
+      setFormData({ ...formData, project_id: existingProject.id })
+      setProjectSearchQuery(existingProject.name)
+      setShowCreateProjectModal(false)
+      setNewProjectName('')
+      setIsProjectDropdownOpen(false)
+      return
+    }
+
+    setCreatingProject(true)
+    try {
+      const { data: newProject, error } = await supabase
+        .from('projects')
+        .insert({
+          name: newProjectName.trim(),
+          status: 'active',
+        })
+        .select()
+        .single()
+
+      if (error) {
+        if (error.code === '23505') {
+          toast.error('يوجد مشروع بنفس الاسم بالفعل')
+        } else {
+          throw error
+        }
+        return
+      }
+
+      // تحديث قائمة المشاريع - يتم عبر hook
+      // await loadProjects()
+
+      // اختيار المشروع الجديد تلقائياً
+      setFormData({ ...formData, project_id: newProject.id, project_name: newProject.name })
+      setProjectSearchQuery(newProject.name)
+      setShowCreateProjectModal(false)
+      setNewProjectName('')
+      setIsProjectDropdownOpen(false)
+
+      toast.success('تم إنشاء المشروع بنجاح')
+    } catch (error) {
+      logger.error('Error creating project:', error)
+      const errorMessage = error instanceof Error ? error.message : 'فشل إنشاء المشروع'
+      toast.error(errorMessage)
+    } finally {
+      setCreatingProject(false)
+    }
+  }
+
+  const getFieldLabel = (key: string): string => {
+    const fieldLabels: Record<string, string> = {
+      name: 'الاسم',
+      phone: 'رقم الهاتف',
+      profession: 'المهنة',
+      nationality: 'الجنسية',
+      residence_number: 'رقم الإقامة',
+      passport_number: 'رقم الجواز',
+      bank_account: 'الحساب البنكي',
+      salary: 'الراتب',
+      project_id: 'المشروع',
+      birth_date: 'تاريخ الميلاد',
+      joining_date: 'تاريخ الالتحاق',
+      residence_expiry: 'تاريخ انتهاء الإقامة',
+      contract_expiry: 'تاريخ انتهاء العقد',
+      hired_worker_contract_expiry: 'تاريخ انتهاء عقد أجير',
+      health_insurance_expiry: 'تاريخ انتهاء التأمين الصحي',
+      notes: 'الملاحظات',
+      company_id: 'المؤسسة',
+    }
+    return fieldLabels[key] || key
+  }
+
+  const logActivity = async (
+    action: string,
+    changes: Record<string, unknown>,
+    oldDataFull: Record<string, unknown>,
+    newDataFull: Record<string, unknown>
+  ) => {
+    try {
+      // تحديد اسم العملية الفعلي بناءً على التغييرات
+      let actionName = action
+      const changedFields = Object.keys(changes)
+
+      // بناء تفاصيل التغييرات بصيغة {old, new} لكل حقل
+      const detailedChanges: Record<string, { old: unknown; new: unknown }> = {}
+      const translatedChanges: Record<string, unknown> = {}
+
+      changedFields.forEach((field) => {
+        const label = getFieldLabel(field)
+        const oldVal = oldDataFull[field]
+        const newVal = newDataFull[field]
+
+        // حفظ التغيير بصيغة مفصلة {old, new}
+        detailedChanges[label] = {
+          old: oldVal,
+          new: newVal,
+        }
+
+        // حفظ القيمة الجديدة فقط (للتوافق مع النسخ القديمة)
+        translatedChanges[label] = newVal
+      })
+
+      // إذا كان هناك حقل واحد فقط، استخدم اسمه في العملية
+      if (changedFields.length === 1) {
+        const fieldName = changedFields[0]
+        const fieldLabel = getFieldLabel(fieldName)
+        actionName = `تحديث ${fieldLabel}`
+      } else if (changedFields.length > 1) {
+        actionName = `تحديث متعدد (${changedFields.length} حقول)`
+      }
+
+      await supabase.from('activity_log').insert({
+        entity_type: 'employee',
+        entity_id: employee.id,
+        action: actionName,
+        details: {
+          employee_name: employee.name,
+          changes: detailedChanges,
+          changes_simple: translatedChanges,
+          timestamp: new Date().toISOString(),
+        },
+        old_data: oldDataFull,
+        new_data: newDataFull,
+      })
+    } catch (error) {
+      logger.error('Error logging activity:', error)
+    }
+  }
+
+  const handleSave = async () => {
+    setSaving(true)
+    try {
+      const normalizeDate = (value: string | null | undefined) => {
+        const trimmed = value?.trim()
+        return trimmed ? trimmed : null
+      }
+
+      const normalizedHiredWorkerContractExpiry = normalizeDate(
+        formData.hired_worker_contract_expiry
+      )
+
+      const hiredWorkerStatus = getEmployeeBusinessFields({
+        additional_fields: formData.additional_fields,
+        hired_worker_contract_expiry: normalizedHiredWorkerContractExpiry,
+      }).hired_worker_contract_status
+
+      if (hiredWorkerStatus === 'أجير' && !normalizedHiredWorkerContractExpiry) {
+        toast.error('عند اختيار حالة عقد أجير = أجير يجب إدخال تاريخ انتهاء عقد أجير')
+        setSaving(false)
+        return
+      }
+
+      // جلب البيانات الحالية قبل التحديث لضمان وجود old_data موثوق
+      const { data: existingEmployee, error: fetchError } = await supabase
+        .from('employees')
+        .select(
+          'id,company_id,name,profession,nationality,birth_date,phone,passport_number,residence_number,joining_date,contract_expiry,residence_expiry,project_name,bank_account,residence_image_url,salary,health_insurance_expiry,additional_fields,created_at,updated_at,notes,hired_worker_contract_expiry,project_id,is_deleted,deleted_at'
+        )
+        .eq('id', employee.id)
+        .single()
+
+      if (fetchError) throw fetchError
+
+      const baselineData: Record<string, unknown> = existingEmployee
+        ? (existingEmployee as Record<string, unknown>)
+        : (originalData as unknown as Record<string, unknown>)
+
+      // بناء actualUpdateData بناءً على الحقول التي تغيرت فقط (بدون تحضير جميع الحقول)
+      const fieldsToCheck = [
+        'name',
+        'phone',
+        'profession',
+        'nationality',
+        'residence_number',
+        'passport_number',
+        'bank_account',
+        'salary',
+        'project_id',
+        'birth_date',
+        'joining_date',
+        'residence_expiry',
+        'contract_expiry',
+        'hired_worker_contract_expiry',
+        'health_insurance_expiry',
+        'notes',
+        'company_id',
+      ]
+
+      const actualUpdateData: Record<string, unknown> = {}
+      const changes: Record<string, { old_value: unknown; new_value: unknown }> = {}
+
+      const normalizedAdditionalFields = buildEmployeeBusinessAdditionalFields(
+        formData.additional_fields,
+        {
+          ...getEmployeeBusinessFields({
+            additional_fields: formData.additional_fields,
+            hired_worker_contract_expiry: normalizedHiredWorkerContractExpiry,
+          }),
+          hired_worker_contract_expiry: normalizedHiredWorkerContractExpiry,
+        }
+      )
+
+      // فحص كل حقل للتأكد من تغييره فقط
+      fieldsToCheck.forEach((field) => {
+        const oldValue = baselineData[field]
+        let newValue: unknown = formData[field as keyof typeof formData]
+
+        // تطبيق نفس التحويلات على القيمة الجديدة مثل updateData
+        if (
+          field === 'birth_date' ||
+          field === 'joining_date' ||
+          field === 'residence_expiry' ||
+          field === 'contract_expiry' ||
+          field === 'health_insurance_expiry'
+        ) {
+          newValue = normalizeDate(formData[field] as string | null | undefined)
+        } else if (field === 'residence_number' || field === 'salary') {
+          newValue = Number(formData[field]) || (field === 'salary' ? 0 : 0)
+        } else if (
+          field === 'residence_image_url' ||
+          field === 'notes'
+        ) {
+          newValue = formData[field] || null
+        } else if (field === 'hired_worker_contract_expiry') {
+          newValue = normalizedHiredWorkerContractExpiry
+        } else if (field === 'project_id') {
+          newValue = formData.project_id || null
+        }
+
+        // معاملة null و undefined بنفس الطريقة
+        const oldVal = oldValue === null || oldValue === undefined ? null : oldValue
+        const newVal = newValue === null || newValue === undefined ? null : newValue
+
+        // مقارنة القيمتين: إذا اختلفتا، أضفهما إلى actualUpdateData
+        if (oldVal !== newVal) {
+          actualUpdateData[field] = newValue
+          changes[field] = {
+            old_value: oldVal,
+            new_value: newVal,
+          }
+        }
+      })
+
+      const baselineAdditionalFields = (baselineData.additional_fields ?? {}) as Record<
+        string,
+        unknown
+      >
+      if (JSON.stringify(baselineAdditionalFields) !== JSON.stringify(normalizedAdditionalFields)) {
+        actualUpdateData.additional_fields = normalizedAdditionalFields
+        changes.additional_fields = {
+          old_value: baselineAdditionalFields,
+          new_value: normalizedAdditionalFields,
+        }
+      }
+
+      // إذا لم تكن هناك أي تغييرات، لا تحفظ شيء
+      if (Object.keys(actualUpdateData).length === 0) {
+        toast.info('لم يتم تغيير أي بيانات')
+        setSaving(false)
+        return
+      }
+
+      // تحديث project_name إذا تم تعديل project_id
+      if (actualUpdateData.project_id !== undefined) {
+        if (actualUpdateData.project_id) {
+          const selectedProject = projects.find((p) => p.id === actualUpdateData.project_id)
+          if (selectedProject) {
+            actualUpdateData.project_name = selectedProject.name
+          }
+        } else {
+          actualUpdateData.project_name = null
+        }
+      }
+
+      // حفظ في قاعدة البيانات
+      const { data: updatedEmployee, error } = await supabase
+        .from('employees')
+        .update(actualUpdateData)
+        .eq('id', employee.id)
+        .select()
+        .single()
+
+      if (error) throw error
+
+      const newDataFull: Record<string, unknown> = updatedEmployee
+        ? (updatedEmployee as Record<string, unknown>)
+        : { ...baselineData, ...actualUpdateData }
+
+      // تسجيل النشاط مع التغييرات الفعلية فقط
+      let actionType = 'full_edit'
+      if (
+        actualUpdateData.company_id !== undefined &&
+        actualUpdateData.company_id !== originalData.company_id
+      ) {
+        actionType = 'company_transfer'
+      }
+
+      await logActivity(actionType, changes, baselineData, newDataFull)
+
+      // تسجيل نقل المشروع بشكل منفصل إذا تغير project_id
+      if (actualUpdateData.project_id !== undefined) {
+        const fromProjectId = (baselineData.project_id as string) ?? null
+        const fromProjectName = (baselineData.project_name as string) ?? null
+        const toProjectId = (actualUpdateData.project_id as string) ?? null
+        const toProjectName = (actualUpdateData.project_name as string) ?? null
+        await supabase.from('activity_log').insert({
+          entity_type: 'employee',
+          entity_id: employee.id,
+          action: 'project_transfer',
+          details: {
+            employee_name: employee.name,
+            from_project_id: fromProjectId,
+            from_project_name: fromProjectName,
+            to_project_id: toProjectId,
+            to_project_name: toProjectName,
+            timestamp: new Date().toISOString(),
+          },
+          old_data: baselineData,
+          new_data: newDataFull,
+        })
+      }
+
+      toast.success('تم حفظ التعديلات بنجاح')
+      setIsEditMode(false)
+
+      onUpdate()
+    } catch (error) {
+      logger.error('Error saving employee:', error)
+      toast.error('فشل حفظ التعديلات')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const handleCancel = () => {
+    // إعادة تعيين البيانات إلى القيم الأصلية
+    setFormData({
+      ...employee,
+      company_id: employee.company_id,
+      project_id: employee.project_id || employee.project?.id || null,
+      additional_fields: (employee.additional_fields || {}) as Record<
+        string,
+        string | number | boolean | null
+      >,
+      health_insurance_expiry: employee.health_insurance_expiry || '', // تحديث: ending_subscription_insurance_date → health_insurance_expiry
+      hired_worker_contract_expiry: employee.hired_worker_contract_expiry || '',
+      salary: employee.salary || 0,
+      notes: employee.notes || '',
+      residence_image_url: employee.residence_image_url || '',
+      residence_number: employee.residence_number || 0,
+    })
+    setIsEditMode(false)
+    setIsCompanyDropdownOpen(false)
+  }
+
+  const handleEdit = () => {
+    setIsEditMode(true)
+  }
+
+  const handleDelete = () => {
+    if (onDelete) {
+      onDelete(employee)
+    }
+  }
+
+  const employeeBusinessFields = getEmployeeBusinessFields({
+    additional_fields: formData.additional_fields,
+    hired_worker_contract_expiry: formData.hired_worker_contract_expiry,
+  })
+  const {
+    data: obligationPlans = [],
+    isLoading: isLoadingObligations,
+    isError: hasObligationsError,
+  } = useEmployeeObligations(employee.id)
+
+  const activeObligationPlans = obligationPlans.filter(
+    (plan) => plan.status === 'active' || plan.status === 'draft'
+  )
+  const allObligationLines = activeObligationPlans
+    .flatMap((plan) =>
+      plan.lines.map((line) => ({
+        ...line,
+        title: plan.title,
+        currency_code: plan.currency_code,
+        obligation_type: plan.obligation_type,
+      }))
+    )
+    .sort((left, right) => left.due_month.localeCompare(right.due_month))
+  const openObligationLines = allObligationLines.filter(
+    (line) => line.line_status === 'unpaid' || line.line_status === 'partial'
+  )
+  const recentObligationLines = [...allObligationLines]
+    .sort((left, right) => right.due_month.localeCompare(left.due_month))
+    .slice(0, 5)
+
+  const remainingObligationAmount = openObligationLines.reduce(
+    (total, line) => total + Math.max(line.amount_due - line.amount_paid, 0),
+    0
+  )
+  const paidObligationAmount = allObligationLines.reduce(
+    (total, line) => total + Number(line.amount_paid || 0),
+    0
+  )
+  const obligationBucketSummary = activeObligationPlans.reduce(
+    (totals, plan) => {
+      const bucket = getPayrollObligationBucketFromType(plan.obligation_type)
+      const totalAmount = plan.lines.reduce((sum, line) => sum + Number(line.amount_due || 0), 0)
+      const paidAmount = plan.lines.reduce((sum, line) => sum + Number(line.amount_paid || 0), 0)
+
+      totals[bucket].total += totalAmount
+      totals[bucket].paid += paidAmount
+      totals[bucket].remaining += Math.max(totalAmount - paidAmount, 0)
+      return totals
+    },
+    {
+      transfer_renewal: { total: 0, paid: 0, remaining: 0 },
+      penalty: { total: 0, paid: 0, remaining: 0 },
+      advance: { total: 0, paid: 0, remaining: 0 },
+      other: { total: 0, paid: 0, remaining: 0 },
+    }
+  )
+  const installmentPreview = buildInstallmentAmounts(
+    Math.max(obligationForm.total_amount || 0, 0),
+    Math.max(obligationForm.installment_count || 1, 1)
+  )
+  const createEmployeeObligationPlan = useCreateEmployeeObligationPlan()
+  const updateObligationPlan = useUpdateObligationPlan()
+  const deleteObligationPlan = useDeleteObligationPlan()
+  const updateObligationLinePayment = useUpdateObligationLinePayment()
+
+  const handleCreateObligationPlan = async () => {
+    const totalAmount = Number(obligationForm.total_amount)
+    const installmentCount = Number(obligationForm.installment_count)
+
+    if (!obligationForm.start_month) {
+      toast.error('يرجى اختيار شهر البداية')
+      return
+    }
+
+    if (!Number.isFinite(totalAmount) || totalAmount <= 0) {
+      toast.error('يرجى إدخال مبلغ صحيح أكبر من صفر')
+      return
+    }
+
+    if (!Number.isInteger(installmentCount) || installmentCount < 1 || installmentCount > 12) {
+      toast.error('عدد الأقساط يجب أن يكون بين 1 و 12')
+      return
+    }
+
+    try {
+      await createEmployeeObligationPlan.mutateAsync({
+        employee_id: employee.id,
+        obligation_type: obligationForm.obligation_type,
+        total_amount: totalAmount,
+        start_month: `${obligationForm.start_month}-01`,
+        installment_amounts: buildInstallmentAmounts(totalAmount, installmentCount),
+        notes: obligationForm.notes.trim() || null,
+        status: 'active',
+      })
+
+      toast.success('تم إنشاء خطة الالتزام بنجاح')
+      setShowObligationForm(false)
+      setObligationForm({
+        obligation_type: 'advance',
+        total_amount: employee.salary || 0,
+        start_month: currentMonth,
+        installment_count: 1,
+        notes: '',
+      })
+    } catch (error) {
+      logger.error('Error creating obligation plan:', error)
+      const message = error instanceof Error ? error.message : 'فشل إنشاء خطة الالتزام'
+      toast.error(message)
+    }
+  }
+
+  const handleOpenEditPlan = (plan: EmployeeObligationPlan) => {
+    setEditingPlanId(plan.id)
+    setEditPlanForm({
+      obligation_type: plan.obligation_type,
+      title: plan.title,
+      total_amount: Number(plan.total_amount),
+      notes: plan.notes || '',
+    })
+  }
+
+  const handleUpdatePlan = async () => {
+    if (!editingPlanId) return
+    const plan = obligationPlans.find((p) => p.id === editingPlanId)
+    if (!plan) return
+    const totalAmount = Number(editPlanForm.total_amount)
+    if (!Number.isFinite(totalAmount) || totalAmount <= 0) {
+      toast.error('يرجى إدخال مبلغ صحيح أكبر من صفر')
+      return
+    }
+    try {
+      await updateObligationPlan.mutateAsync({
+        plan,
+        employeeId: employee.id,
+        updates: {
+          obligation_type: editPlanForm.obligation_type,
+          title: editPlanForm.title.trim() || OBLIGATION_TYPE_LABELS[editPlanForm.obligation_type] || editPlanForm.obligation_type,
+          total_amount: totalAmount,
+          notes: editPlanForm.notes.trim() || null,
+        },
+      })
+      toast.success('تم تعديل الالتزام بنجاح')
+      setEditingPlanId(null)
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'فشل تعديل الالتزام')
+    }
+  }
+
+  const handleDeletePlan = async () => {
+    if (!deletingPlanId) return
+    try {
+      await deleteObligationPlan.mutateAsync({ planId: deletingPlanId, employeeId: employee.id })
+      toast.success('تم حذف الالتزام بنجاح')
+      setDeletingPlanId(null)
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'فشل حذف الالتزام')
+    }
+  }
+
+  // Check if selected start_month has a finalized payroll run for this employee
+  useEffect(() => {
+    if (!showObligationForm || !obligationForm.start_month || !employee?.id) {
+      setStartMonthConflict(false)
+      return
+    }
+    let cancelled = false
+    const monthDate = /^\d{4}-\d{2}$/.test(obligationForm.start_month)
+      ? `${obligationForm.start_month}-01`
+      : obligationForm.start_month
+    setCheckingStartMonth(true)
+    void (async () => {
+      const { data: runs } = await supabase
+        .from('payroll_runs')
+        .select('id')
+        .eq('payroll_month', monthDate)
+        .eq('status', 'finalized')
+      if (cancelled) return
+      if (!runs || runs.length === 0) {
+        setStartMonthConflict(false)
+        setCheckingStartMonth(false)
+        return
+      }
+      const runIds = (runs as { id: string }[]).map((r) => r.id)
+      const { data: entries } = await supabase
+        .from('payroll_entries')
+        .select('id')
+        .eq('employee_id', employee.id)
+        .in('payroll_run_id', runIds)
+        .limit(1)
+      if (!cancelled) {
+        setStartMonthConflict(!!(entries && entries.length > 0))
+        setCheckingStartMonth(false)
+      }
+    })()
+    return () => { cancelled = true }
+  }, [showObligationForm, obligationForm.start_month, employee?.id])
+
+  const startEditingObligationLine = (
+    lineId: string,
+    amountPaid: number,
+    notes?: string | null
+  ) => {
+    setEditingObligationLineId(lineId)
+    setObligationPaymentForm({
+      amount_paid: amountPaid,
+      notes: notes || '',
+    })
+  }
+
+  const handleSaveObligationPayment = async (lineId: string, amountDue: number) => {
+    const amountPaid = Number(obligationPaymentForm.amount_paid)
+
+    if (!Number.isFinite(amountPaid) || amountPaid < 0) {
+      toast.error('قيمة المدفوع يجب أن تكون صفراً أو أكبر')
+      return
+    }
+
+    if (amountPaid > amountDue) {
+      toast.error('قيمة المدفوع لا يمكن أن تتجاوز قيمة القسط')
+      return
+    }
+
+    try {
+      await updateObligationLinePayment.mutateAsync({
+        lineId,
+        employeeId: employee.id,
+        amount_paid: amountPaid,
+        notes: obligationPaymentForm.notes.trim() || null,
+      })
+
+      toast.success('تم تحديث سداد القسط بنجاح')
+      setEditingObligationLineId(null)
+      setObligationPaymentForm({ amount_paid: 0, notes: '' })
+    } catch (error) {
+      logger.error('Error updating obligation payment:', error)
+      const message = error instanceof Error ? error.message : 'فشل تحديث السداد'
+      toast.error(message)
+    }
+  }
+
+  return createPortal(
+    <>
+    <div
+      dir="rtl"
+      className="fixed inset-0 z-[120] overflow-y-auto bg-slate-950/55 p-4 backdrop-blur-sm"
+      onClick={() => {
+        if (!isEditMode) {
+          onClose()
+        } else {
+          setShowUnsavedConfirm(true)
+        }
+      }}
+    >
+      <div className="flex min-h-full items-start justify-center py-2 md:items-center md:py-4">
+        <div
+          className="app-modal-surface relative isolate w-full max-w-4xl max-h-[90vh] overflow-y-auto"
+          onClick={(e) => e.stopPropagation()}
+        >
+        {/* Header */}
+        <div
+          className={`sticky top-0 z-30 flex items-center justify-between border-b p-6 backdrop-blur-md ${
+            isEditMode
+              ? 'border-warning-200 bg-warning-50 text-warning-900'
+              : 'border-neutral-200 bg-white/95 text-neutral-900'
+          }`}
+        >
+          <div>
+            <h2 className="text-2xl font-bold">{employee.name}</h2>
+            <p className={`mt-1 ${isEditMode ? 'text-warning-700' : 'text-neutral-600'}`}>
+              {employee.profession} - {employee?.company?.name ?? 'غير محدد'}
+            </p>
+            {isEditMode && (
+              <p className="text-sm mt-1 text-warning-700">
+                وضع التعديل نشط - يمكنك تعديل البيانات أدناه
+              </p>
+            )}
+          </div>
+          <div className="flex items-center gap-2">
+            {!isEditMode && (
+              <>
+                <button
+                  type="button"
+                  onClick={() => setShowHistoryModal(true)}
+                  className="flex items-center gap-2 rounded-xl border border-violet-200 bg-violet-50 px-4 py-2 text-sm font-medium text-violet-700 transition hover:bg-violet-100 hover:border-violet-300"
+                >
+                  <History className="w-4 h-4" />
+                  سجل المشاريع
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowFinancialOverlay(true)}
+                  className="flex items-center gap-2 rounded-xl border border-primary-200 bg-primary-50 px-4 py-2 text-sm font-medium text-primary-700 transition hover:bg-primary-100 hover:border-primary-300"
+                >
+                  <CreditCard className="w-4 h-4" />
+                  الالتزامات المالية
+                </button>
+              </>
+            )}
+            {isEditMode ? (
+              <button
+                onClick={handleCancel}
+                className="flex items-center gap-2 rounded-xl border border-warning-200 bg-white px-4 py-2 font-medium text-warning-900 transition hover:bg-warning-100"
+              >
+                <RotateCcw className="w-4 h-4" />
+                إلغاء التعديل
+              </button>
+            ) : (
+              canEdit('employees') && (
+                <button
+                  onClick={handleEdit}
+                  className="flex items-center gap-2 rounded-xl border border-neutral-200 bg-white px-4 py-2 font-medium text-neutral-800 transition hover:bg-neutral-50"
+                >
+                  <FileText className="w-4 h-4" />
+                  تعديل
+                </button>
+              )
+            )}
+            <button onClick={onClose} className="rounded-xl p-2 transition hover:bg-black/5">
+              <X className="w-6 h-6" />
+            </button>
+          </div>
+        </div>
+
+        {/* Status Alerts */}
+        <EmployeeExpirySection employee={employee} />
+
+        {/* Content */}
+        <div className="p-6">
+          <div className="space-y-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {/* 1. الاسم */}
+                <div>
+                  <label className="block text-sm font-medium text-neutral-700 mb-2">
+                    الاسم الكامل
+                  </label>
+                  <input
+                    type="text"
+                    value={formData.name ?? ''}
+                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                    disabled={!isEditMode}
+                    className={`app-input py-2 ${!isEditMode ? 'border-slate-200 bg-slate-50 text-slate-600 cursor-not-allowed' : ''}`}
+                  />
+                </div>
+
+                {/* 2. مهنة الإقامة */}
+                <div>
+                  <label className="block text-sm font-medium text-neutral-700 mb-2 flex items-center gap-2">
+                    <Briefcase className="w-4 h-4" />
+                    مهنة الإقامة
+                  </label>
+                  <input
+                    type="text"
+                    value={formData.profession ?? ''}
+                    onChange={(e) => setFormData({ ...formData, profession: e.target.value })}
+                    disabled={!isEditMode}
+                    className={`app-input py-2 ${!isEditMode ? 'border-slate-200 bg-slate-50 text-slate-600 cursor-not-allowed' : ''}`}
+                  />
+                </div>
+
+                {/* 3. الجنسية */}
+                <div>
+                  <label className="block text-sm font-medium text-neutral-700 mb-2 flex items-center gap-2">
+                    <MapPin className="w-4 h-4" />
+                    الجنسية
+                  </label>
+                  <input
+                    type="text"
+                    value={formData.nationality ?? ''}
+                    onChange={(e) => setFormData({ ...formData, nationality: e.target.value })}
+                    disabled={!isEditMode}
+                    className={`app-input py-2 ${!isEditMode ? 'border-slate-200 bg-slate-50 text-slate-600 cursor-not-allowed' : ''}`}
+                  />
+                </div>
+
+                {/* 4. رقم الإقامة */}
+                <div>
+                  <label className="block text-sm font-medium text-neutral-700 mb-2 flex items-center gap-2">
+                    <FileText className="w-4 h-4" />
+                    رقم الإقامة
+                  </label>
+                  <input
+                    type="text"
+                    value={formData.residence_number || ''}
+                    onChange={(e) =>
+                      setFormData({ ...formData, residence_number: parseInt(e.target.value) || 0 })
+                    }
+                    disabled={!isEditMode}
+                    className={`app-input py-2 font-mono ${!isEditMode ? 'border-slate-200 bg-slate-50 text-slate-600 cursor-not-allowed' : ''}`}
+                  />
+                </div>
+
+                {/* 5. رقم الجواز */}
+                <div>
+                  <label className="block text-sm font-medium text-neutral-700 mb-2">
+                    رقم جواز السفر
+                  </label>
+                  <input
+                    type="text"
+                    value={formData.passport_number ?? ''}
+                    onChange={(e) => setFormData({ ...formData, passport_number: e.target.value })}
+                    disabled={!isEditMode}
+                    className={`app-input py-2 ${!isEditMode ? 'border-slate-200 bg-slate-50 text-slate-600 cursor-not-allowed' : ''}`}
+                  />
+                </div>
+
+                {/* 6. تاريخ الميلاد */}
+                <div>
+                  <label className="block text-sm font-medium text-neutral-700 mb-2 flex items-center gap-2">
+                    <Calendar className="w-4 h-4" />
+                    تاريخ الميلاد
+                  </label>
+                  <input
+                    type="date"
+                    value={formData.birth_date || ''}
+                    onChange={(e) => setFormData({ ...formData, birth_date: e.target.value })}
+                    disabled={!isEditMode}
+                    className={`app-input py-2 ${!isEditMode ? 'border-slate-200 bg-slate-50 text-slate-600 cursor-not-allowed' : ''}`}
+                  />
+                </div>
+
+                {/* 7. رقم الهاتف */}
+                <div>
+                  <label className="block text-sm font-medium text-neutral-700 mb-2 flex items-center gap-2">
+                    <Phone className="w-4 h-4" />
+                    رقم الهاتف
+                  </label>
+                  <input
+                    type="text"
+                    value={formData.phone || ''}
+                    onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                    disabled={!isEditMode}
+                    className={`app-input py-2 ${!isEditMode ? 'border-slate-200 bg-slate-50 text-slate-600 cursor-not-allowed' : ''}`}
+                  />
+                </div>
+
+                {/* 8. الحساب البنكي */}
+                <div>
+                  <label className="block text-sm font-medium text-neutral-700 mb-2 flex items-center gap-2">
+                    <CreditCard className="w-4 h-4" />
+                    الحساب البنكي
+                  </label>
+                  <input
+                    type="text"
+                    value={formData.bank_account || ''}
+                    onChange={(e) => setFormData({ ...formData, bank_account: e.target.value })}
+                    disabled={!isEditMode}
+                    className={`app-input py-2 ${!isEditMode ? 'border-slate-200 bg-slate-50 text-slate-600 cursor-not-allowed' : ''}`}
+                  />
+                </div>
+
+                {/* 9. اسم البنك */}
+                <div>
+                  <label className="block text-sm font-medium text-neutral-700 mb-2 flex items-center gap-2">
+                    <CreditCard className="w-4 h-4" />
+                    اسم البنك
+                  </label>
+                  <input
+                    type="text"
+                    value={employeeBusinessFields.bank_name}
+                    onChange={(e) =>
+                      setFormData({
+                        ...formData,
+                        additional_fields: {
+                          ...formData.additional_fields,
+                          bank_name: e.target.value,
+                        },
+                      })
+                    }
+                    disabled={!isEditMode}
+                    className={`app-input py-2 ${!isEditMode ? 'border-slate-200 bg-slate-50 text-slate-600 cursor-not-allowed' : ''}`}
+                  />
+                </div>
+
+                {/* 10. الراتب */}
+                <div>
+                  <label className="block text-sm font-medium text-neutral-700 mb-2 flex items-center gap-2">
+                    <CreditCard className="w-4 h-4" />
+                    الراتب
+                  </label>
+                  <input
+                    type="number"
+                    value={formData.salary || 0}
+                    onChange={(e) => setFormData({ ...formData, salary: Number(e.target.value) })}
+                    disabled={!isEditMode}
+                    className={`app-input py-2 ${!isEditMode ? 'border-slate-200 bg-slate-50 text-slate-600 cursor-not-allowed' : ''}`}
+                    placeholder="الراتب الشهري"
+                  />
+                </div>
+
+                {/* 11. الشركة أو المؤسسة */}
+                <div>
+                  <label className="block text-sm font-medium text-neutral-700 mb-2 flex items-center gap-2">
+                    <MapPin className="w-4 h-4" />
+                    الشركة أو المؤسسة
+                  </label>
+                  <div className="relative" ref={companyDropdownRef}>
+                    <div className="relative">
+                      <input
+                        type="text"
+                        value={companySearchQuery}
+                        onChange={(e) => {
+                          setCompanySearchQuery(e.target.value)
+                          setIsCompanyDropdownOpen(true)
+                        }}
+                        onFocus={() => {
+                          if (isEditMode) {
+                            setIsCompanyDropdownOpen(true)
+                          }
+                        }}
+                        placeholder="ابحث بالاسم أو الرقم الموحد..."
+                        disabled={!isEditMode}
+                        className={`app-input py-2 pr-10 ${!isEditMode ? 'border-slate-200 bg-slate-50 text-slate-600 cursor-not-allowed' : ''}`}
+                      />
+                      <div className="absolute left-3 top-1/2 transform -translate-y-1/2 pointer-events-none">
+                        <Search className="w-5 h-5 text-neutral-400" />
+                      </div>
+                      {isEditMode && (
+                        <button
+                          type="button"
+                          onClick={() => setIsCompanyDropdownOpen(!isCompanyDropdownOpen)}
+                          className="absolute right-3 top-1/2 transform -translate-y-1/2 text-neutral-400 hover:text-neutral-600"
+                        >
+                          <ChevronDown
+                            className={`w-5 h-5 transition-transform ${isCompanyDropdownOpen ? 'rotate-180' : ''}`}
+                          />
+                        </button>
+                      )}
+                    </div>
+
+                    {isCompanyDropdownOpen && isEditMode && (
+                      <div className="absolute z-[130] w-full mt-1 bg-white border border-neutral-300 rounded-lg shadow-lg max-h-60 overflow-auto">
+                        {filteredCompanies.length === 0 ? (
+                          <div className="px-4 py-3 text-sm text-neutral-500 text-center">
+                            {companySearchQuery.trim() ? 'لا توجد نتائج' : 'لا توجد شركات متاحة'}
+                          </div>
+                        ) : (
+                          filteredCompanies.map((company) => (
+                            <button
+                              key={company.id}
+                              type="button"
+                              onClick={() => {
+                                setFormData({ ...formData, company_id: company.id })
+                                setCompanySearchQuery(`${company.name} (${company.unified_number})`)
+                                setIsCompanyDropdownOpen(false)
+                              }}
+                              className="w-full px-4 py-2.5 text-right text-sm hover:bg-blue-50 focus:bg-blue-50 focus:outline-none transition-colors"
+                            >
+                              {company.name} ({company.unified_number})
+                            </button>
+                          ))
+                        )}
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* 12. المشروع */}
+                <div>
+                  <label className="block text-sm font-medium text-neutral-700 mb-2 flex items-center gap-2">
+                    <FolderKanban className="w-4 h-4" />
+                    المشروع
+                  </label>
+                  <div className="relative" ref={projectDropdownRef}>
+                    <div className="relative">
+                      <input
+                        type="text"
+                        value={projectSearchQuery}
+                        onChange={(e) => {
+                          setProjectSearchQuery(e.target.value)
+                          setIsProjectDropdownOpen(true)
+                        }}
+                        onFocus={() => {
+                          if (isEditMode) {
+                            setIsProjectDropdownOpen(true)
+                          }
+                        }}
+                        placeholder="ابحث عن مشروع..."
+                        disabled={!isEditMode}
+                        className={`app-input py-2 pr-10 ${!isEditMode ? 'border-slate-200 bg-slate-50 text-slate-600 cursor-not-allowed' : ''}`}
+                      />
+                      <div className="absolute left-3 top-1/2 transform -translate-y-1/2 pointer-events-none">
+                        <Search className="w-5 h-5 text-neutral-400" />
+                      </div>
+                      {isEditMode && (
+                        <button
+                          type="button"
+                          onClick={() => setIsProjectDropdownOpen(!isProjectDropdownOpen)}
+                          className="absolute right-3 top-1/2 transform -translate-y-1/2 text-neutral-400 hover:text-neutral-600"
+                        >
+                          <ChevronDown
+                            className={`w-5 h-5 transition-transform ${isProjectDropdownOpen ? 'rotate-180' : ''}`}
+                          />
+                        </button>
+                      )}
+                    </div>
+
+                    {isProjectDropdownOpen && isEditMode && (
+                      <div className="absolute z-[130] w-full mt-1 bg-white border border-neutral-300 rounded-lg shadow-lg max-h-60 overflow-auto">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setFormData({ ...formData, project_id: null })
+                            setProjectSearchQuery('')
+                            setIsProjectDropdownOpen(false)
+                          }}
+                          className="w-full px-4 py-2.5 text-right text-sm hover:bg-neutral-50 focus:bg-neutral-50 focus:outline-none transition-colors text-neutral-600"
+                        >
+                          بدون مشروع
+                        </button>
+                        {filteredProjects.length === 0 && !showCreateOption ? (
+                          <div className="px-4 py-3 text-sm text-neutral-500 text-center">
+                            {projectSearchQuery.trim() ? 'لا توجد نتائج' : 'لا توجد مشاريع متاحة'}
+                          </div>
+                        ) : (
+                          <>
+                            {filteredProjects.map((project) => (
+                              <button
+                                key={project.id}
+                                type="button"
+                                onClick={() => {
+                                  setFormData({
+                                    ...formData,
+                                    project_id: project.id,
+                                    project_name: project.name,
+                                  })
+                                  setProjectSearchQuery(project.name)
+                                  setIsProjectDropdownOpen(false)
+                                }}
+                                className="w-full px-4 py-2.5 text-right text-sm hover:bg-blue-50 focus:bg-blue-50 focus:outline-none transition-colors"
+                              >
+                                <div className="flex items-center justify-between">
+                                  <span>{project.name}</span>
+                                  <span
+                                    className={`text-xs px-2 py-1 rounded-full ${
+                                      project.status === 'active'
+                                        ? 'bg-green-100 text-success-800'
+                                        : project.status === 'inactive'
+                                          ? 'bg-neutral-100 text-neutral-800'
+                                          : 'bg-blue-100 text-blue-800'
+                                    }`}
+                                  >
+                                    {project.status === 'active'
+                                      ? 'نشط'
+                                      : project.status === 'inactive'
+                                        ? 'متوقف'
+                                        : 'مكتمل'}
+                                  </span>
+                                </div>
+                              </button>
+                            ))}
+                            {showCreateOption && (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setNewProjectName(projectSearchQuery.trim())
+                                  setShowCreateProjectModal(true)
+                                }}
+                                className="w-full px-4 py-2.5 text-right text-sm hover:bg-green-50 focus:bg-green-50 focus:outline-none transition-colors border-t border-neutral-200 text-success-700 font-medium"
+                              >
+                                <div className="flex items-center justify-between">
+                                  <span className="flex items-center gap-2">
+                                    <Plus className="w-4 h-4" />
+                                    إنشاء مشروع جديد: {projectSearchQuery.trim()}
+                                  </span>
+                                </div>
+                              </button>
+                            )}
+                          </>
+                        )}
+                      </div>
+                    )}
+
+                    {/* مودال إضافة مشروع جديد */}
+                    {showCreateProjectModal && (
+                      <div className="fixed inset-0 bg-black bg-opacity-30 flex items-center justify-center z-[60] p-4">
+                        <div className="bg-white rounded-lg shadow-xl max-w-md w-full p-6">
+                          <h3 className="text-lg font-bold text-neutral-900 mb-4 flex items-center gap-2">
+                            <Plus className="w-5 h-5 text-success-600" />
+                            إضافة مشروع جديد
+                          </h3>
+                          <div className="mb-4">
+                            <label className="block text-sm font-medium text-neutral-700 mb-2">
+                              اسم المشروع <span className="text-danger-500">*</span>
+                            </label>
+                            <input
+                              type="text"
+                              value={newProjectName}
+                              onChange={(e) => setNewProjectName(e.target.value)}
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter' && !creatingProject) {
+                                  handleCreateProject()
+                                }
+                              }}
+                              className="w-full px-4 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                              placeholder="أدخل اسم المشروع"
+                              autoFocus
+                              disabled={creatingProject}
+                            />
+                          </div>
+                          <div className="flex items-center justify-end gap-3">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setShowCreateProjectModal(false)
+                                setNewProjectName('')
+                              }}
+                              className="px-4 py-2 border border-neutral-300 rounded-lg text-neutral-700 hover:bg-neutral-50 transition"
+                              disabled={creatingProject}
+                            >
+                              إلغاء
+                            </button>
+                            <button
+                              type="button"
+                              onClick={handleCreateProject}
+                              disabled={creatingProject || !newProjectName.trim()}
+                              className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                            >
+                              {creatingProject ? (
+                                <>
+                                  <Loader2 className="w-4 h-4 animate-spin" />
+                                  جاري الإنشاء...
+                                </>
+                              ) : (
+                                <>
+                                  <Plus className="w-4 h-4" />
+                                  إضافة
+                                </>
+                              )}
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* 13. حالة عقد أجير */}
+                <div>
+                  <label className="block text-sm font-medium text-neutral-700 mb-2">
+                    حالة عقد أجير
+                  </label>
+                  <select
+                    value={String(employeeBusinessFields.hired_worker_contract_status)}
+                    onChange={(e) =>
+                      setFormData({
+                        ...formData,
+                        additional_fields: {
+                          ...formData.additional_fields,
+                          hired_worker_contract_status: e.target.value,
+                        },
+                      })
+                    }
+                    disabled={!isEditMode || Boolean(formData.hired_worker_contract_expiry)}
+                    className={`app-input py-2 ${!isEditMode ? 'border-slate-200 bg-slate-50 text-slate-600 cursor-not-allowed' : ''}`}
+                  >
+                    {HIRED_WORKER_CONTRACT_STATUS_OPTIONS.map((option) => (
+                      <option key={option} value={option}>
+                        {option}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* 14. تاريخ الالتحاق */}
+                <div>
+                  <label className="block text-sm font-medium text-neutral-700 mb-2 flex items-center gap-2">
+                    <Calendar className="w-4 h-4" />
+                    تاريخ الالتحاق
+                  </label>
+                  <input
+                    type="date"
+                    value={formData.joining_date || ''}
+                    onChange={(e) => setFormData({ ...formData, joining_date: e.target.value })}
+                    disabled={!isEditMode}
+                    className={`app-input py-2 ${!isEditMode ? 'border-slate-200 bg-slate-50 text-slate-600 cursor-not-allowed' : ''}`}
+                  />
+                </div>
+
+                {/* 13. تاريخ انتهاء الإقامة */}
+                <div>
+                  <label className="block text-sm font-medium text-neutral-700 mb-2">
+                    تاريخ انتهاء الإقامة
+                  </label>
+                  <input
+                    type="date"
+                    value={formData.residence_expiry || ''}
+                    onChange={(e) => setFormData({ ...formData, residence_expiry: e.target.value })}
+                    disabled={!isEditMode}
+                    className={`app-input py-2 ${!isEditMode ? 'border-slate-200 bg-slate-50 text-slate-600 cursor-not-allowed' : ''}`}
+                  />
+                </div>
+
+                {/* 14. تاريخ انتهاء العقد */}
+                <div>
+                  <label className="block text-sm font-medium text-neutral-700 mb-2">
+                    تاريخ انتهاء العقد
+                  </label>
+                  <input
+                    type="date"
+                    value={formData.contract_expiry || ''}
+                    onChange={(e) => setFormData({ ...formData, contract_expiry: e.target.value })}
+                    disabled={!isEditMode}
+                    className={`app-input py-2 ${!isEditMode ? 'border-slate-200 bg-slate-50 text-slate-600 cursor-not-allowed' : ''}`}
+                  />
+                </div>
+
+                {/* 15. تاريخ انتهاء عقد أجير */}
+                <div>
+                  <label className="block text-sm font-medium text-neutral-700 mb-2">
+                    تاريخ انتهاء عقد أجير
+                  </label>
+                  <input
+                    type="date"
+                    value={formData.hired_worker_contract_expiry || ''}
+                    onChange={(e) =>
+                      setFormData({
+                        ...formData,
+                        hired_worker_contract_expiry: e.target.value,
+                        additional_fields: e.target.value
+                          ? {
+                              ...formData.additional_fields,
+                              hired_worker_contract_status: 'أجير',
+                            }
+                          : formData.additional_fields,
+                      })
+                    }
+                    disabled={!isEditMode}
+                    className={`app-input py-2 ${!isEditMode ? 'border-slate-200 bg-slate-50 text-slate-600 cursor-not-allowed' : ''}`}
+                  />
+                </div>
+
+                {/* 16. تاريخ انتهاء التأمين الصحي */}
+                <div>
+                  <label className="block text-sm font-medium text-neutral-700 mb-2">
+                    تاريخ انتهاء التأمين الصحي
+                  </label>
+                  <input
+                    type="date"
+                    value={formData.health_insurance_expiry || ''}
+                    onChange={(e) =>
+                      setFormData({ ...formData, health_insurance_expiry: e.target.value })
+                    }
+                    disabled={!isEditMode}
+                    className={`app-input py-2 ${!isEditMode ? 'border-slate-200 bg-slate-50 text-slate-600 cursor-not-allowed' : ''}`}
+                  />
+                </div>
+
+                {/* 17. رابط صورة الإقامة */}
+                <div>
+                  <label className="block text-sm font-medium text-neutral-700 mb-2 flex items-center gap-2">
+                    <FileText className="w-4 h-4" />
+                    رابط صورة الإقامة
+                  </label>
+                  <input
+                    type="text"
+                    value={formData.residence_image_url || ''}
+                    onChange={(e) =>
+                      setFormData({ ...formData, residence_image_url: e.target.value })
+                    }
+                    disabled={!isEditMode}
+                    className={`app-input py-2 ${!isEditMode ? 'border-slate-200 bg-slate-50 text-slate-600 cursor-not-allowed' : ''}`}
+                    placeholder="أدخل رابط صورة الإقامة"
+                  />
+                  {formData.residence_image_url && !isEditMode && (
+                    <a
+                      href={formData.residence_image_url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="mt-2 text-sm text-blue-600 hover:text-blue-800 underline"
+                    >
+                      عرض الصورة
+                    </a>
+                  )}
+                </div>
+
+                {/* 18. الملاحظات */}
+                <div className="md:col-span-2">
+                  <label className="block text-sm font-medium text-neutral-700 mb-2 flex items-center gap-2">
+                    <FileText className="w-4 h-4" />
+                    الملاحظات
+                  </label>
+                  {isEditMode ? (
+                    <textarea
+                      value={formData.notes || ''}
+                      onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+                      rows={4}
+                      className="app-input min-h-[100px] resize-none"
+                      placeholder="أدخل أي ملاحظات إضافية عن الموظف..."
+                    />
+                  ) : (
+                    <div className="w-full px-4 py-2 border border-neutral-200 rounded-lg bg-neutral-50 text-neutral-700 min-h-[100px] whitespace-pre-wrap">
+                      {formData.notes || 'لا توجد ملاحظات'}
+                    </div>
+                  )}
+                </div>
+              </div>
+
+
+              {showHistoryModal && (
+                <EmployeeHistoryModal
+                  employee={employee}
+                  onClose={() => setShowHistoryModal(false)}
+                />
+              )}
+
+              {showFinancialOverlay && (
+                <div
+                  className="fixed inset-0 z-[130] flex items-center justify-center bg-slate-950/60 p-4 backdrop-blur-sm"
+                  onClick={() => setShowFinancialOverlay(false)}
+                >
+                  <div
+                    className="app-modal-surface relative isolate max-w-5xl max-h-[90vh] w-full overflow-y-auto p-5"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <div className="border border-neutral-200 rounded-xl p-5 bg-neutral-50">
+                      <div className="flex items-center justify-between gap-4 mb-4">
+                        <div>
+                          <h3 className="text-lg font-bold text-neutral-900">الالتزامات المالية</h3>
+                          <p className="text-sm text-neutral-600">
+                            ملخص الأقساط والخطط المفتوحة لهذا الموظف
+                          </p>
+                        </div>
+                        <div className="flex items-center gap-3">
+                          <div className="text-sm text-neutral-500">
+                            {isLoadingObligations
+                              ? 'جاري التحميل...'
+                              : `${activeObligationPlans.length} خطة نشطة / مسودة`}
+                          </div>
+                          {canEdit('employees') && (
+                            <button
+                              type="button"
+                              onClick={() => setShowObligationForm(true)}
+                              className="app-button-primary px-4 py-2 text-sm"
+                            >
+                              <Plus className="w-4 h-4" />
+                              إضافة التزام
+                            </button>
+                          )}
+                          <button
+                            type="button"
+                            onClick={() => setShowFinancialOverlay(false)}
+                            className="app-button-secondary px-3 py-2 text-sm"
+                          >
+                            <X className="w-4 h-4" />
+                            إغلاق
+                          </button>
+                        </div>
+                      </div>
+
+                      {hasObligationsError ? (
+                        <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+                          تعذر تحميل بيانات الالتزامات المالية حالياً.
+                        </div>
+                      ) : isLoadingObligations ? (
+                        <div className="rounded-lg border border-neutral-200 bg-white px-4 py-6 text-center text-sm text-neutral-500">
+                          جاري تحميل الالتزامات المالية...
+                        </div>
+                      ) : obligationPlans.length === 0 ? (
+                        <div className="rounded-lg border border-neutral-200 bg-white px-4 py-6 text-center text-sm text-neutral-500">
+                          لا توجد التزامات مالية مسجلة لهذا الموظف بعد.
+                        </div>
+                      ) : (
+                        <div className="space-y-4">
+                          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-3">
+                            <div className="rounded-lg bg-white border border-neutral-200 p-4">
+                              <div className="text-sm text-neutral-500 mb-1">إجمالي الخطط</div>
+                              <div className="text-2xl font-bold text-neutral-900">
+                                {obligationPlans.length}
+                              </div>
+                            </div>
+                            <div className="rounded-lg bg-white border border-neutral-200 p-4">
+                              <div className="text-sm text-neutral-500 mb-1">الأقساط المفتوحة</div>
+                              <div className="text-2xl font-bold text-warning-600">
+                                {openObligationLines.length}
+                              </div>
+                            </div>
+                            <div className="rounded-lg bg-white border border-neutral-200 p-4">
+                              <div className="text-sm text-neutral-500 mb-1">ما تم سداده</div>
+                              <div className="text-2xl font-bold text-success-600">
+                                {formatMoney(paidObligationAmount)} SAR
+                              </div>
+                            </div>
+                            <div className="rounded-lg bg-white border border-neutral-200 p-4">
+                              <div className="text-sm text-neutral-500 mb-1">المتبقي للسداد</div>
+                              <div className="text-2xl font-bold text-blue-700">
+                                {formatMoney(remainingObligationAmount)} SAR
+                              </div>
+                            </div>
+                          </div>
+
+                          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-3">
+                            {Object.entries(obligationBucketSummary).map(
+                              ([bucketKey, bucketValue]) => (
+                                <div
+                                  key={bucketKey}
+                                  className="rounded-lg border border-neutral-200 bg-white p-4"
+                                >
+                                  <div className="text-sm text-neutral-500 mb-1">
+                                    {getPayrollObligationBucketLabel(
+                                      bucketKey as
+                                        | 'transfer_renewal'
+                                        | 'penalty'
+                                        | 'advance'
+                                        | 'other'
+                                    )}
+                                  </div>
+                                  <div className="text-lg font-bold text-slate-900">
+                                    {formatMoney(bucketValue.remaining)} SAR
+                                  </div>
+                                  <div className="mt-1 text-xs text-neutral-500">
+                                    المدفوع: {formatMoney(bucketValue.paid)} / الإجمالي:{' '}
+                                    {formatMoney(bucketValue.total)}
+                                  </div>
+                                </div>
+                              )
+                            )}
+                          </div>
+
+                          {/* Per-plan management cards */}
+                          {activeObligationPlans.length > 0 && (
+                            <div className="space-y-2">
+                              <h4 className="text-sm font-semibold text-neutral-600 px-1">
+                                الخطط النشطة
+                              </h4>
+                              {activeObligationPlans.map((plan) => {
+                                const planPaid = plan.lines.reduce(
+                                  (s, l) => s + Number(l.amount_paid || 0),
+                                  0
+                                )
+                                const planRemaining = Number(plan.total_amount) - planPaid
+                                return (
+                                  <div
+                                    key={plan.id}
+                                    className="rounded-lg border border-neutral-200 bg-white px-4 py-3 flex items-center justify-between gap-3"
+                                  >
+                                    <div className="min-w-0">
+                                      <div className="flex items-center gap-2 flex-wrap">
+                                        <span className="font-medium text-neutral-900 text-sm">
+                                          {plan.title}
+                                        </span>
+                                        <span className="rounded-full bg-blue-100 px-2 py-0.5 text-[11px] text-blue-700">
+                                          {OBLIGATION_TYPE_LABELS[plan.obligation_type] ?? plan.obligation_type}
+                                        </span>
+                                        <span className="rounded-full bg-neutral-100 px-2 py-0.5 text-[11px] text-neutral-600">
+                                          {plan.installment_count} قسط
+                                        </span>
+                                      </div>
+                                      <div className="text-xs text-neutral-500 mt-0.5">
+                                        إجمالي: {formatMoney(Number(plan.total_amount))} · مدفوع:{' '}
+                                        {formatMoney(planPaid)} · متبقي: {formatMoney(planRemaining)}{' '}
+                                        SAR
+                                      </div>
+                                    </div>
+                                    {canEdit('employees') && (
+                                      <div className="flex items-center gap-1.5 flex-shrink-0">
+                                        <button
+                                          type="button"
+                                          onClick={() => handleOpenEditPlan(plan)}
+                                          title="تعديل الالتزام"
+                                          className="inline-flex h-7 w-7 items-center justify-center rounded-lg border border-neutral-200 text-neutral-500 hover:bg-blue-50 hover:border-blue-200 hover:text-blue-600 transition"
+                                        >
+                                          <Pencil className="h-3.5 w-3.5" />
+                                        </button>
+                                        <button
+                                          type="button"
+                                          onClick={() => setDeletingPlanId(plan.id)}
+                                          title="حذف الالتزام"
+                                          className="inline-flex h-7 w-7 items-center justify-center rounded-lg border border-neutral-200 text-neutral-500 hover:bg-red-50 hover:border-red-200 hover:text-red-600 transition"
+                                        >
+                                          <Trash2 className="h-3.5 w-3.5" />
+                                        </button>
+                                      </div>
+                                    )}
+                                  </div>
+                                )
+                              })}
+                            </div>
+                          )}
+
+                          <div className="space-y-3">
+                            {recentObligationLines.map((line, index) => (
+                              <div
+                                key={line.id}
+                                className="rounded-lg border border-neutral-200 bg-white p-4 space-y-3"
+                              >
+                                <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+                                  <div>
+                                    <div className="flex items-center gap-2 flex-wrap">
+                                      <div className="font-medium text-neutral-900">
+                                        {line.title}
+                                      </div>
+                                      <span
+                                        className={`rounded-full px-2 py-1 text-[11px] font-semibold ${
+                                          line.line_status === 'paid'
+                                            ? 'bg-green-100 text-success-700'
+                                            : line.line_status === 'partial'
+                                              ? 'bg-amber-100 text-amber-700'
+                                              : 'bg-blue-100 text-blue-700'
+                                        }`}
+                                      >
+                                        {line.line_status === 'paid'
+                                          ? 'مسدد'
+                                          : line.line_status === 'partial'
+                                            ? 'مسدد جزئيًا'
+                                            : 'مفتوح'}
+                                      </span>
+                                    </div>
+                                    <div className="text-sm text-neutral-500">
+                                      القسط رقم {index + 1} • موعد السداد{' '}
+                                      <HijriDateDisplay date={line.due_month}>
+                                        {formatDateShortWithHijri(line.due_month)}
+                                      </HijriDateDisplay>
+                                    </div>
+                                  </div>
+                                  <div className="text-sm md:text-left">
+                                    <div className="font-semibold text-neutral-900">
+                                      {formatMoney(Math.max(line.amount_due - line.amount_paid, 0))}{' '}
+                                      {line.currency_code}
+                                    </div>
+                                    <div className="text-neutral-500">
+                                      مدفوع: {formatMoney(line.amount_paid)} من{' '}
+                                      {formatMoney(line.amount_due)}
+                                    </div>
+                                  </div>
+                                </div>
+
+                                {canEdit('employees') && (
+                                  <div className="flex flex-col gap-3 border-t border-neutral-100 pt-3">
+                                    {editingObligationLineId === line.id ? (
+                                      <>
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                          <div>
+                                            <label className="block text-sm font-medium text-neutral-700 mb-2">
+                                              إجمالي المدفوع حتى الآن
+                                            </label>
+                                            <input
+                                              type="number"
+                                              min="0"
+                                              max={line.amount_due}
+                                              step="0.01"
+                                              value={obligationPaymentForm.amount_paid}
+                                              onChange={(e) =>
+                                                setObligationPaymentForm({
+                                                  ...obligationPaymentForm,
+                                                  amount_paid: Number(e.target.value) || 0,
+                                                })
+                                              }
+                                              className="app-input"
+                                            />
+                                          </div>
+                                          <div>
+                                            <label className="block text-sm font-medium text-neutral-700 mb-2">
+                                              ملاحظات السداد
+                                            </label>
+                                            <input
+                                              type="text"
+                                              value={obligationPaymentForm.notes}
+                                              onChange={(e) =>
+                                                setObligationPaymentForm({
+                                                  ...obligationPaymentForm,
+                                                  notes: e.target.value,
+                                                })
+                                              }
+                                              className="app-input"
+                                              placeholder="اختياري"
+                                            />
+                                          </div>
+                                        </div>
+                                        <div className="flex items-center justify-end gap-3">
+                                          <button
+                                            type="button"
+                                            onClick={() => setEditingObligationLineId(null)}
+                                            className="app-button-secondary px-3 py-2 text-sm"
+                                            disabled={updateObligationLinePayment.isPending}
+                                          >
+                                            إلغاء
+                                          </button>
+                                          <button
+                                            type="button"
+                                            onClick={() =>
+                                              handleSaveObligationPayment(line.id, line.amount_due)
+                                            }
+                                            className="app-button-primary px-3 py-2 text-sm"
+                                            disabled={updateObligationLinePayment.isPending}
+                                          >
+                                            {updateObligationLinePayment.isPending ? (
+                                              <>
+                                                <Loader2 className="w-4 h-4 animate-spin" />
+                                                جاري الحفظ...
+                                              </>
+                                            ) : (
+                                              <>
+                                                <Save className="w-4 h-4" />
+                                                حفظ السداد
+                                              </>
+                                            )}
+                                          </button>
+                                        </div>
+                                      </>
+                                    ) : (
+                                      <div className="flex justify-end">
+                                        <button
+                                          type="button"
+                                          onClick={() =>
+                                            startEditingObligationLine(
+                                              line.id,
+                                              line.amount_paid,
+                                              line.notes
+                                            )
+                                          }
+                                          className="app-button-secondary px-3 py-2 text-sm"
+                                        >
+                                          <CreditCard className="w-4 h-4" />
+                                          تسجيل سداد
+                                        </button>
+                                      </div>
+                                    )}
+                                  </div>
+                                )}
+                              </div>
+                            ))}
+
+                            {allObligationLines.length > 5 && (
+                              <div className="text-sm text-neutral-500 text-center pt-1">
+                                يوجد {allObligationLines.length - 5} قسط إضافي غير ظاهر في هذا
+                                الملخص.
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      )}
+
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+        </div>
+
+        {/* Footer */}
+        <div className="app-modal-footer flex justify-between p-6">
+          {canDelete('employees') && onDelete && (
+            <button
+              onClick={handleDelete}
+              className="flex items-center gap-2 px-6 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition"
+              title="حذف الموظف"
+            >
+              <X className="w-4 h-4" />
+              حذف الموظف
+            </button>
+          )}
+          <div className="flex gap-3">
+            <button onClick={onClose} className="app-button-secondary px-6 py-2" disabled={saving}>
+              إغلاق
+            </button>
+            {isEditMode && (
+              <div className="flex gap-3">
+                <button
+                  onClick={handleCancel}
+                  className="app-button-secondary px-6 py-2"
+                  disabled={saving}
+                >
+                  <RotateCcw className="w-4 h-4" />
+                  إلغاء
+                </button>
+                <button
+                  onClick={handleSave}
+                  disabled={saving}
+                  className="app-button-primary px-6 py-2"
+                >
+                  <Save className="w-4 h-4" />
+                  {saving ? 'جاري الحفظ...' : 'حفظ التعديلات'}
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+        </div>
+      </div>
+    </div>
+
+    {/* ── Add Obligation Modal ─────────────────────────────────────────── */}
+    {showObligationForm && canEdit('employees') && (
+      <div
+        className="fixed inset-0 z-[155] flex items-center justify-center bg-slate-950/65 p-4 backdrop-blur-sm"
+        dir="rtl"
+        onClick={() => {
+          if (!createEmployeeObligationPlan.isPending) setShowObligationForm(false)
+        }}
+      >
+        <div
+          role="dialog"
+          aria-modal="true"
+          className="app-modal-surface w-full max-w-lg max-h-[90vh] overflow-y-auto"
+          onClick={(e) => e.stopPropagation()}
+        >
+          {/* Header */}
+          <div className="app-modal-header flex items-center justify-between gap-3 px-5 py-4">
+            <div>
+              <h3 className="text-lg font-bold text-foreground">إنشاء خطة التزام جديدة</h3>
+              <p className="text-sm text-foreground-secondary mt-0.5">
+                ستُنشأ الأقساط تلقائيًا وتظهر في الملخص فور الحفظ
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => setShowObligationForm(false)}
+              disabled={createEmployeeObligationPlan.isPending}
+              className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-border-200 text-foreground-tertiary hover:bg-surface-secondary-50 transition"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          </div>
+
+          {/* Body */}
+          <div className="space-y-4 p-5">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-foreground-secondary mb-1.5">
+                  نوع الالتزام
+                </label>
+                <select
+                  value={obligationForm.obligation_type}
+                  onChange={(e) =>
+                    setObligationForm({
+                      ...obligationForm,
+                      obligation_type: e.target.value as ObligationType,
+                    })
+                  }
+                  className="app-input"
+                >
+                  <option value="advance">سلفة</option>
+                  <option value="transfer">نقل كفالة</option>
+                  <option value="renewal">تجديد</option>
+                  <option value="penalty">غرامة</option>
+                  <option value="other">أخرى</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-foreground-secondary mb-1.5">
+                  إجمالي المبلغ (ر.س)
+                </label>
+                <input
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  value={obligationForm.total_amount}
+                  onChange={(e) =>
+                    setObligationForm({
+                      ...obligationForm,
+                      total_amount: Number(e.target.value) || 0,
+                    })
+                  }
+                  className="app-input"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-foreground-secondary mb-1.5">
+                  شهر البداية
+                </label>
+                <input
+                  type="month"
+                  value={obligationForm.start_month}
+                  onChange={(e) =>
+                    setObligationForm({ ...obligationForm, start_month: e.target.value })
+                  }
+                  className="app-input"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-foreground-secondary mb-1.5">
+                  عدد الأقساط (شهر)
+                </label>
+                <input
+                  type="number"
+                  min="1"
+                  max="60"
+                  value={obligationForm.installment_count}
+                  onChange={(e) =>
+                    setObligationForm({
+                      ...obligationForm,
+                      installment_count: Number(e.target.value) || 1,
+                    })
+                  }
+                  className="app-input"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-foreground-secondary mb-1.5">
+                  القسط الشهري التقريبي
+                </label>
+                <div className="app-input bg-surface-secondary-50 text-foreground-secondary select-none">
+                  {installmentPreview.length > 0
+                    ? `${formatMoney(installmentPreview[0])} ر.س`
+                    : '—'}
+                </div>
+              </div>
+
+              <div className="sm:col-span-2">
+                <label className="block text-sm font-medium text-foreground-secondary mb-1.5">
+                  ملاحظات (اختياري)
+                </label>
+                <textarea
+                  rows={3}
+                  value={obligationForm.notes}
+                  onChange={(e) =>
+                    setObligationForm({ ...obligationForm, notes: e.target.value })
+                  }
+                  className="app-input min-h-[80px] resize-none"
+                  placeholder="أي توضيح إضافي عن هذا الالتزام"
+                />
+              </div>
+            </div>
+
+            {installmentPreview.length > 0 && (
+              <div className="rounded-xl border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-900">
+                سيتم إنشاء <strong>{obligationForm.installment_count}</strong> قسط — أول 3 أقساط:{' '}
+                <strong>
+                  {installmentPreview
+                    .slice(0, 3)
+                    .map((v) => formatMoney(v))
+                    .join(' ، ')}
+                </strong>
+                {installmentPreview.length > 3 ? ' ...' : ''}
+              </div>
+            )}
+
+            {startMonthConflict && (
+              <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm">
+                <div className="flex items-start gap-2 text-amber-800">
+                  <AlertTriangle className="h-4 w-4 mt-0.5 flex-shrink-0 text-amber-500" />
+                  <div>
+                    <p className="font-semibold">
+                      لا يمكن بدء الأقساط في هذا الشهر
+                    </p>
+                    <p className="mt-1 text-amber-700">
+                      تم اعتماد مسير شهر{' '}
+                      <strong>
+                        {new Date(`${obligationForm.start_month}-02`).toLocaleDateString('ar-SA', {
+                          year: 'numeric',
+                          month: 'long',
+                        })}
+                      </strong>{' '}
+                      لهذا الموظف بالفعل. اختر شهرًا لاحقًا أو عدّل المسير المعتمد أولاً.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Footer */}
+          <div className="app-modal-footer flex items-center justify-end gap-2 px-5 py-4">
+            <button
+              type="button"
+              onClick={() => setShowObligationForm(false)}
+              disabled={createEmployeeObligationPlan.isPending}
+              className="px-4 py-2 rounded-xl border border-border-300 text-sm text-foreground-secondary hover:bg-surface-secondary-50 transition"
+            >
+              إلغاء
+            </button>
+            <button
+              type="button"
+              onClick={handleCreateObligationPlan}
+              disabled={createEmployeeObligationPlan.isPending || startMonthConflict || checkingStartMonth}
+              className="inline-flex items-center gap-2 rounded-xl bg-green-600 px-4 py-2 text-sm font-medium text-white hover:bg-green-700 transition disabled:opacity-60"
+            >
+              {createEmployeeObligationPlan.isPending ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <Save className="w-4 h-4" />
+              )}
+              {createEmployeeObligationPlan.isPending ? 'جاري الإنشاء...' : 'حفظ الخطة'}
+            </button>
+          </div>
+        </div>
+      </div>
+    )}
+
+    {/* ── Edit Obligation Plan Modal ───────────────────────────────────────── */}
+    {editingPlanId && (
+      <div
+        className="fixed inset-0 z-[160] flex items-center justify-center bg-slate-950/65 p-4 backdrop-blur-sm"
+        dir="rtl"
+        onClick={() => { if (!updateObligationPlan.isPending) setEditingPlanId(null) }}
+      >
+        <div
+          role="dialog"
+          aria-modal="true"
+          className="app-modal-surface w-full max-w-md max-h-[90vh] overflow-y-auto"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <div className="app-modal-header flex items-center justify-between gap-3 px-5 py-4">
+            <div>
+              <h3 className="text-lg font-bold text-foreground">تعديل الالتزام</h3>
+              <p className="text-sm text-foreground-secondary mt-0.5">
+                تغيير المبلغ يعيد توزيع الأقساط غير المسددة تلقائيًا
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => setEditingPlanId(null)}
+              disabled={updateObligationPlan.isPending}
+              className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-border-200 text-foreground-tertiary hover:bg-surface-secondary-50 transition"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          </div>
+          <div className="space-y-4 p-5">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-foreground-secondary mb-1.5">
+                  نوع الالتزام
+                </label>
+                <select
+                  value={editPlanForm.obligation_type}
+                  onChange={(e) =>
+                    setEditPlanForm({ ...editPlanForm, obligation_type: e.target.value as ObligationType })
+                  }
+                  className="app-input"
+                >
+                  <option value="advance">سلفة</option>
+                  <option value="transfer">نقل كفالة</option>
+                  <option value="renewal">تجديد</option>
+                  <option value="penalty">غرامة</option>
+                  <option value="other">أخرى</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-foreground-secondary mb-1.5">
+                  المبلغ الإجمالي (ر.س)
+                </label>
+                <input
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  value={editPlanForm.total_amount}
+                  onChange={(e) =>
+                    setEditPlanForm({ ...editPlanForm, total_amount: Number(e.target.value) || 0 })
+                  }
+                  className="app-input"
+                />
+              </div>
+              <div className="sm:col-span-2">
+                <label className="block text-sm font-medium text-foreground-secondary mb-1.5">
+                  اسم / وصف الالتزام
+                </label>
+                <input
+                  type="text"
+                  value={editPlanForm.title}
+                  onChange={(e) => setEditPlanForm({ ...editPlanForm, title: e.target.value })}
+                  className="app-input"
+                  placeholder="مثال: سلفة رمضان 2026"
+                />
+              </div>
+              <div className="sm:col-span-2">
+                <label className="block text-sm font-medium text-foreground-secondary mb-1.5">
+                  ملاحظات (اختياري)
+                </label>
+                <textarea
+                  rows={2}
+                  value={editPlanForm.notes}
+                  onChange={(e) => setEditPlanForm({ ...editPlanForm, notes: e.target.value })}
+                  className="app-input min-h-[60px] resize-none"
+                  placeholder="أي توضيح إضافي"
+                />
+              </div>
+            </div>
+          </div>
+          <div className="app-modal-footer flex items-center justify-end gap-2 px-5 py-4">
+            <button
+              type="button"
+              onClick={() => setEditingPlanId(null)}
+              disabled={updateObligationPlan.isPending}
+              className="px-4 py-2 rounded-xl border border-border-300 text-sm text-foreground-secondary hover:bg-surface-secondary-50 transition"
+            >
+              إلغاء
+            </button>
+            <button
+              type="button"
+              onClick={() => void handleUpdatePlan()}
+              disabled={updateObligationPlan.isPending}
+              className="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 transition disabled:opacity-60"
+            >
+              {updateObligationPlan.isPending ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <Save className="w-4 h-4" />
+              )}
+              {updateObligationPlan.isPending ? 'جاري الحفظ...' : 'حفظ التعديلات'}
+            </button>
+          </div>
+        </div>
+      </div>
+    )}
+
+    {/* ── Delete Obligation Plan Confirmation ──────────────────────────────── */}
+    {deletingPlanId && (
+      <div
+        className="fixed inset-0 z-[165] flex items-center justify-center bg-slate-950/65 p-4 backdrop-blur-sm"
+        dir="rtl"
+        onClick={() => { if (!deleteObligationPlan.isPending) setDeletingPlanId(null) }}
+      >
+        <div
+          role="dialog"
+          aria-modal="true"
+          className="app-modal-surface w-full max-w-sm"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <div className="app-modal-header px-5 py-4">
+            <h3 className="text-lg font-bold text-foreground">تأكيد حذف الالتزام</h3>
+          </div>
+          <div className="p-5 space-y-3">
+            {(() => {
+              const plan = obligationPlans.find((p) => p.id === deletingPlanId)
+              return plan ? (
+                <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm">
+                  <p className="font-semibold text-red-800">{plan.title}</p>
+                  <p className="mt-0.5 text-red-700">
+                    إجمالي {formatMoney(Number(plan.total_amount))} ر.س ·{' '}
+                    {plan.lines.filter((l) => l.line_status !== 'paid').length} قسط غير مسدد
+                  </p>
+                </div>
+              ) : null
+            })()}
+            <p className="text-sm text-foreground-secondary">
+              سيتم إلغاء هذا الالتزام وجميع أقساطه غير المسددة. لا يمكن التراجع عن هذه العملية.
+            </p>
+          </div>
+          <div className="app-modal-footer flex items-center justify-end gap-2 px-5 py-4">
+            <button
+              type="button"
+              onClick={() => setDeletingPlanId(null)}
+              disabled={deleteObligationPlan.isPending}
+              className="px-4 py-2 rounded-xl border border-border-300 text-sm text-foreground-secondary hover:bg-surface-secondary-50 transition"
+            >
+              إلغاء
+            </button>
+            <button
+              type="button"
+              onClick={() => void handleDeletePlan()}
+              disabled={deleteObligationPlan.isPending}
+              className="inline-flex items-center gap-2 rounded-xl bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700 transition disabled:opacity-60"
+            >
+              {deleteObligationPlan.isPending ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <Trash2 className="w-4 h-4" />
+              )}
+              {deleteObligationPlan.isPending ? 'جاري الحذف...' : 'حذف الالتزام'}
+            </button>
+          </div>
+        </div>
+      </div>
+    )}
+
+    {showUnsavedConfirm && (
+      <div
+        className="fixed inset-0 z-[145] flex items-center justify-center bg-slate-950/70 backdrop-blur-sm p-4"
+        dir="rtl"
+      >
+        <div
+          className="bg-white rounded-2xl shadow-2xl p-6 w-full max-w-sm"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <h3 className="text-lg font-bold text-neutral-900 mb-2 text-center">
+            تغييرات غير محفوظة
+          </h3>
+          <p className="text-sm text-neutral-500 text-center mb-5">
+            هل تريد حفظ التغييرات أم تجاهلها؟
+          </p>
+          <div className="flex flex-col gap-2">
+            <button
+              onClick={async () => {
+                await handleSave()
+                setShowUnsavedConfirm(false)
+                onClose()
+              }}
+              disabled={saving}
+              className="app-button-primary w-full py-2.5 disabled:opacity-60"
+            >
+              {saving ? 'جاري الحفظ...' : 'حفظ التعديلات'}
+            </button>
+            <button
+              onClick={() => {
+                handleCancel()
+                setShowUnsavedConfirm(false)
+                onClose()
+              }}
+              className="app-button-secondary w-full py-2.5"
+            >
+              تجاهل التغييرات
+            </button>
+            <button
+              onClick={() => setShowUnsavedConfirm(false)}
+              className="w-full py-2.5 text-sm text-neutral-400 hover:text-neutral-600 transition rounded-xl"
+            >
+              إلغاء (العودة للتعديل)
+            </button>
+          </div>
+        </div>
+      </div>
+    )}
+    </>,
+    document.body
+  )
+}
