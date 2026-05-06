@@ -1,0 +1,31 @@
+kind = "web"
+previewPath = "/"
+title = "MinMax SawTracker"
+version = "1.0.0"
+id = "artifacts/sawtracker"
+router = "path"
+
+[[integratedSkills]]
+name = "react-vite"
+version = "1.0.0"
+
+[[services]]
+name = "web"
+paths = [ "/" ]
+localPort = 22387
+
+[services.development]
+run = "pnpm --filter @workspace/sawtracker run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/sawtracker", "run", "build" ]
+publicDir = "artifacts/sawtracker/dist/public"
+serve = "static"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "22387"
+BASE_PATH = "/"

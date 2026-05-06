@@ -1,0 +1,1163 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+
+@import './styles/index.css';
+
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+  --font-sans: var(--font-family-body, 'Manrope', 'IBM Plex Sans Arabic', 'IBM Plex Sans', system-ui, sans-serif);
+  --font-mono: var(--font-family-mono, ui-monospace, monospace);
+
+  /* Register primary color scale */
+  --color-primary: var(--color-primary);
+  --color-primary-50: var(--color-primary-50);
+  --color-primary-100: var(--color-primary-100);
+  --color-primary-200: var(--color-primary-200);
+  --color-primary-300: var(--color-primary-300);
+  --color-primary-400: var(--color-primary-400);
+  --color-primary-500: var(--color-primary-500);
+  --color-primary-600: var(--color-primary-600);
+  --color-primary-700: var(--color-primary-700);
+  --color-primary-800: var(--color-primary-800);
+  --color-primary-900: var(--color-primary-900);
+  --color-primary-950: var(--color-primary-950);
+
+  /* Register neutral color scale */
+  --color-neutral-50: var(--color-neutral-50);
+  --color-neutral-100: var(--color-neutral-100);
+  --color-neutral-200: var(--color-neutral-200);
+  --color-neutral-300: var(--color-neutral-300);
+  --color-neutral-400: var(--color-neutral-400);
+  --color-neutral-500: var(--color-neutral-500);
+  --color-neutral-600: var(--color-neutral-600);
+  --color-neutral-700: var(--color-neutral-700);
+  --color-neutral-800: var(--color-neutral-800);
+  --color-neutral-900: var(--color-neutral-900);
+  --color-neutral-950: var(--color-neutral-950);
+
+  /* Register success color scale */
+  --color-success-50: var(--color-success-50);
+  --color-success-100: var(--color-success-100);
+  --color-success-200: var(--color-success-200);
+  --color-success-300: var(--color-success-300);
+  --color-success-400: var(--color-success-400);
+  --color-success-500: var(--color-success-500);
+  --color-success-600: var(--color-success-600);
+  --color-success-700: var(--color-success-700);
+  --color-success-800: var(--color-success-800);
+  --color-success-900: var(--color-success-900);
+  --color-success-950: var(--color-success-950);
+  --color-success-subtle: var(--color-success-subtle);
+  --color-success-foreground: var(--color-success-foreground);
+  --color-success: var(--color-success-500);
+
+  /* Register warning color scale */
+  --color-warning-50: var(--color-warning-50);
+  --color-warning-100: var(--color-warning-100);
+  --color-warning-200: var(--color-warning-200);
+  --color-warning-300: var(--color-warning-300);
+  --color-warning-400: var(--color-warning-400);
+  --color-warning-500: var(--color-warning-500);
+  --color-warning-600: var(--color-warning-600);
+  --color-warning-700: var(--color-warning-700);
+  --color-warning-800: var(--color-warning-800);
+  --color-warning-900: var(--color-warning-900);
+  --color-warning-950: var(--color-warning-950);
+  --color-warning-subtle: var(--color-warning-subtle);
+  --color-warning-foreground: var(--color-warning-foreground);
+  --color-warning: var(--color-warning-500);
+
+  /* Register danger color scale */
+  --color-danger-50: var(--color-danger-50);
+  --color-danger-100: var(--color-danger-100);
+  --color-danger-200: var(--color-danger-200);
+  --color-danger-300: var(--color-danger-300);
+  --color-danger-400: var(--color-danger-400);
+  --color-danger-500: var(--color-danger-500);
+  --color-danger-600: var(--color-danger-600);
+  --color-danger-700: var(--color-danger-700);
+  --color-danger-800: var(--color-danger-800);
+  --color-danger-900: var(--color-danger-900);
+  --color-danger-950: var(--color-danger-950);
+  --color-danger-subtle: var(--color-danger-subtle);
+  --color-danger-foreground: var(--color-danger-foreground);
+  --color-danger: var(--color-danger-500);
+
+  /* Register info color scale */
+  --color-info-50: var(--color-info-50);
+  --color-info-100: var(--color-info-100);
+  --color-info-200: var(--color-info-200);
+  --color-info-300: var(--color-info-300);
+  --color-info-400: var(--color-info-400);
+  --color-info-500: var(--color-info-500);
+  --color-info-600: var(--color-info-600);
+  --color-info-700: var(--color-info-700);
+  --color-info-800: var(--color-info-800);
+  --color-info-900: var(--color-info-900);
+  --color-info-950: var(--color-info-950);
+  --color-info-subtle: var(--color-info-subtle);
+  --color-info-foreground: var(--color-info-foreground);
+  --color-info: var(--color-info-500);
+
+  /* Register semantic surface tokens */
+  --color-background: var(--color-background);
+  --color-surface: var(--color-surface);
+  --color-foreground: var(--color-foreground);
+  --color-card: var(--color-card);
+  --color-card-foreground: var(--color-card-foreground);
+  --color-muted: var(--color-muted);
+  --color-muted-foreground: var(--color-muted-foreground);
+  --color-accent: var(--color-accent);
+  --color-accent-foreground: var(--color-accent-foreground);
+  --color-border: var(--color-border);
+  --color-input: var(--color-input);
+  --color-ring: var(--color-ring);
+  --color-popover: var(--color-popover);
+  --color-popover-foreground: var(--color-popover-foreground);
+}
+
+@layer components {
+  /* ─── Layout Grid Overlay ───────────────────────────── */
+  .app-tech-grid {
+    position: relative;
+  }
+
+  .app-tech-grid::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: -1;
+    background-image:
+      linear-gradient(rgba(0, 80, 203, 0.06) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(0, 80, 203, 0.06) 1px, transparent 1px);
+    background-size: 32px 32px;
+    mask-image: radial-gradient(circle at center, black 30%, transparent 95%);
+  }
+
+  /* ─── Panel ─────────────────────────────────────────── */
+  .app-panel {
+    border-radius: var(--radius-xl);
+    border: 1px solid var(--color-neutral-200);
+    background-color: var(--color-surface);
+    box-shadow: var(--shadow-md);
+  }
+
+  .dark .app-panel {
+    border-color: var(--color-neutral-800);
+    background-color: var(--color-card);
+  }
+
+  /* ─── Page Header ────────────────────────────────────── */
+  .app-page-header {
+    gap: calc(var(--density-page-gap, 1rem) * 0.75);
+    padding: var(--density-surface-padding, 0.95rem);
+  }
+
+  /* ─── Pill Nav ───────────────────────────────────────── */
+  .app-pill-nav {
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.38),
+      0 22px 65px -32px rgba(2, 8, 23, 0.72);
+  }
+
+  /* ─── Animations ─────────────────────────────────────── */
+  .motion-safe-enter {
+    animation: app-enter-up var(--duration-normal) var(--easing-standard) both;
+  }
+
+  .stagger-item {
+    animation: app-enter-up var(--duration-normal) var(--easing-standard) both;
+    animation-delay: calc(var(--i, 0) * 40ms);
+  }
+
+  .stagger-item:nth-child(n + 13) {
+    animation: none;
+  }
+
+  /* ─── Card Interactive ───────────────────────────────── */
+  .card-interactive {
+    position: relative;
+    overflow: hidden;
+    transition:
+      transform var(--duration-fast) var(--easing-standard),
+      border-color var(--duration-fast) var(--easing-standard),
+      background-color var(--duration-fast) var(--easing-standard),
+      box-shadow var(--duration-fast) var(--easing-standard);
+  }
+
+  .parallax-card {
+    transform: perspective(900px) rotateX(var(--tilt-x, 0deg)) rotateY(var(--tilt-y, 0deg));
+    transform-style: preserve-3d;
+    will-change: transform;
+  }
+
+  @media (hover: hover) and (pointer: fine) {
+    .card-interactive:hover {
+      transform: translateY(-2px);
+    }
+  }
+
+  .card-interactive:active {
+    transform: translateY(0) scale(0.99);
+    transition-duration: var(--duration-fast);
+  }
+
+  /* Radial spotlight on hover — blue-tinted fintech glow */
+  .card-interactive::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity var(--duration-normal) var(--easing-standard);
+    background: radial-gradient(
+      360px circle at var(--mouse-x, 50%) var(--mouse-y, 50%),
+      rgba(0, 80, 203, 0.06),
+      transparent 40%
+    );
+  }
+
+  @media (hover: hover) and (pointer: fine) {
+    .card-interactive:hover::before {
+      opacity: 1;
+    }
+  }
+
+  /* ─── Skeleton Shimmer ───────────────────────────────── */
+  .skeleton-shimmer {
+    background: linear-gradient(90deg, #ebeef0 0%, #f1f4f6 50%, #ebeef0 100%);
+    background-size: 200% 100%;
+    animation: app-shimmer 1.4s linear infinite;
+  }
+
+  .dark .skeleton-shimmer {
+    background: linear-gradient(
+      90deg,
+      hsl(229 17% 14%) 0%,
+      hsl(225 13% 17%) 50%,
+      hsl(229 17% 14%) 100%
+    );
+    background-size: 200% 100%;
+  }
+
+  /* ─── Touch Feedback ─────────────────────────────────── */
+  .touch-feedback:active {
+    transform: scale(0.98);
+    opacity: 0.85;
+  }
+
+  @media (max-width: 767px), (hover: none), (pointer: coarse) {
+    .stagger-item {
+      animation-duration: var(--duration-fast);
+      animation-delay: calc(var(--i, 0) * 20ms);
+    }
+
+    .card-interactive::before {
+      opacity: 0 !important;
+      display: none;
+    }
+
+    .motion-safe-enter,
+    .stagger-item {
+      transform: none;
+      filter: none;
+    }
+  }
+
+  /* ─── Focus Ring ─────────────────────────────────────── */
+  .focus-ring-brand:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(0, 80, 203, 0.30);
+  }
+
+  /* ─── Scroll Reveal ──────────────────────────────────── */
+  .scroll-reveal {
+    opacity: 0;
+    transform: translate3d(0, 16px, 0);
+    transition:
+      opacity var(--duration-slow) var(--easing-standard),
+      transform var(--duration-slow) var(--easing-standard);
+  }
+
+  .scroll-reveal.revealed {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+
+  /* ─── Page Transitions ───────────────────────────────── */
+  .page-enter {
+    animation: app-page-enter var(--duration-normal) var(--easing-standard) both;
+  }
+
+  @media (max-width: 767px), (hover: none), (pointer: coarse) {
+    .page-enter {
+      animation: app-page-enter-fade var(--duration-normal) var(--easing-standard) both;
+    }
+  }
+
+  /* ─── Utility Animations ─────────────────────────────── */
+  .animate-shake {
+    animation: app-shake var(--duration-slow) var(--easing-standard) both;
+  }
+
+  .animate-slide-down {
+    animation: app-slide-down var(--duration-fast) var(--easing-standard) both;
+  }
+
+  /* ─── Muted Label ────────────────────────────────────── */
+  .app-muted-label {
+    font-size: 0.75rem;
+    font-weight: 600;
+    letter-spacing: 0.05em;
+    color: var(--color-muted-foreground);
+  }
+
+  /* ─── Filter Surface ─────────────────────────────────── */
+  .app-filter-surface {
+    border-radius: var(--radius-xl);
+    border: 1px solid var(--color-neutral-200);
+    padding: var(--density-surface-padding, 0.95rem);
+    box-shadow: var(--shadow-md);
+    background-color: rgb(255 255 255 / 0.96);
+  }
+
+  .dark .app-filter-surface {
+    border-color: var(--color-neutral-800);
+    background-color: hsl(229 17% 14% / 1);
+  }
+
+  /* ─── Input (app-level) ──────────────────────────────── */
+  .app-input {
+    width: 100%;
+    border-radius: var(--radius-lg);
+    border: 1px solid var(--color-border);
+    background-color: var(--color-surface);
+    padding: 0.5rem 0.75rem;
+    font-size: 0.875rem;
+    color: var(--color-foreground);
+    box-shadow: var(--shadow-sm);
+    transition: border-color 150ms, box-shadow 150ms;
+  }
+
+  .app-input::placeholder {
+    color: var(--color-muted-foreground);
+  }
+
+  .app-input:focus {
+    border-color: var(--color-primary-600);
+    outline: none;
+    box-shadow: 0 0 0 3px hsl(219 100% 40% / 0.18);
+  }
+
+  .dark .app-input {
+    background-color: var(--color-card);
+    border-color: var(--color-border);
+  }
+
+  .dark .app-input:focus {
+    border-color: var(--color-primary-400);
+    box-shadow: 0 0 0 3px hsl(228 100% 78% / 0.20);
+  }
+
+  /* ─── Login Shell ────────────────────────────────────── */
+  .app-login-shell {
+    background:
+      radial-gradient(circle at top right, rgba(0, 80, 203, 0.18), transparent 22%),
+      radial-gradient(circle at bottom left, rgba(0, 102, 255, 0.12), transparent 24%),
+      linear-gradient(135deg, #f7fafc 0%, #ffffff 45%, hsl(219 100% 97%) 100%);
+  }
+
+  .dark .app-login-shell {
+    background:
+      radial-gradient(circle at top right, rgba(0, 102, 255, 0.12), transparent 28%),
+      radial-gradient(circle at bottom left, rgba(0, 80, 203, 0.08), transparent 30%),
+      linear-gradient(135deg, hsl(228 28% 9%) 0%, hsl(229 17% 14%) 60%, hsl(225 13% 17%) 100%);
+  }
+
+  /* ─── Login Grid ─────────────────────────────────────── */
+  .app-login-grid {
+    position: absolute;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(0, 80, 203, 0.05) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(0, 80, 203, 0.05) 1px, transparent 1px);
+    background-size: 34px 34px;
+    mask-image: linear-gradient(to bottom, rgba(0, 0, 0, 0.7), transparent 92%);
+    pointer-events: none;
+  }
+
+  .dark .app-login-grid {
+    background-image:
+      linear-gradient(rgba(179, 197, 255, 0.06) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(179, 197, 255, 0.06) 1px, transparent 1px);
+  }
+
+  /* ─── Login Orbs ─────────────────────────────────────── */
+  .app-login-orb {
+    position: absolute;
+    border-radius: 9999px;
+    filter: blur(16px);
+    opacity: 0.55;
+    animation: app-float 9s ease-in-out infinite;
+    pointer-events: none;
+  }
+
+  .app-login-orb-primary {
+    top: 8%;
+    right: 10%;
+    width: 260px;
+    height: 260px;
+    background: rgba(0, 80, 203, 0.22);
+  }
+
+  .app-login-orb-secondary {
+    bottom: 6%;
+    left: 6%;
+    width: 320px;
+    height: 320px;
+    background: rgba(0, 102, 255, 0.14);
+    animation-delay: -3s;
+  }
+
+  /* ─── Login Ring ─────────────────────────────────────── */
+  .app-login-ring {
+    position: absolute;
+    border-radius: 9999px;
+    border: 1px solid rgba(0, 80, 203, 0.10);
+    pointer-events: none;
+    animation: app-pulse-ring 6s ease-in-out infinite;
+  }
+
+  .dark .app-login-ring {
+    border-color: rgba(179, 197, 255, 0.14);
+  }
+
+  .app-login-ring-1 {
+    top: 12%;
+    left: 8%;
+    width: 180px;
+    height: 180px;
+  }
+
+  .app-login-ring-2 {
+    bottom: 12%;
+    right: 8%;
+    width: 120px;
+    height: 120px;
+    animation-delay: -2s;
+  }
+
+  /* ─── Login Sparks ───────────────────────────────────── */
+  .app-login-spark {
+    position: absolute;
+    border-radius: 9999px;
+    background: rgba(0, 80, 203, 0.9);
+    box-shadow: 0 0 18px rgba(0, 80, 203, 0.45);
+    pointer-events: none;
+    animation: app-spark-move 8s ease-in-out infinite;
+  }
+
+  .app-login-spark-1 {
+    top: 18%;
+    left: 24%;
+    width: 10px;
+    height: 10px;
+  }
+
+  .app-login-spark-2 {
+    right: 18%;
+    bottom: 22%;
+    width: 8px;
+    height: 8px;
+    animation-delay: -3s;
+  }
+
+  /* ─── Buttons (app-level CSS classes) ───────────────── */
+  .app-button-primary {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    border-radius: var(--radius-full);
+    background-color: var(--color-primary-600);
+    padding: 0.5rem 1.25rem;
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: white;
+    box-shadow: var(--shadow-md);
+    transition: background-color 150ms, box-shadow 200ms;
+  }
+
+  .app-button-primary:hover {
+    background-color: var(--color-primary-500);
+    box-shadow: var(--shadow-primary);
+  }
+
+  .app-button-primary:disabled {
+    cursor: not-allowed;
+    opacity: 0.6;
+  }
+
+  .app-button-secondary {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    border-radius: var(--radius-full);
+    border: 1px solid var(--color-neutral-300);
+    background-color: var(--color-surface);
+    padding: 0.5rem 1.25rem;
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: var(--color-neutral-600);
+    transition: background-color 150ms, border-color 150ms;
+  }
+
+  .app-button-secondary:hover {
+    background-color: var(--color-muted);
+    border-color: var(--color-primary-300);
+  }
+
+  .app-button-secondary:disabled {
+    cursor: not-allowed;
+    opacity: 0.6;
+  }
+
+  .dark .app-button-secondary {
+    border-color: var(--color-neutral-700);
+    background-color: var(--color-card);
+    color: var(--color-neutral-200);
+  }
+
+  .app-icon-chip {
+    border-radius: var(--radius-lg);
+    background-color: var(--color-primary-100);
+    padding: 0.5rem;
+    color: var(--color-primary-700);
+  }
+
+  .dark .app-icon-chip {
+    background-color: hsl(219 100% 50% / 0.15);
+    color: var(--color-primary-300);
+  }
+
+  .app-badge-brand {
+    border-radius: 9999px;
+    background-color: var(--color-primary-100);
+    padding: 0.25rem 0.625rem;
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--color-primary-700);
+  }
+
+  .dark .app-badge-brand {
+    color: var(--color-primary-300);
+    background-color: hsl(219 100% 50% / 0.15);
+  }
+
+  .app-info-block {
+    border-radius: var(--radius-lg);
+    border: 1px solid var(--color-primary-200);
+    background-color: var(--color-primary-50);
+    padding: 0.75rem;
+    color: var(--color-primary-800);
+  }
+
+  .dark .app-info-block {
+    color: var(--color-primary-300);
+    border-color: hsl(219 100% 50% / 0.25);
+    background-color: hsl(219 100% 50% / 0.12);
+  }
+
+  .app-button-success {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    border-radius: var(--radius-full);
+    background-color: var(--color-success-700);
+    padding: 0.5rem 1.25rem;
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: white;
+    transition: background-color 150ms;
+  }
+
+  .app-button-success:hover {
+    background-color: var(--color-success-600);
+  }
+
+  .app-button-warning {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    border-radius: var(--radius-full);
+    background-color: var(--color-warning-500);
+    padding: 0.5rem 1.25rem;
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: white;
+    transition: background-color 150ms;
+  }
+
+  .app-button-warning:hover {
+    background-color: var(--color-warning-600);
+  }
+
+  .app-button-danger {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    border-radius: var(--radius-full);
+    background-color: var(--color-danger-600);
+    padding: 0.5rem 1.25rem;
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: white;
+    transition: background-color 150ms;
+  }
+
+  .app-button-danger:hover {
+    background-color: var(--color-danger-500);
+  }
+
+  /* ─── Tab Buttons ────────────────────────────────────── */
+  .app-tab-button {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    padding: 0.75rem 1rem;
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: var(--color-muted-foreground);
+    transition: all 150ms;
+  }
+
+  .app-tab-button-active {
+    border-bottom: 2px solid var(--color-primary-600);
+    background-color: var(--color-primary-50);
+    color: var(--color-primary-700);
+  }
+
+  .dark .app-tab-button-active {
+    background-color: hsl(219 100% 50% / 0.12);
+    border-bottom-color: var(--color-primary-400);
+    color: var(--color-primary-300);
+  }
+
+  /* ─── Toggle Shell ───────────────────────────────────── */
+  .app-toggle-shell {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+    border-radius: var(--radius-xl);
+    border: 1px solid var(--color-neutral-200);
+    background-color: var(--color-surface);
+    padding: 0.25rem;
+  }
+
+  .dark .app-toggle-shell {
+    border-color: var(--color-neutral-800);
+    background-color: var(--color-card);
+  }
+
+  .app-toggle-button {
+    border-radius: var(--radius-lg);
+    padding: 0.375rem 0.75rem;
+    font-size: 0.875rem;
+    color: var(--color-muted-foreground);
+    transition: all 150ms;
+  }
+
+  .app-toggle-button:hover {
+    color: var(--color-foreground);
+  }
+
+  .app-toggle-button-active {
+    background-color: var(--color-primary-100);
+    color: var(--color-primary-700);
+    box-shadow: var(--shadow-sm);
+  }
+
+  .dark .app-toggle-button-active {
+    color: var(--color-primary-300);
+    background-color: hsl(219 100% 50% / 0.15);
+  }
+
+  /* ─── Table Shell ────────────────────────────────────── */
+  .app-table-shell {
+    overflow: hidden;
+    border-radius: var(--radius-xl);
+    border: 1px solid var(--color-neutral-200);
+    background-color: var(--color-surface);
+    box-shadow: var(--shadow-md);
+  }
+
+  .dark .app-table-shell {
+    border-color: var(--color-neutral-800);
+    background-color: var(--color-card);
+  }
+
+  /* ─── Modal Surface ──────────────────────────────────── */
+  .app-modal-surface {
+    width: 100%;
+    overflow: hidden;
+    border-radius: var(--radius-xl);
+    border: 1px solid var(--color-neutral-200);
+    background-color: var(--color-surface);
+    box-shadow: var(--shadow-lg);
+  }
+
+  .dark .app-modal-surface {
+    border-color: var(--color-neutral-800);
+    background-color: var(--color-card);
+    box-shadow: 0 24px 64px hsl(228 50% 4% / 0.50);
+  }
+
+  .app-modal-header {
+    position: sticky;
+    top: 0;
+    z-index: 30;
+    border-bottom: 1px solid var(--color-neutral-200);
+    backdrop-filter: blur(12px);
+    background-color: rgb(255 255 255 / 0.95);
+  }
+
+  .dark .app-modal-header {
+    border-color: var(--color-neutral-800);
+    background-color: hsl(229 17% 14% / 0.97);
+  }
+
+  .app-modal-footer {
+    position: sticky;
+    bottom: 0;
+    z-index: 20;
+    border-top: 1px solid var(--color-neutral-200);
+    backdrop-filter: blur(12px);
+    background-color: rgb(255 255 255 / 0.95);
+  }
+
+  .dark .app-modal-footer {
+    border-color: var(--color-neutral-800);
+    background-color: hsl(229 17% 14% / 0.97);
+  }
+
+  /* ─── Card Meta ──────────────────────────────────────── */
+  .app-card-meta {
+    margin-bottom: 0.75rem;
+    font-size: 0.875rem;
+  }
+
+  .app-card-meta > * + * {
+    margin-top: 0.5rem;
+  }
+
+  .app-card-meta-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    font-size: 0.875rem;
+  }
+
+  .app-card-meta-label {
+    font-size: 0.75rem;
+    font-weight: 500;
+    color: var(--color-muted-foreground);
+  }
+
+  .app-card-meta-value {
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--color-foreground);
+    text-align: left;
+  }
+
+  .dark .app-card-meta-value {
+    color: var(--color-neutral-100);
+  }
+
+  /* ─── Page Layout ────────────────────────────────────── */
+  .app-page {
+    margin: 0 auto;
+    display: flex;
+    width: 100%;
+    max-width: none;
+    flex-direction: column;
+    gap: 1rem;
+    padding: var(--space-6);
+  }
+
+  @media (min-width: 768px) {
+    .app-page {
+      gap: 1.25rem;
+    }
+  }
+
+  /* ─── Data Strip (row cards) ─────────────────────────── */
+  .app-data-strip {
+    min-height: fit-content;
+    border-radius: var(--radius-xl);
+    border: 1px solid var(--color-neutral-200);
+    padding: 1rem;
+    background-color: rgb(255 255 255 / 0.7);
+    transition:
+      transform var(--duration-fast) var(--easing-standard),
+      border-color var(--duration-fast) var(--easing-standard),
+      box-shadow var(--duration-fast) var(--easing-standard),
+      background-color var(--duration-fast) var(--easing-standard);
+  }
+
+  .dark .app-data-strip {
+    border-color: var(--color-neutral-800);
+    background-color: hsl(229 17% 14% / 0.7);
+  }
+
+  .app-data-strip:hover {
+    transform: scale(1.01);
+    border-left-width: 4px;
+    border-left-color: hsl(219 100% 40% / 0.9);
+    box-shadow: 0 18px 45px -30px rgba(0, 80, 203, 0.55);
+  }
+
+  /* ─── Select ─────────────────────────────────────────── */
+  .app-select {
+    width: 100%;
+    border-radius: var(--radius-lg);
+    border: 1px solid var(--color-border);
+    background-color: var(--color-surface);
+    padding: 0.5rem 0.75rem;
+    font-size: 0.875rem;
+    color: var(--color-foreground);
+    box-shadow: var(--shadow-sm);
+    transition: border-color 150ms, box-shadow 150ms;
+    cursor: pointer;
+  }
+
+  .app-select:focus {
+    border-color: var(--color-primary-600);
+    outline: none;
+    box-shadow: 0 0 0 3px hsl(219 100% 40% / 0.18);
+  }
+
+  .dark .app-select {
+    background-color: var(--color-card);
+    border-color: var(--color-border);
+  }
+
+  .dark .app-select:focus {
+    border-color: var(--color-primary-400);
+    box-shadow: 0 0 0 3px hsl(228 100% 78% / 0.20);
+  }
+}
+
+/* ─── Click Ripple (outside @layer) ─────────────────── */
+.app-click-ripple {
+  position: fixed;
+  z-index: 59;
+  width: 16px;
+  height: 16px;
+  border-radius: 9999px;
+  pointer-events: none;
+  border: 1px solid rgba(0, 80, 203, 0.75);
+  background: rgba(0, 102, 255, 0.14);
+  transform: translate(-50%, -50%);
+  animation: app-water-ripple 700ms var(--easing-standard) forwards;
+}
+
+/* ─── Keyframes ──────────────────────────────────────── */
+@keyframes app-float {
+  0%, 100% { transform: translate3d(0, 0, 0); }
+  50% { transform: translate3d(10px, -12px, 0); }
+}
+
+@keyframes app-pulse-ring {
+  0%, 100% { transform: scale(0.96); opacity: 0.45; }
+  50% { transform: scale(1.04); opacity: 0.9; }
+}
+
+@keyframes app-spark-move {
+  0%, 100% { transform: translate3d(0, 0, 0); opacity: 0.65; }
+  50% { transform: translate3d(10px, -12px, 0); opacity: 1; }
+}
+
+img {
+  object-position: top;
+}
+
+@keyframes app-enter-up {
+  from { opacity: 0; transform: translate3d(0, 8px, 0); }
+  to   { opacity: 1; transform: translate3d(0, 0, 0); }
+}
+
+@keyframes app-shimmer {
+  from { background-position: 200% 0; }
+  to   { background-position: -200% 0; }
+}
+
+@keyframes app-page-enter {
+  from { opacity: 0; transform: translate3d(0, 8px, 0); }
+  to   { opacity: 1; transform: translate3d(0, 0, 0); }
+}
+
+@keyframes app-water-ripple {
+  from { opacity: 0.8; transform: translate(-50%, -50%) scale(0.2); }
+  to   { opacity: 0;   transform: translate(-50%, -50%) scale(8.5); }
+}
+
+@keyframes app-page-enter-fade {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+@keyframes app-shake {
+  0%        { transform: translate3d(0, 0, 0); }
+  15%       { transform: translate3d(-4px, 0, 0); }
+  30%       { transform: translate3d(4px, 0, 0); }
+  45%       { transform: translate3d(-4px, 0, 0); }
+  60%       { transform: translate3d(4px, 0, 0); }
+  75%       { transform: translate3d(-2px, 0, 0); }
+  90%, 100% { transform: translate3d(0, 0, 0); }
+}
+
+@keyframes app-slide-down {
+  from { opacity: 0; transform: translate3d(0, -6px, 0); }
+  to   { opacity: 1; transform: translate3d(0, 0, 0); }
+}
+
+@keyframes app-slide-up {
+  from { opacity: 0; transform: translate3d(0, 100%, 0); }
+  to   { opacity: 1; transform: translate3d(0, 0, 0); }
+}
+
+@keyframes accordion-down {
+  from { height: 0; }
+  to   { height: var(--radix-accordion-content-height); }
+}
+
+@keyframes accordion-up {
+  from { height: var(--radix-accordion-content-height); }
+  to   { height: 0; }
+}
+
+/* ══════════════════════════════════════════════════════════════════
+   INTERACTIVE MOTION SYSTEM — CSS-only, zero JS, zero lag
+   ══════════════════════════════════════════════════════════════════ */
+
+/* Modal / Dialog entrance — springy scale-up */
+@keyframes app-modal-enter {
+  from { opacity: 0; transform: scale(0.94) translateY(6px); }
+  to   { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+/* Slide-in from right (RTL) — for panels */
+@keyframes app-slide-in-right {
+  from { opacity: 0; transform: translateX(24px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+
+/* Stat/number pop — used for badges and KPI counters */
+@keyframes app-pop {
+  0%   { transform: scale(1); }
+  40%  { transform: scale(1.18); }
+  70%  { transform: scale(0.95); }
+  100% { transform: scale(1); }
+}
+
+/* Row stagger — applied via nth-child in table rows */
+@keyframes app-row-enter {
+  from { opacity: 0; transform: translateX(10px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+
+/* Subtle pulse for loading/pending states */
+@keyframes app-pulse-soft {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.55; }
+}
+
+/* Button press ripple */
+@keyframes app-ripple {
+  from { transform: translate(-50%, -50%) scale(0); opacity: 0.3; }
+  to   { transform: translate(-50%, -50%) scale(3); opacity: 0; }
+}
+
+/* ── Apply modal entrance to all dialog surfaces ── */
+[role="dialog"] > div,
+[role="dialog"].app-modal-surface,
+.app-modal-surface {
+  animation: app-modal-enter 0.22s cubic-bezier(0.34, 1.4, 0.64, 1) both;
+}
+
+/* ── Button press feedback (physical press feel) ── */
+@media (hover: hover) and (pointer: fine) {
+  button:not(:disabled):active,
+  [role="button"]:not(:disabled):active {
+    transform: scale(0.96);
+    transition: transform 80ms ease-out;
+  }
+}
+
+/* ── Badge pop on mount ── */
+.app-badge-animated {
+  animation: app-pop 0.35s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+
+/* ── Pending state soft pulse ── */
+.app-pending {
+  animation: app-pulse-soft 1.6s ease-in-out infinite;
+}
+
+/* ── Page section fade-in with stagger ── */
+.app-section-enter {
+  animation: app-enter-up 0.28s var(--easing-standard, ease-out) both;
+}
+
+.app-section-enter:nth-child(2) { animation-delay: 40ms; }
+.app-section-enter:nth-child(3) { animation-delay: 80ms; }
+.app-section-enter:nth-child(4) { animation-delay: 120ms; }
+.app-section-enter:nth-child(5) { animation-delay: 160ms; }
+
+/* ── Table row hover ── */
+tbody tr {
+  transition: background-color 120ms ease-out;
+}
+
+/* ── Nav link active indicator glow ── */
+.app-sidebar a[class*="bg-primary"] {
+  box-shadow: 0 0 0 1px hsl(219 100% 40% / 0.25), 0 2px 12px hsl(219 100% 40% / 0.18);
+}
+
+/* ══════════════════════════════════════════════════════════════════
+   DARK MODE GLOBAL TEXT CORRECTIONS
+   Placed OUTSIDE @layer so they cascade over all Tailwind utilities.
+   Unlayered CSS always wins over @layer utilities (CSS Cascade L5).
+   These only affect the `color` property — backgrounds are unaffected,
+   so dark:bg-neutral-900 cards remain dark as intended.
+   ══════════════════════════════════════════════════════════════════ */
+
+.dark body {
+  background-color: var(--color-background);
+  color: var(--color-foreground);
+}
+
+/* neutral-* */
+.dark .text-neutral-950,
+.dark .text-neutral-900,
+.dark .text-neutral-800 {
+  color: var(--color-foreground);
+}
+
+.dark .text-neutral-700,
+.dark .text-neutral-600 {
+  color: var(--color-muted-foreground);
+}
+
+/* slate-* (used heavily in Layout, MobileBottomNav, etc.) */
+.dark .text-slate-950,
+.dark .text-slate-900,
+.dark .text-slate-800 {
+  color: var(--color-foreground);
+}
+
+.dark .text-slate-700,
+.dark .text-slate-600 {
+  color: var(--color-muted-foreground);
+}
+
+.dark .text-slate-500,
+.dark .text-slate-400 {
+  color: hsl(232 9% 58%);
+}
+
+/* gray-* (used in dividers, misc text) */
+.dark .text-gray-950,
+.dark .text-gray-900,
+.dark .text-gray-800 {
+  color: var(--color-foreground);
+}
+
+.dark .text-gray-700,
+.dark .text-gray-600 {
+  color: var(--color-muted-foreground);
+}
+
+.dark .text-gray-500,
+.dark .text-gray-400 {
+  color: hsl(232 9% 58%);
+}
+
+/* literal black */
+.dark .text-black {
+  color: var(--color-foreground);
+}
+
+/* bg corrections — white/light elements on dark backgrounds */
+.dark .bg-white {
+  background-color: var(--color-card);
+}
+
+.dark .bg-slate-50,
+.dark .bg-gray-50,
+.dark .bg-neutral-50 {
+  background-color: hsl(225 13% 17%);
+}
+
+.dark .bg-slate-100,
+.dark .bg-gray-100,
+.dark .bg-neutral-100 {
+  background-color: hsl(225 10% 22%);
+}
+
+.dark .bg-slate-200,
+.dark .bg-gray-200,
+.dark .bg-neutral-200 {
+  background-color: hsl(225 10% 26%);
+}
+
+/* border corrections */
+.dark .border-slate-200,
+.dark .border-gray-200,
+.dark .border-neutral-200 {
+  border-color: var(--color-border);
+}
+
+.dark .border-slate-300,
+.dark .border-gray-300,
+.dark .border-neutral-300 {
+  border-color: hsl(233 15% 35%);
+}
+
+.dark .border-slate-100,
+.dark .border-gray-100,
+.dark .border-neutral-100 {
+  border-color: hsl(233 15% 24%);
+}
+
+/* divide corrections */
+.dark .divide-gray-100 > * + *,
+.dark .divide-slate-100 > * + *,
+.dark .divide-neutral-100 > * + * {
+  border-color: hsl(233 15% 24%);
+}
+
+.dark .divide-neutral-200 > * + *,
+.dark .divide-gray-200 > * + *,
+.dark .divide-slate-200 > * + * {
+  border-color: var(--color-border);
+}
+
+/* Input elements in dark mode — slightly elevated from card bg */
+.dark input:not([type='checkbox']):not([type='radio']):not([type='range']),
+.dark textarea,
+.dark select {
+  background-color: hsl(225 13% 17%);
+  border-color: var(--color-border);
+  color: var(--color-foreground);
+}
+
+.dark input::placeholder,
+.dark textarea::placeholder {
+  color: var(--color-muted-foreground);
+}
