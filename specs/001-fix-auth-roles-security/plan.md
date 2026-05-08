@@ -64,10 +64,10 @@ artifacts/api-server/
 │   │   └── auth.ts                 ← لا تغيير (المنطق صحيح)
 │   └── routes/
 │       └── users.ts                ← إضافة Zod validation
-└── scripts/
+└── src/scripts/
     └── seed-admin.ts               ← جديد
 
-artifacts/api-server/package.json   ← إضافة zod dependency
+artifacts/api-server/package.json   ← إضافة zod + express-rate-limit dependencies
 ```
 
 ## Implementation Phases
@@ -84,7 +84,12 @@ artifacts/api-server/package.json   ← إضافة zod dependency
 
 ### Phase 2 — Seed Script
 
-6. `artifacts/api-server/scripts/seed-admin.ts` — ينشئ أول admin
+6. `artifacts/api-server/src/scripts/seed-admin.ts` — ينشئ أول admin
+
+### Phase 3 — Rate Limiting (متطلب الدستور §Security)
+
+7. `artifacts/api-server/src/middleware/rateLimit.ts` — جديد، يستخدم `express-rate-limit`
+8. تطبيق الـ middleware على `/api/admin/*` routes
 
 ## Complexity Tracking
 

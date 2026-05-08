@@ -81,7 +81,7 @@
     credentials: true,
   }))
   ```
-- [x] T009 [US2] إضافة env validation في `artifacts/api-server/src/app.ts` — في production، إذا كان `ALLOWED_ORIGINS` فارغاً اطبع warning في الـ logger (لا تُوقف الـ server — origins فارغة تعني رفض كل requests)
+- [x] T009 [US2] إضافة env validation في `artifacts/api-server/src/app.ts` — في production، إذا كان `ALLOWED_ORIGINS` فارغاً ارفع `Error` لإيقاف الـ server فوراً (fail-fast — يطابق FR-006). في development يُسمح بالفراغ.
 
 **Checkpoint**: User Story 2 مكتملة — CORS مقيّد في production
 
@@ -133,7 +133,20 @@
 ## Phase 6: Polish & Cross-Cutting Concerns
 
 - [x] T013 [P] تشغيل `pnpm run typecheck` من root والتأكد من مرور بلا أخطاء
-- [x] T014 [P] إضافة `artifacts/api-server/.env.example` لـ `.gitignore` استثناء — تأكد أن `.env` (بدون example) في `.gitignore`
+- [x] T014 [P] التأكد من إعدادات `.gitignore`: ملفات `.env` و `.env.*` مُتجاهلة (تحوي أسرار)، لكن `.env.example` و `.env.template` مستثناة (`!.env.example`) ليتم commit لها
+
+---
+
+## Phase 7: Rate Limiting (متطلب الدستور §Security)
+
+**Goal**: حماية admin endpoints من brute force وabuse عبر rate limiting
+
+**Independent Test**: أرسل 101 طلب من نفس الـ IP خلال 15 دقيقة → الطلب الأخير يرجع 429.
+
+- [x] T015 [P] إضافة `express-rate-limit` لـ `artifacts/api-server/package.json` في قسم `dependencies`
+- [x] T016 إنشاء `artifacts/api-server/src/middleware/rateLimit.ts` — يصدّر `adminRateLimiter` من `express-rate-limit` بـ `windowMs=15min`, `limit=100`, قابل للتعديل عبر `RATE_LIMIT_WINDOW_MS` و `RATE_LIMIT_MAX`
+- [x] T017 ربط `adminRateLimiter` على `/admin` في `artifacts/api-server/src/routes/users.ts` (قبل `requireAdmin`) — يحمي كل admin routes
+- [x] T018 [P] إضافة `RATE_LIMIT_WINDOW_MS` و `RATE_LIMIT_MAX` في `artifacts/api-server/.env.example` مع شرح القيم الافتراضية
 
 ---
 

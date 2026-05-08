@@ -71,6 +71,7 @@
 - **FR-005**: جميع الـ request bodies MUST تُتحقق منها بـ Zod schema قبل المعالجة
 - **FR-006**: الـ server MUST يرفض الإقلاع إذا كان أي من `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `ALLOWED_ORIGINS` غير موجود في production
 - **FR-007**: ملف `.env.example` MUST موجود في `artifacts/api-server/` مع شرح كل متغير
+- **FR-008**: جميع الـ admin endpoints MUST محمية بـ rate limiting — حد أقصى 100 request/15min لكل IP — لمنع brute force على الـ login وعمليات admin مسروقة
 
 ### Key Entities
 
@@ -86,6 +87,7 @@
 - **SC-003**: مطوّر جديد يشغّل المشروع في أقل من 10 دقائق باتباع `.env.example`
 - **SC-004**: `pnpm run typecheck` يعدي بصفر أخطاء بعد التغييرات
 - **SC-005**: الـ server يرفض الإقلاع مع رسالة واضحة إذا كان متغير بيئة مطلوب غير موجود
+- **SC-006**: عند تجاوز 100 طلب من IP واحد خلال 15 دقيقة، الـ admin endpoints ترجع 429 Too Many Requests
 
 ## Assumptions
 
