@@ -28,7 +28,8 @@ app.use(
 
 const allowedOrigins = process.env.ALLOWED_ORIGINS?.split(",").map((o) => o.trim()).filter(Boolean) ?? [];
 if (process.env.NODE_ENV === "production" && allowedOrigins.length === 0) {
-  logger.warn("ALLOWED_ORIGINS is empty in production — all CORS requests will be rejected");
+  logger.fatal("ALLOWED_ORIGINS is empty in production — refusing to start (set ALLOWED_ORIGINS env var)");
+  throw new Error("ALLOWED_ORIGINS must be set in production");
 }
 app.use(
   cors({
