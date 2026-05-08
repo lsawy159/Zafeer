@@ -2,8 +2,10 @@ import { Router } from "express";
 import { z } from "zod";
 import { supabaseAdmin } from "../lib/supabaseAdmin.js";
 import { requireAdmin } from "../middleware/auth.js";
+import { adminRateLimiter } from "../middleware/rateLimit.js";
 
 const router = Router();
+router.use("/admin", adminRateLimiter);
 
 const createUserSchema = z.object({
   email: z.string().email(),
