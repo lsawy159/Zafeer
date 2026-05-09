@@ -21,7 +21,7 @@ export default defineConfig(({ mode }) => {
     plugins: [
       react(),
       tailwindcss(),
-      runtimeErrorOverlay(),
+      ...(mode === "development" ? [runtimeErrorOverlay()] : []),
     ],
     resolve: {
       alias: {
