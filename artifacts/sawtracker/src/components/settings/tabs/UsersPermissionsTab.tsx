@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/Button'
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { logger } from '@/utils/logger'
-import { Shield, Settings, Users as UsersIcon } from 'lucide-react'
+import { Shield, Settings, Users as UsersIcon, Clock } from 'lucide-react'
 
 export function UsersPermissionsTab(): React.JSX.Element {
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null)
@@ -22,7 +22,7 @@ export function UsersPermissionsTab(): React.JSX.Element {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('users')
-        .select('id, username, full_name, email, role, is_active, created_at')
+        .select('id, username, full_name, email, role, is_active, created_at, last_login')
         .order('created_at', { ascending: false })
 
       if (error) {
@@ -102,6 +102,9 @@ export function UsersPermissionsTab(): React.JSX.Element {
                 الحالة
               </th>
               <th className="px-6 py-3 text-right text-sm font-semibold text-neutral-900 dark:text-neutral-50">
+                آخر دخول
+              </th>
+              <th className="px-6 py-3 text-right text-sm font-semibold text-neutral-900 dark:text-neutral-50">
                 الإجراءات
               </th>
             </tr>
@@ -134,6 +137,22 @@ export function UsersPermissionsTab(): React.JSX.Element {
                   >
                     {user.is_active ? 'نشط' : 'معطل'}
                   </span>
+                </td>
+                <td className="px-6 py-4 text-sm text-neutral-500 dark:text-neutral-400">
+                  {user.last_login ? (
+                    <span className="flex items-center gap-1">
+                      <Clock className="h-3 w-3" />
+                      {new Date(user.last_login).toLocaleDateString('ar-SA', {
+                        year: 'numeric',
+                        month: 'short',
+                        day: 'numeric',
+                        hour: '2-digit',
+                        minute: '2-digit',
+                      })}
+                    </span>
+                  ) : (
+                    <span className="text-neutral-400">لم يسجل دخولاً</span>
+                  )}
                 </td>
                 <td className="px-6 py-4 text-sm">
                   <div className="flex items-center gap-2">

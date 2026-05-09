@@ -181,7 +181,6 @@ export interface PayrollRun {
   scope_id: string
   input_mode: PayrollInputMode
   status: PayrollRunStatus
-  uploaded_file_path?: string | null
   notes?: string | null
   created_by_user_id?: string | null
   approved_by_user_id?: string | null
@@ -233,7 +232,6 @@ export interface PayrollSlip {
   id: string
   payroll_entry_id: string
   slip_number: string
-  storage_path?: string | null
   template_version: string
   snapshot_data: Record<string, unknown>
   generated_at?: string | null
