@@ -44,7 +44,6 @@ jobs:
           npx vercel --token ${{ secrets.VERCEL_TOKEN }} \
             --prod \
             --yes \
-            --cwd artifacts/sawtracker \
             -e VITE_SUPABASE_URL="${{ secrets.VITE_SUPABASE_URL }}" \
             -e VITE_SUPABASE_ANON_KEY="${{ secrets.VITE_SUPABASE_ANON_KEY }}"
         env:
