@@ -6,7 +6,7 @@ import PermissionGuard from '@/components/PermissionGuard'
 const mockCheckPermissions = vi.fn()
 const mockHasAnyPermission = vi.fn()
 
-vi.mock('@/hooks/usePermissions', () => ({
+vi.mock('@/utils/permissions', () => ({
   usePermissions: () => ({
     checkPermissions: mockCheckPermissions,
     hasAnyPermission: mockHasAnyPermission,

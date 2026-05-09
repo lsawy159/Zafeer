@@ -1,6 +1,6 @@
 import { ReactNode } from 'react'
 import { ShieldAlert } from 'lucide-react'
-import { usePermissions } from '@/hooks/usePermissions'
+import { usePermissions } from '@/utils/permissions'
 
 interface PermissionGuardProps {
   children: ReactNode

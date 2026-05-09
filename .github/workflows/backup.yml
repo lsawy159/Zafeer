@@ -1,0 +1,106 @@
+name: Database Backup
+
+on:
+  schedule:
+    # ساعة 2 صباحاً UTC يومياً (= 5 صباحاً بتوقيت الرياض)
+    - cron: '0 2 * * *'
+  workflow_dispatch:
+
+jobs:
+  backup:
+    name: pg_dump → R2
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install PostgreSQL client
+        run: sudo apt-get install -y postgresql-client
+
+      - name: Install rclone
+        run: |
+          curl https://rclone.org/install.sh | sudo bash
+
+      - name: Configure rclone (Cloudflare R2)
+        run: |
+          mkdir -p ~/.config/rclone
+          cat > ~/.config/rclone/rclone.conf << 'EOF'
+          [r2]
+          type = s3
+          provider = Cloudflare
+          access_key_id = ${{ secrets.R2_ACCESS_KEY_ID }}
+          secret_access_key = ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          endpoint = ${{ secrets.R2_ENDPOINT }}
+          EOF
+
+      - name: Run pg_dump
+        env:
+          PGPASSWORD: ${{ secrets.DB_PASSWORD }}
+        run: |
+          TIMESTAMP=$(date +%Y%m%d_%H%M%S)
+          FILENAME="zafeer_backup_${TIMESTAMP}.sql.gz"
+          pg_dump \
+            -h ${{ secrets.DB_HOST }} \
+            -p ${{ secrets.DB_PORT }} \
+            -U ${{ secrets.DB_USER }} \
+            -d ${{ secrets.DB_NAME }} \
+            --no-owner \
+            --no-acl \
+            | gzip > "/tmp/${FILENAME}"
+          echo "BACKUP_FILE=${FILENAME}" >> $GITHUB_ENV
+          echo "BACKUP_PATH=/tmp/${FILENAME}" >> $GITHUB_ENV
+
+      - name: Upload to R2
+        run: |
+          rclone copy "${BACKUP_PATH}" "r2:${{ secrets.R2_BUCKET }}/daily/"
+          echo "Uploaded: ${BACKUP_FILE}"
+
+      - name: Apply retention policy
+        # keep 30 daily, 12 weekly (Sunday), 12 monthly (1st of month)
+        run: |
+          TODAY=$(date +%d)
+          DAY_OF_WEEK=$(date +%u)  # 7=Sunday
+
+          # Delete daily backups older than 30 days
+          rclone delete "r2:${{ secrets.R2_BUCKET }}/daily/" \
+            --min-age 30d \
+            --include "*.sql.gz"
+
+          # Promote Sunday backup to weekly/
+          if [ "$DAY_OF_WEEK" = "7" ]; then
+            rclone copy "r2:${{ secrets.R2_BUCKET }}/daily/${BACKUP_FILE}" \
+              "r2:${{ secrets.R2_BUCKET }}/weekly/"
+            # Delete weekly backups older than 84 days (12 weeks)
+            rclone delete "r2:${{ secrets.R2_BUCKET }}/weekly/" --min-age 84d
+          fi
+
+          # Promote 1st-of-month backup to monthly/
+          if [ "$TODAY" = "01" ]; then
+            rclone copy "r2:${{ secrets.R2_BUCKET }}/daily/${BACKUP_FILE}" \
+              "r2:${{ secrets.R2_BUCKET }}/monthly/"
+            # Delete monthly backups older than 365 days (12 months)
+            rclone delete "r2:${{ secrets.R2_BUCKET }}/monthly/" --min-age 365d
+          fi
+
+      - name: Record in backup_history
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: |
+          BACKUP_SIZE=$(stat -c%s "${BACKUP_PATH}")
+          curl -s -X POST "${SUPABASE_URL}/rest/v1/backup_history" \
+            -H "apikey: ${SUPABASE_SERVICE_ROLE_KEY}" \
+            -H "Authorization: Bearer ${SUPABASE_SERVICE_ROLE_KEY}" \
+            -H "Content-Type: application/json" \
+            -d "{
+              \"backup_name\": \"${BACKUP_FILE}\",
+              \"backup_size_bytes\": ${BACKUP_SIZE},
+              \"storage_path\": \"daily/${BACKUP_FILE}\",
+              \"status\": \"success\"
+            }"
+
+      - name: Notify on failure
+        if: failure()
+        run: |
+          curl -s -X POST "${{ secrets.SLACK_WEBHOOK_URL }}" \
+            -H "Content-Type: application/json" \
+            -d '{"text": ":rotating_light: Zafeer DB backup FAILED — check GitHub Actions"}'
