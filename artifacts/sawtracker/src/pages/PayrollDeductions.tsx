@@ -55,7 +55,7 @@ import {
   type AllObligationsSummaryRow,
 } from '@/hooks/useEmployeeObligations'
 import { useEmployees, useAllActiveEmployees } from '@/hooks/useEmployees'
-import { PayrollEntry, PayrollInputMode, PayrollScopeType } from '@/lib/supabase'
+import { PayrollEntry, PayrollInputMode, PayrollScopeType, ObligationType } from '@/lib/supabase'
 import {
   EMPTY_PAYROLL_OBLIGATION_BREAKDOWN,
   PayrollObligationBreakdown,
@@ -1057,13 +1057,14 @@ export default function PayrollDeductions() {
       const sortedMonths = Array.from(monthSet).sort((a, b) => a.localeCompare(b))
 
       // بناء الأعمدة ديناميكياً بناءً على الأنواع المختارة
-      const typeColumns: { header: string; key: 'transfer' | 'renewal' | 'penalty' | 'advance' | 'other' }[] = [
+      const allTypeColumns: { header: string; key: ObligationType }[] = [
         { header: 'نقل كفالة (المتبقي)', key: 'transfer' },
         { header: 'تجديد (المتبقي)', key: 'renewal' },
         { header: 'جزاءات (المتبقي)', key: 'penalty' },
         { header: 'سلف (المتبقي)', key: 'advance' },
         { header: 'أخرى (المتبقي)', key: 'other' },
-      ].filter((c) => typesFilter[c.key])
+      ]
+      const typeColumns = allTypeColumns.filter((c) => typesFilter[c.key])
 
       // بناء الأعمدة ديناميكياً بناءً على اختيار الأعمدة
       const headerDefs: { label: string; getValue: (row: AllObligationsSummaryRow) => unknown }[] = []
@@ -2877,7 +2878,7 @@ tr:last-child td{border-bottom:none}
       const rows = scopedPayrollEmployees.length > 0
         ? scopedPayrollEmployees.map((emp, i) => [
             i + 1,
-            emp.employee_name ?? '',
+            emp.name ?? '',
             emp.residence_number ?? '',
             30,
             0,

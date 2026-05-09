@@ -1154,7 +1154,7 @@ export default function AdvancedSearch() {
                 <span>حفظ البحث</span>
               </Button>
 
-              <Button onClick={exportResults} disabled={resultsCount === 0} variant="success">
+              <Button onClick={exportResults} disabled={resultsCount === 0} variant="default">
                 <Download className="w-4 h-4" />
                 <span>تصدير ({resultsCount})</span>
               </Button>

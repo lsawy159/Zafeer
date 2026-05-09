@@ -90,7 +90,6 @@ describe('Layout payroll navigation visibility', () => {
     render(
       <MemoryRouter
         initialEntries={['/dashboard']}
-        future={{ v7_startTransition: true, v7_relativeSplatPath: true }}
       >
         <Layout>
           <div>content</div>
@@ -122,7 +121,6 @@ describe('Layout payroll navigation visibility', () => {
     render(
       <MemoryRouter
         initialEntries={['/dashboard']}
-        future={{ v7_startTransition: true, v7_relativeSplatPath: true }}
       >
         <Layout>
           <div>content</div>

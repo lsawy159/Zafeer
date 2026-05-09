@@ -1,3 +1,4 @@
+import React from 'react'
 import { ActivityLog, User } from '@/lib/supabase'
 import { CheckSquare, Square, ChevronLeft, ChevronRight, AlertCircle } from 'lucide-react'
 
@@ -21,7 +22,7 @@ interface LogsTableProps {
     badge: string
     icon: string
   }
-  getActionIcon: (action: string) => JSX.Element
+  getActionIcon: (action: string) => React.JSX.Element
   getActionLabel: (action: string) => string
   getEntityLabel: (entity: string) => string
   isImportantAction: (action: string) => boolean

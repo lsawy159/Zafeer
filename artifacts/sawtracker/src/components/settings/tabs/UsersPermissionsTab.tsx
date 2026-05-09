@@ -9,7 +9,7 @@ import { EmptyState } from '@/components/ui/EmptyState'
 import { logger } from '@/utils/logger'
 import { Shield, Settings, Users as UsersIcon } from 'lucide-react'
 
-export function UsersPermissionsTab(): JSX.Element {
+export function UsersPermissionsTab(): React.JSX.Element {
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null)
   const [showRolesSheet, setShowRolesSheet] = useState(false)
 

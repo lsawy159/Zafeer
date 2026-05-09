@@ -286,7 +286,7 @@ export class ARIAValidator {
 
     return (
       interactiveTags.includes(element.tagName) ||
-      (interactiveRole && !['img', 'doc-pagebreak'].includes(interactiveRole))
+      (!!interactiveRole && !['img', 'doc-pagebreak'].includes(interactiveRole))
     )
   }
 
