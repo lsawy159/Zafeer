@@ -3,6 +3,5 @@
   "buildCommand": "pnpm --filter @workspace/sawtracker run build",
   "outputDirectory": "artifacts/sawtracker/dist/public",
   "installCommand": "pnpm install --frozen-lockfile",
-  "framework": null,
-  "ignoreCommand": "git diff --quiet HEAD^ HEAD -- artifacts/sawtracker/ lib/api-client-react/"
+  "framework": null
 }
