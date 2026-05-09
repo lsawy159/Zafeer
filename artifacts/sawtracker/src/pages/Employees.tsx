@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef, useCallback, type CSSProperties } from 'react'
+import { useEffect, useState, useRef, useCallback, useMemo, type CSSProperties } from 'react'
 import { useModalScrollLock } from '@/hooks/useModalScrollLock'
 import { supabase, Employee, Company, Project, EmployeeWithRelations } from '@/lib/supabase'
 import Layout from '@/components/layout/Layout'
@@ -868,7 +868,7 @@ export default function Employees() {
     )
   }, 0)
 
-  const filteredEmployees = employees.filter((emp) => {
+  const filteredEmployees = useMemo(() => employees.filter((emp) => {
     const contractStatus = getStatusForField(emp.contract_expiry, 'contract', colorThresholds ?? COLOR_THRESHOLD_FALLBACK)
     const hiredWorkerStatus = getStatusForField(
       emp.hired_worker_contract_expiry,
@@ -967,7 +967,9 @@ export default function Employees() {
       matchesInsurance &&
       matchesAlertsToggle
     )
-  })
+  }), [employees, searchTerm, residenceNumberSearch, companyFilter, nationalityFilter,
+    professionFilter, projectFilter, contractFilter, hiredWorkerContractFilter,
+    residenceFilter, healthInsuranceFilter, showAlertsOnly, colorThresholds])
 
   const hasActiveFilters =
     searchTerm ||
@@ -1017,7 +1019,7 @@ export default function Employees() {
   }
 
   // Apply sorting to filtered employees
-  const sortedAndFilteredEmployees = [...filteredEmployees].sort((a, b) => {
+  const sortedAndFilteredEmployees = useMemo(() => [...filteredEmployees].sort((a, b) => {
     let aValue: string | number
     let bValue: string | number
 
@@ -1072,7 +1074,7 @@ export default function Employees() {
     } else {
       return aValue < bValue ? 1 : aValue > bValue ? -1 : 0
     }
-  })
+  }), [filteredEmployees, sortField, sortDirection])
 
   // معالجة التنقل بالسهام في الجدول
   useEffect(() => {
