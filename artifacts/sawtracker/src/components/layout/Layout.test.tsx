@@ -1,8 +1,12 @@
 import { render, screen } from '@testing-library/react'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { MemoryRouter } from 'react-router-dom'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import Layout from '@/components/layout/Layout'
+
+const createTestQueryClient = () =>
+  new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } })
 
 const mockHasPermission = vi.fn()
 
@@ -88,13 +92,13 @@ describe('Layout payroll navigation visibility', () => {
     })
 
     render(
-      <MemoryRouter
-        initialEntries={['/dashboard']}
-      >
-        <Layout>
-          <div>content</div>
-        </Layout>
-      </MemoryRouter>
+      <QueryClientProvider client={createTestQueryClient()}>
+        <MemoryRouter initialEntries={['/dashboard']}>
+          <Layout>
+            <div>content</div>
+          </Layout>
+        </MemoryRouter>
+      </QueryClientProvider>
     )
 
     expect(screen.getAllByText('الرواتب والاستقطاعات').length).toBeGreaterThan(0)
@@ -119,13 +123,13 @@ describe('Layout payroll navigation visibility', () => {
     })
 
     render(
-      <MemoryRouter
-        initialEntries={['/dashboard']}
-      >
-        <Layout>
-          <div>content</div>
-        </Layout>
-      </MemoryRouter>
+      <QueryClientProvider client={createTestQueryClient()}>
+        <MemoryRouter initialEntries={['/dashboard']}>
+          <Layout>
+            <div>content</div>
+          </Layout>
+        </MemoryRouter>
+      </QueryClientProvider>
     )
 
     expect(screen.getAllByText('التقارير').length).toBeGreaterThan(0)

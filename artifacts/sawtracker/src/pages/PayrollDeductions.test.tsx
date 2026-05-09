@@ -2,6 +2,7 @@ import { fireEvent, render, screen, waitFor, within } from '@testing-library/rea
 import userEvent from '@testing-library/user-event'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { MemoryRouter } from 'react-router-dom'
 
 import PayrollDeductions from '@/pages/PayrollDeductions'
 
@@ -17,7 +18,9 @@ const renderPayrollDeductions = () => {
   const queryClient = createTestQueryClient()
   const utils = render(
     <QueryClientProvider client={queryClient}>
-      <PayrollDeductions />
+      <MemoryRouter>
+        <PayrollDeductions />
+      </MemoryRouter>
     </QueryClientProvider>
   )
 
@@ -32,7 +35,9 @@ const renderPayrollDeductions = () => {
     rerenderPayroll: () => {
       utils.rerender(
         <QueryClientProvider client={queryClient}>
-          <PayrollDeductions />
+          <MemoryRouter>
+            <PayrollDeductions />
+          </MemoryRouter>
         </QueryClientProvider>
       )
       const refreshedPayrollRunsTabButton = utils.queryByRole('button', {
@@ -88,6 +93,7 @@ const createSupabaseQuery = (
 function setupDefaultPayrollMocks() {
   mockUsePermissions.mockReturnValue({
     canView: vi.fn((section: string) => section === 'payroll'),
+    canEdit: vi.fn(() => true),
     canExport: vi.fn(() => true),
     canDelete: vi.fn(() => true),
     isAdmin: true,
@@ -298,6 +304,7 @@ describe('PayrollDeductions', () => {
   it('shows an unauthorized state when payroll view permission is missing', () => {
     mockUsePermissions.mockReturnValue({
       canView: vi.fn(() => false),
+      canEdit: vi.fn(() => false),
       canExport: vi.fn(() => false),
       canDelete: vi.fn(() => false),
       isAdmin: false,
@@ -374,7 +381,7 @@ describe('PayrollDeductions', () => {
     })
 
     expect(screen.getAllByRole('button', { name: 'إدخال راتب يدوي' }).length).toBeGreaterThan(0)
-    expect(screen.getAllByRole('button', { name: 'استيراد من Excel' }).length).toBeGreaterThan(0)
+    expect(screen.getAllByRole('button', { name: 'استيراد بيانات الرواتب' }).length).toBeGreaterThan(0)
     expect(screen.getByText('للبدء السريع:')).toBeInTheDocument()
     expect(
       screen.getByText('1. اضغط على زر إدخال راتب يدوي لإضافة راتب أول موظف داخل هذا المسير.')
@@ -622,6 +629,7 @@ describe('PayrollDeductions', () => {
 
     mockUsePermissions.mockReturnValue({
       canView: vi.fn((section: string) => section === 'payroll'),
+      canEdit: vi.fn(() => true),
       canExport: vi.fn(() => false),
       canDelete: vi.fn(() => true),
       isAdmin: true,
@@ -674,7 +682,9 @@ describe('PayrollDeductions', () => {
 
     mockUsePermissions.mockReturnValue({
       canView: vi.fn((section: string) => section === 'payroll'),
+      canEdit: vi.fn(() => true),
       canExport: vi.fn((section: string) => section === 'payroll'),
+      canDelete: vi.fn(() => true),
       isAdmin: true,
     })
 
