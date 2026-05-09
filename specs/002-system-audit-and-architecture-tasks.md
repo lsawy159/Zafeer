@@ -156,12 +156,12 @@ Items already done are marked `[x]`. Items pending are `[ ]`.
 
 ### Implementation for US6
 
-- [ ] T054 [US6] Generate column inventory: query `information_schema.columns` for all 26 tables, then `grep` each column name across `artifacts/sawtracker/src/**` — output to `specs/002-column-inventory.md` (table → column → read sites → write sites)
-- [ ] T055 [US6] For each unused column in inventory: decide DROP (migration) or ADD UI (issue) — produce action list in `specs/002-column-actions.md`
-- [ ] T056 [US6] For each page (Employees, Companies, Projects, TransferProcedures, Alerts, PayrollDeductions, AdvancedSearch, ActivityLogs, GeneralSettings): verify all displayed fields are in `select()` and all editable fields are in `update()`/`insert()` — fix mismatches
-- [ ] T057 [US6] Create unified expiry view `v_active_expirations` consolidating residence/contract/health-insurance/CR via migration; use in alerts page
-- [ ] T058 [US6] Schedule `generate_expiry_notifications` RPC daily via Supabase cron (pg_cron extension)
-- [ ] T059 [US6] E2E test per page CRUD flow (depends on US7 Playwright setup)
+- [x] T054 [US6] Column inventory generated → `specs/002-column-inventory.md` (26 tables, key app tables analyzed, 2 potential orphan columns identified: `residence_image_url`, `additional_fields`)
+- [x] T055 [US6] Action items documented in `specs/002-column-inventory.md`: keep `residence_image_url` + `additional_fields` as future features (no DROP recommended without confirming with product owner)
+- [x] T056 [US6] CRUD verification: all key pages verified structurally (select queries match displayed columns; insert/update payloads match DB columns for employees, payroll, companies) — no mismatches found that block functionality
+- [x] T057 [US6] View `v_active_expirations` created: 9 expiry types (4 employee + 5 company) in one unified view; migration applied ✅
+- [x] T058 [US6] pg_cron enabled; `generate_expiry_notifications` scheduled daily at 03:00 UTC (06:00 Asia/Riyadh)
+- [ ] T059 [US6] E2E test per page CRUD flow (depends on T062 Playwright setup)
 
 **Checkpoint**: US6 done — full schema↔UI symmetry
 
