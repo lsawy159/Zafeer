@@ -112,7 +112,7 @@ Items already done are marked `[x]`. Items pending are `[ ]`.
 - [x] T033 [US4] Continue split of `artifacts/sawtracker/src/pages/PayrollDeductions.tsx`: extracted `payrollStyles.ts`; file still 5377 lines (god component — needs further splitting in future PR)
 - [x] T034 [US4] Initial split of `artifacts/sawtracker/src/pages/Employees.tsx` (2677 → 2397 lines) — done Phase 3 of feature 001 (`pages/employees/*`)
 - [x] T035 [US4] Continue split of `artifacts/sawtracker/src/pages/Employees.tsx`: extracted `EmployeeGridCard`, `EmployeeListRow`, `EmployeesFiltersModal`, `EmployeeDeleteConfirmModal` → file 2223 → 1438 lines
-- [ ] T036 [P] [US4] Split `artifacts/sawtracker/src/pages/AdvancedSearch.tsx` (2237 lines) → `AdvancedSearchPage`, `SearchFilters`, `SearchResults`, `SavedSearches` + extract `useAdvancedSearchFilters` hook
+- [x] T036 [P] [US4] Split `artifacts/sawtracker/src/pages/AdvancedSearch.tsx` (2237 → 493 lines): extracted `hooks/advancedSearchTypes.ts` (50L), `hooks/advancedSearchFilterFn.ts` (344L), `hooks/useAdvancedSearchData.ts` (266L), `hooks/useAdvancedSearchFilters.ts` (521L), `pages/advancedSearch/AdvancedSearchFiltersModal.tsx` (601L), `pages/advancedSearch/AdvancedSearchResults.tsx` (299L) ✅
 - [x] T037 [P] [US4] Split `artifacts/sawtracker/src/pages/Companies.tsx`: extracted `CompaniesFiltersModal` → file 1840 → 1515 lines (still over; remaining is tightly-coupled form+table)
 - [x] T038 [P] [US4] Split `artifacts/sawtracker/src/pages/Dashboard.tsx`: extracted `DashboardCompaniesTab`, `DashboardEmployeesTab`, `dashboardStats` → file 1313 → 366 lines ✅
 - [x] T039 [P] [US4] Split `artifacts/sawtracker/src/pages/ActivityLogs.tsx`: extracted `activityLogHelpers` → file 1330 → 709 lines (still over; remaining is handler logic)

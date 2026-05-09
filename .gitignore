@@ -86,3 +86,6 @@ desktop.ini
 
 .vercel
 .env*.local
+
+# ===== Claude Code worktrees (temporary agent workspaces) =====
+.claude/worktrees/
