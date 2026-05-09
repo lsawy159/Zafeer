@@ -84,10 +84,11 @@ export default function Login() {
               )}
 
               <div>
-                <label className="mb-2 block text-right text-sm font-semibold text-foreground-secondary dark:text-foreground-secondary">
+                <label htmlFor="login-username" className="mb-2 block text-right text-sm font-semibold text-foreground-secondary dark:text-foreground-secondary">
                   اسم المستخدم أو البريد الإلكتروني
                 </label>
                 <input
+                  id="login-username"
                   type="text"
                   value={username}
                   onChange={(e) => setUsername(e.target.value)}
@@ -104,11 +105,12 @@ export default function Login() {
               </div>
 
               <div>
-                <label className="mb-2 block text-right text-sm font-semibold text-foreground-secondary dark:text-foreground-secondary">
+                <label htmlFor="login-password" className="mb-2 block text-right text-sm font-semibold text-foreground-secondary dark:text-foreground-secondary">
                   كلمة المرور
                 </label>
                 <div className="relative">
                   <input
+                    id="login-password"
                     type={showPassword ? 'text' : 'password'}
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}

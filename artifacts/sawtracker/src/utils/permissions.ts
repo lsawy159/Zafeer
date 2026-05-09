@@ -279,6 +279,21 @@ export function usePermissions() {
 
   const canImport = (section: keyof PermissionMatrix) => hasPermission(section, 'import')
 
+  // flat string permission check e.g. 'employees.view'
+  const hasPermissionFlat = (permission: string): boolean => {
+    if (!user || !user.is_active) return false
+    if (user.role === 'admin') return true
+    const [section, action] = permission.split('.')
+    if (!section || !action) return false
+    return hasPermission(section as keyof PermissionMatrix, action)
+  }
+
+  const checkPermissions = (perms: string[]): boolean =>
+    !perms.length || perms.every(hasPermissionFlat)
+
+  const hasAnyPermission = (perms: string[]): boolean =>
+    !perms.length || perms.some(hasPermissionFlat)
+
   return {
     permissions,
     hasPermission,
@@ -289,5 +304,7 @@ export function usePermissions() {
     canExport,
     canImport,
     isAdmin: user?.role === 'admin',
+    checkPermissions,
+    hasAnyPermission,
   }
 }
