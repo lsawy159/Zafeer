@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { z } from "zod";
+import { CreateAdminUserBody, UpdateAdminUserBody } from "@workspace/api-zod";
 import { supabaseAdmin } from "../lib/supabaseAdmin.js";
 import { requireAdmin } from "../middleware/auth.js";
 import { adminRateLimiter } from "../middleware/rateLimit.js";
@@ -7,25 +7,12 @@ import { adminRateLimiter } from "../middleware/rateLimit.js";
 const router = Router();
 router.use("/admin", adminRateLimiter);
 
-const createUserSchema = z.object({
-  email: z.string().email(),
-  password: z.string().min(8),
-  full_name: z.string().min(1),
-  role: z.enum(["manager", "user"]).default("user"),
-  permissions: z.array(z.string()).default([]),
-});
-
-const updateUserSchema = z
-  .object({
-    full_name: z.string().min(1).optional(),
-    role: z.enum(["manager", "user"]).optional(),
-    permissions: z.array(z.string()).optional(),
-    is_active: z.boolean().optional(),
-    password: z.string().min(8).optional(),
-  })
-  .refine((data) => Object.keys(data).length > 0, {
-    message: "لا توجد بيانات للتحديث",
-  });
+// Schemas imported from @workspace/api-zod (generated from lib/api-spec/openapi.yaml)
+const createUserSchema = CreateAdminUserBody;
+const updateUserSchema = UpdateAdminUserBody.refine(
+  (data) => Object.keys(data).length > 0,
+  { message: "لا توجد بيانات للتحديث" }
+);
 
 // POST /api/admin/users — إنشاء مستخدم جديد
 router.post("/admin/users", requireAdmin, async (req, res) => {
