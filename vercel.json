@@ -1,7 +1,7 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "buildCommand": "pnpm --filter @workspace/sawtracker run build",
-  "outputDirectory": "artifacts/sawtracker/dist/public",
+  "outputDirectory": "artifacts/sawtracker/dist",
   "installCommand": "pnpm install --frozen-lockfile",
   "framework": null
 }
