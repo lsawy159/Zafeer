@@ -236,13 +236,13 @@ async function monitorCompanyExpiryDates(): Promise<ExpiryAlert[]> {
     // ظ…ط±ط§ظ‚ط¨ط© ظƒظ„ ظ†ظˆط¹ ظ…ظ† ط§ظ„ظ…ط³طھظ†ط¯ط§طھ
     for (const company of companies) {
       for (const config of COMPANY_DOCUMENT_CONFIGS) {
-        const expiryDate = company[config.fieldName]
+        const expiryDate = (company as Record<string, unknown>)[config.fieldName]
 
         if (!expiryDate) {
           continue // طھط¬ط§ظ‡ظ„ ط§ظ„ط­ظ‚ظˆظ„ ط§ظ„ظپط§ط±ط؛ط©
         }
 
-        const daysRemaining = calculateDaysRemaining(expiryDate)
+        const daysRemaining = calculateDaysRemaining(expiryDate as string)
 
         // ط§ظ„ط­طµظˆظ„ ط¹ظ„ظ‰ ط§ظ„ط¹طھط¨ط§طھ ظ„ظ‡ط°ط§ ط§ظ„ظ†ظˆط¹ ظ…ظ† ط§ظ„ظ…ط³طھظ†ط¯ط§طھ
         const urgentDays = thresholds[
@@ -271,7 +271,7 @@ async function monitorCompanyExpiryDates(): Promise<ExpiryAlert[]> {
             entityName: company.name,
             documentType: config.alertType,
             documentTypeArabic: config.arabicName,
-            expiryDate,
+            expiryDate: expiryDate as string,
             daysRemaining,
             priority,
             message,

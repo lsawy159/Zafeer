@@ -271,7 +271,7 @@ export default function Notifications() {
       const search = searchTerm.toLowerCase()
       return (
         notification.title.toLowerCase().includes(search) ||
-        notification.message.toLowerCase().includes(search)
+        (notification.message ?? '').toLowerCase().includes(search)
       )
     }
 
@@ -393,7 +393,7 @@ export default function Notifications() {
           {/* Action Buttons */}
           <div className="flex gap-3 mt-4">
             {unreadCount > 0 && (
-              <Button onClick={handleMarkAllAsRead} variant="success" size="sm">
+              <Button onClick={handleMarkAllAsRead} variant="default" size="sm">
                 <Check className="w-4 h-4" />
                 طھط­ط¯ظٹط¯ ط§ظ„ظƒظ„ ظƒظ…ظ‚ط±ظˆط،
               </Button>
@@ -467,7 +467,7 @@ export default function Notifications() {
                         {getPriorityLabel(notification.priority)}
                       </span>
 
-                      {notification.days_remaining !== null && (
+                      {notification.days_remaining != null && (
                         <span
                           className={`px-3 py-1 rounded-full text-sm font-medium ${
                             notification.days_remaining < 0
@@ -505,7 +505,7 @@ export default function Notifications() {
                       {!notification.is_read ? (
                         <Button
                           onClick={() => handleMarkAsRead(notification.id)}
-                          variant="success"
+                          variant="default"
                           size="sm"
                         >
                           <Check className="w-4 h-4" />
@@ -523,7 +523,7 @@ export default function Notifications() {
                       )}
                       {notification.entity_type === 'company' && notification.entity_id && (
                         <Button
-                          onClick={() => handleViewCompany(notification.entity_id!)}
+                          onClick={() => handleViewCompany(String(notification.entity_id!))}
                           variant="secondary"
                           size="sm"
                         >

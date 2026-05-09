@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useCallback } from 'react'
+import React, { useState, useEffect, useMemo, useCallback } from 'react'
 import { supabase, ActivityLog, User } from '@/lib/supabase'
 import Layout from '@/components/layout/Layout'
 import { useAuth } from '@/contexts/AuthContext'
@@ -334,7 +334,7 @@ export default function ActivityLogs({ embedded = false }: { embedded?: boolean 
     return strValue
   }
 
-  const renderUpdateDetails = (log: ActivityLog): JSX.Element => {
+  const renderUpdateDetails = (log: ActivityLog): React.JSX.Element => {
     const entityType = log.entity_type?.toLowerCase() || ''
     const entityLabel = getEntityLabel(entityType)
     const details = log.details || {}
@@ -361,7 +361,7 @@ export default function ActivityLogs({ embedded = false }: { embedded?: boolean 
 
       // التحقق من أن البيانات صحيحة وليست فارغة
       hasValidData =
-        (oldData && Object.keys(oldData).length > 0) || (newData && Object.keys(newData).length > 0)
+        Boolean((oldData && Object.keys(oldData).length > 0) || (newData && Object.keys(newData).length > 0))
     } catch {
       // تجاهل أخطاء التحليل
     }
@@ -542,7 +542,7 @@ export default function ActivityLogs({ embedded = false }: { embedded?: boolean 
     )
   }
 
-  const generateActivityDescription = (log: ActivityLog): string | JSX.Element => {
+  const generateActivityDescription = (log: ActivityLog): string | React.JSX.Element => {
     const action = log.action.toLowerCase()
     const entityType = log.entity_type?.toLowerCase() || ''
     const entityLabel = getEntityLabel(entityType)

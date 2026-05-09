@@ -1,5 +1,8 @@
 # See https://docs.github.com/en/get-started/getting-started-with-git/ignoring-files for more about ignoring files.
 
+# ===== Local AI context (لا يُرفع) =====
+CONTEXT.md
+
 # ===== الفولدر اللي فيه الملفات غير الضرورية =====
 ملفات غير ضرورية/
 ملفات-غير-ضرورية/
@@ -80,3 +83,6 @@ desktop.ini
 /test-results
 /blob-report
 /playwright/.cache
+
+.vercel
+.env*.local

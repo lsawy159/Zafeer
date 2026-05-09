@@ -6,18 +6,21 @@ interface AxeViolation {
   description: string
 }
 
+function buildViolationMessage(violations: AxeViolation[]): string {
+  if (violations.length === 0) return ''
+  return `Found ${violations.length} accessibility violations:\n${violations
+    .map((v) => `- ${v.id}: ${v.description}`)
+    .join('\n')}`
+}
+
 export async function runAxe(container: HTMLElement) {
   const results = await axe(container)
-
   const violations = (results.violations as AxeViolation[]) || []
-  expect(violations).toHaveLength(
-    0,
-    violations.length > 0
-      ? `Found ${violations.length} accessibility violations:\n${violations
-          .map((v) => `- ${v.id}: ${v.description}`)
-          .join('\n')}`
-      : undefined
-  )
+
+  if (violations.length > 0) {
+    throw new Error(buildViolationMessage(violations))
+  }
+  expect(violations).toHaveLength(0)
 
   return results
 }
@@ -39,14 +42,11 @@ export async function runAxeWithRules(
   })
 
   const violations = (results.violations as AxeViolation[]) || []
-  expect(violations).toHaveLength(
-    0,
-    violations.length > 0
-      ? `Found ${violations.length} accessibility violations:\n${violations
-          .map((v) => `- ${v.id}: ${v.description}`)
-          .join('\n')}`
-      : undefined
-  )
+
+  if (violations.length > 0) {
+    throw new Error(buildViolationMessage(violations))
+  }
+  expect(violations).toHaveLength(0)
 
   return results
 }

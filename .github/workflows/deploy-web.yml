@@ -1,0 +1,53 @@
+name: Deploy Web (sawtracker)
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "artifacts/sawtracker/**"
+      - "lib/api-client-react/**"
+      - ".github/workflows/deploy-web.yml"
+
+concurrency:
+  group: deploy-web
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: Build & Deploy to Vercel
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.33.4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build sawtracker
+        working-directory: artifacts/sawtracker
+        run: pnpm run build
+        env:
+          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+          VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
+
+      - name: Deploy to Vercel
+        working-directory: artifacts/sawtracker
+        run: |
+          npx vercel --token ${{ secrets.VERCEL_TOKEN }} \
+            --prod \
+            --yes \
+            --cwd . \
+            -e VITE_SUPABASE_URL="${{ secrets.VITE_SUPABASE_URL }}" \
+            -e VITE_SUPABASE_ANON_KEY="${{ secrets.VITE_SUPABASE_ANON_KEY }}"
+        env:
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}

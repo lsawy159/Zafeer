@@ -187,7 +187,7 @@ export function useSelectorMemo<TState, TSelected>(
   selector: (state: TState) => TSelected,
   equalityFn?: (a: TSelected, b: TSelected) => boolean
 ): TSelected {
-  const previousResultRef = useRef<TSelected>()
+  const previousResultRef = useRef<TSelected | undefined>(undefined)
   const [, forceUpdate] = useState({})
 
   const memoizedSelector = useMemo(() => {

@@ -1,5 +1,6 @@
-import { ReactNode, useEffect, useMemo, useState } from 'react'
+import { ReactNode, useCallback, useEffect, useMemo, useState } from 'react'
 import { Link, useLocation } from 'react-router-dom'
+import { useQueryClient } from '@tanstack/react-query'
 import { useAuth } from '@/contexts/AuthContext'
 import {
   LayoutDashboard,
@@ -19,7 +20,10 @@ import {
   Moon,
   Sun,
   RefreshCcw,
+  RefreshCw,
+  Check,
 } from 'lucide-react'
+import { cn } from '@/lib/utils'
 import { useAlertsStats } from '@/hooks/useAlertsStats'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/Tooltip'
 import { usePermissions } from '@/utils/permissions'
@@ -40,6 +44,22 @@ export default function Layout({ children }: { children: ReactNode }) {
 
   // State for mobile sidebar open/close
   const [isMobileOpen, setIsMobileOpen] = useState(false)
+
+  // [Refresh] State + handler — تحديث بيانات الصفحة الحالية بدون reload للمتصفح
+  const queryClient = useQueryClient()
+  const [refreshState, setRefreshState] = useState<'idle' | 'loading' | 'success'>('idle')
+  const handleRefresh = useCallback(async () => {
+    if (refreshState === 'loading') return
+    setRefreshState('loading')
+    try {
+      await queryClient.invalidateQueries()
+      window.dispatchEvent(new CustomEvent('app:refresh-current-page'))
+      setRefreshState('success')
+      window.setTimeout(() => setRefreshState('idle'), 1200)
+    } catch {
+      setRefreshState('idle')
+    }
+  }, [queryClient, refreshState])
 
   // Save collapse state to localStorage
   useEffect(() => {
@@ -71,55 +91,6 @@ export default function Layout({ children }: { children: ReactNode }) {
     await signOut()
     window.location.href = '/login'
   }
-
-  useEffect(() => {
-    const handleRipple = (event: MouseEvent) => {
-      const ripple = document.createElement('span')
-      ripple.className = 'app-click-ripple'
-      ripple.style.left = `${event.clientX}px`
-      ripple.style.top = `${event.clientY}px`
-      document.body.appendChild(ripple)
-      window.setTimeout(() => {
-        ripple.remove()
-      }, 700)
-    }
-
-    window.addEventListener('click', handleRipple)
-    return () => window.removeEventListener('click', handleRipple)
-  }, [])
-
-  useEffect(() => {
-    const cards = Array.from(document.querySelectorAll<HTMLElement>('.parallax-card'))
-    const cleanup: Array<() => void> = []
-
-    cards.forEach((card) => {
-      const handleMove = (event: MouseEvent) => {
-        const rect = card.getBoundingClientRect()
-        const x = ((event.clientX - rect.left) / rect.width) * 100
-        const y = ((event.clientY - rect.top) / rect.height) * 100
-        card.style.setProperty('--mouse-x', `${x}%`)
-        card.style.setProperty('--mouse-y', `${y}%`)
-        card.style.setProperty('--tilt-x', `${((y - 50) / 50) * -3}deg`)
-        card.style.setProperty('--tilt-y', `${((x - 50) / 50) * 3}deg`)
-      }
-
-      const handleLeave = () => {
-        card.style.setProperty('--tilt-x', '0deg')
-        card.style.setProperty('--tilt-y', '0deg')
-      }
-
-      card.addEventListener('mousemove', handleMove)
-      card.addEventListener('mouseleave', handleLeave)
-      cleanup.push(() => {
-        card.removeEventListener('mousemove', handleMove)
-        card.removeEventListener('mouseleave', handleLeave)
-      })
-    })
-
-    return () => {
-      cleanup.forEach((dispose) => dispose())
-    }
-  }, [location.pathname])
 
   const navItems = useMemo(
     () => [
@@ -327,6 +298,65 @@ export default function Layout({ children }: { children: ReactNode }) {
                   />
                 </button>
               </div>
+            </div>
+
+            {/* [Refresh] Refresh-current-page button */}
+            <div className={cn('flex-shrink-0 px-3 pt-3 pb-1', isCollapsed && 'px-2')}>
+              <button
+                onClick={handleRefresh}
+                disabled={refreshState === 'loading'}
+                aria-label="تحديث بيانات الصفحة الحالية"
+                title="تحديث بيانات الصفحة الحالية"
+                className={cn(
+                  'group relative w-full flex items-center justify-center gap-2 rounded-xl text-sm font-semibold',
+                  'transition-all duration-300 ease-out overflow-hidden border shadow-sm',
+                  isCollapsed ? 'p-2.5' : 'px-4 py-2.5',
+                  refreshState === 'idle' &&
+                    'bg-gradient-to-br from-primary/10 to-primary/20 dark:from-primary-500/20 dark:to-primary-600/30 text-primary-700 dark:text-primary-200 border-primary/30 hover:shadow-md hover:scale-[1.02] hover:from-primary/20 hover:to-primary/30 active:scale-[0.98]',
+                  refreshState === 'loading' &&
+                    'bg-gradient-to-br from-primary/20 to-primary/30 dark:from-primary-500/30 dark:to-primary-600/40 text-primary-800 dark:text-primary-100 border-primary/40 cursor-wait',
+                  refreshState === 'success' &&
+                    'bg-gradient-to-br from-emerald-50 to-emerald-100 dark:from-emerald-900/30 dark:to-emerald-800/40 text-emerald-800 dark:text-emerald-200 border-emerald-300 dark:border-emerald-600 shadow-emerald-200/50 dark:shadow-emerald-700/30 shadow-lg'
+                )}
+              >
+                {/* Shimmer */}
+                {refreshState === 'idle' && (
+                  <span
+                    aria-hidden="true"
+                    className="absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/40 to-transparent group-hover:translate-x-full transition-transform duration-700 ease-out"
+                  />
+                )}
+                {/* Pulse ring */}
+                {refreshState === 'loading' && (
+                  <span
+                    aria-hidden="true"
+                    className="absolute inset-0 rounded-xl ring-2 ring-primary/40 animate-pulse"
+                  />
+                )}
+                {/* Icon */}
+                <span className="relative z-10 flex items-center justify-center">
+                  {refreshState === 'success' ? (
+                    <Check className="h-5 w-5" />
+                  ) : (
+                    <RefreshCw
+                      className={cn(
+                        'h-5 w-5 transition-transform',
+                        refreshState === 'loading' && 'animate-spin'
+                      )}
+                    />
+                  )}
+                </span>
+                {/* Label (hidden when collapsed) */}
+                {!isCollapsed && (
+                  <span className="relative z-10">
+                    {refreshState === 'loading'
+                      ? 'جاري التحديث...'
+                      : refreshState === 'success'
+                        ? 'تم التحديث'
+                        : 'تحديث الصفحة'}
+                  </span>
+                )}
+              </button>
             </div>
 
             {/* Navigation */}

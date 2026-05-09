@@ -110,7 +110,6 @@ export const StatCard = ({
   return (
     <Card
       ref={rootRef}
-      variant="interactive"
       className={cn(
         'motion-safe-enter parallax-card overflow-hidden before:pointer-events-none before:absolute before:inset-0 before:bg-[radial-gradient(circle_at_20%_20%,rgba(59,130,246,0.16),transparent_52%)]',
         onClick && 'cursor-pointer',
