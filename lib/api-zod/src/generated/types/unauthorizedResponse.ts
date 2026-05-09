@@ -5,7 +5,9 @@
  * Zafeer HR Management API — privileged admin operations via Supabase Admin SDK
  * OpenAPI spec version: 0.2.0
  */
+import type { ErrorResponse } from './errorResponse';
 
-export interface HealthStatus {
-  status: string;
-}
+/**
+ * Missing or invalid authentication token
+ */
+export type UnauthorizedResponse = ErrorResponse;

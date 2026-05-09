@@ -6,6 +6,10 @@
  * OpenAPI spec version: 0.2.0
  */
 
-export interface HealthStatus {
-  status: string;
-}
+export type PayrollScopeType = typeof PayrollScopeType[keyof typeof PayrollScopeType];
+
+
+export const PayrollScopeType = {
+  company: 'company',
+  project: 'project',
+} as const;
