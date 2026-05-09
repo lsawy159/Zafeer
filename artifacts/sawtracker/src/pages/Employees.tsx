@@ -156,7 +156,7 @@ export default function Employees() {
     showFiltersModal
   )
   const companyDropdownRef = useRef<HTMLDivElement>(null)
-  const loadEmployeesRef = useRef<() => Promise<void>>()
+  const loadEmployeesRef = useRef<(() => Promise<void>) | undefined>(undefined)
 
   // التحقق من صلاحية العرض
   const hasViewPermission = canView('employees')
@@ -460,7 +460,7 @@ export default function Employees() {
 
   // دالة للتحقق من وجود تنبيه
   const hasAlert = (
-    contractExpiry: string | null,
+    contractExpiry: string | null | undefined,
     hiredWorkerContractExpiry: string | null | undefined,
     residenceExpiry: string | null | undefined,
     healthInsuranceExpiry: string | null | undefined
@@ -1865,7 +1865,7 @@ export default function Employees() {
               <div className="flex items-center gap-1.5 flex-wrap">
                 <Button
                   onClick={() => setShowBulkResidenceModal(true)}
-                  variant="success"
+                  variant="default"
                   size="sm"
                   title="تعديل تاريخ انتهاء الإقامة"
                 >
@@ -1874,7 +1874,7 @@ export default function Employees() {
                 </Button>
                 <Button
                   onClick={() => setShowBulkInsuranceModal(true)}
-                  variant="warning"
+                  variant="outline"
                   size="sm"
                   title="تعديل تاريخ انتهاء التأمين"
                 >
@@ -1883,7 +1883,7 @@ export default function Employees() {
                 </Button>
                 <Button
                   onClick={() => setShowBulkContractModal(true)}
-                  variant="warning"
+                  variant="outline"
                   size="sm"
                   title="تعديل تاريخ انتهاء العقد"
                 >

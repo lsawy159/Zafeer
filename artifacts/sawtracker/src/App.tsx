@@ -1,5 +1,6 @@
 import { ReactNode, Suspense, lazy } from 'react'
 import { BrowserRouter, Routes, Route, Navigate, useLocation, Outlet } from 'react-router-dom'
+import NotFound from './pages/not-found'
 import { QueryClientProvider } from '@tanstack/react-query'
 import { AuthProvider, useAuth } from './contexts/AuthContext'
 import { Toaster } from 'sonner'
@@ -48,7 +49,6 @@ const Alerts = lazy(() => import('./pages/Alerts'))
 const Reports = lazy(() => import('./pages/Reports'))
 const PayrollDeductions = lazy(() => import('./pages/PayrollDeductions'))
 const ImportExport = lazy(() => import('./pages/ImportExport'))
-const DesignSystem = lazy(() => import('./pages/DesignSystem'))
 const AdvancedSearch = lazy(() => import('./pages/AdvancedSearch'))
 const GeneralSettings = lazy(() => import('./pages/GeneralSettings'))
 
@@ -228,15 +228,6 @@ function AppRoutes() {
               </Suspense>
             }
           />
-          <Route
-            path="/design-system"
-            element={
-              <Suspense fallback={<PageLoader />}>
-                <DesignSystem />
-              </Suspense>
-            }
-          />
-
           {/* Legacy redirects */}
           <Route path="/email-management" element={<Navigate to="/admin-settings?tab=backup" replace />} />
           <Route
@@ -254,6 +245,7 @@ function AppRoutes() {
 
         {/* Fallback */}
         <Route path="/" element={<Navigate to="/dashboard" replace />} />
+        <Route path="*" element={<NotFound />} />
       </Routes>
     </div>
   )
@@ -265,12 +257,7 @@ function App() {
 
   return (
     <QueryClientProvider client={queryClient}>
-      <BrowserRouter
-        future={{
-          v7_startTransition: true,
-          v7_relativeSplatPath: true,
-        }}
-      >
+      <BrowserRouter>
         <AuthProvider>
           <Toaster position="top-center" richColors />
           <AppRoutes />

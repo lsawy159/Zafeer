@@ -16,7 +16,7 @@ export const MetricCard = ({ title, value, subtitle, trend, icon, className }: M
   const isPositive = typeof trend === 'number' ? trend >= 0 : null
 
   return (
-    <Card variant="interactive" className={cn('motion-safe-enter', className)}>
+    <Card className={cn('motion-safe-enter', className)}>
       <CardHeader className="pb-2">
         <div className="flex items-center justify-between gap-3">
           <CardTitle className="text-base font-semibold text-foreground">{title}</CardTitle>

@@ -640,7 +640,7 @@ export default function Alerts({ initialTab = 'all', initialFilter = 'all' }: Al
 
               {/* [NEW] زر تم الاطلاع على الكل */}
               {readFilterTab === 'new' && totalAlerts > 0 && (
-                <Button onClick={handleMarkAllAsRead} variant="success">
+                <Button onClick={handleMarkAllAsRead} variant="default">
                   <CheckCircle2 className="w-5 h-5" />
                   <span>تم الاطلاع على الكل</span>
                 </Button>
