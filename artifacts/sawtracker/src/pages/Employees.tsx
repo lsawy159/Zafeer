@@ -1,29 +1,22 @@
-import { useEffect, useState, useRef, useCallback, useMemo, type CSSProperties } from 'react'
+import { useEffect, useState, useRef, useCallback, useMemo } from 'react'
 import { useModalScrollLock } from '@/hooks/useModalScrollLock'
 import { supabase, Employee, Company, Project, EmployeeWithRelations } from '@/lib/supabase'
 import Layout from '@/components/layout/Layout'
 import EmployeeCard from '@/components/employees/EmployeeCard'
 import AddEmployeeModal from '@/components/employees/AddEmployeeModal'
 import {
-  Search,
   Calendar,
   AlertCircle,
-  X,
   UserPlus,
   CheckSquare,
   Square,
   Trash2,
-  Edit2,
-  Eye,
   Filter,
   ArrowUpDown,
   ArrowUp,
   ArrowDown,
-  ChevronDown,
   LayoutGrid,
   Table,
-  User,
-  FileText,
   Shield,
 } from 'lucide-react'
 import CascadeDeleteModal, { type ObligationHeaderInfo } from '@/components/employees/CascadeDeleteModal'
@@ -43,6 +36,10 @@ import { PageHeader } from '@/components/ui/PageHeader'
 import { FilterBar } from '@/components/ui/FilterBar'
 import { SearchInput } from '@/components/ui/SearchInput'
 import { Button } from '@/components/ui/Button'
+import { EmployeesFiltersModal } from './employees/EmployeesFiltersModal'
+import { EmployeeGridCard } from './employees/EmployeeGridCard'
+import { EmployeeListRow } from './employees/EmployeeListRow'
+import { EmployeeDeleteConfirmModal } from './employees/EmployeeDeleteConfirmModal'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -52,13 +49,8 @@ import {
 } from '@/components/ui/DropdownMenu'
 import {
   COLOR_THRESHOLD_FALLBACK,
-  getDaysRemaining,
   getStatusForField,
   hasAlert,
-  getCellBackgroundColor,
-  getTextColor,
-  truncateText,
-  formatDateStatus,
   getFieldLabel,
 } from './employees/employeeUtils'
 import { BulkDeleteModal } from './employees/BulkDeleteModal'
@@ -1332,412 +1324,43 @@ export default function Employees() {
 
         {/* Filters Modal */}
         {showFiltersModal && (
-          <div className="fixed inset-0 z-[100] overflow-y-auto">
-            {/* Backdrop */}
-            <div
-              className="fixed inset-0 bg-black/50 transition-opacity duration-[var(--motion-base)] ease-[var(--ease-out)]"
-              onClick={() => setShowFiltersModal(false)}
-            />
-
-            {/* Modal Content */}
-            <div className="fixed inset-0 flex items-end justify-center p-0 md:items-center md:p-4">
-              <div className="w-full max-h-[92vh] max-w-4xl overflow-hidden rounded-t-2xl border border-border bg-card shadow-xl motion-safe-enter md:rounded-2xl">
-                {/* Modal Header */}
-                <div className="flex items-center justify-between p-6 border-b border-neutral-200">
-                  <div>
-                    <h2 className="text-xl font-bold text-neutral-900">الفلاتر والبحث</h2>
-                    {activeFiltersCount > 0 && (
-                      <p className="text-sm text-neutral-600 mt-1">{activeFiltersCount} فلتر نشط</p>
-                    )}
-                  </div>
-                  <button
-                    onClick={() => setShowFiltersModal(false)}
-                    className="touch-feedback rounded-lg p-2 transition-colors duration-[var(--motion-fast)] ease-[var(--ease-out)] hover:bg-muted"
-                  >
-                    <X className="w-5 h-5 text-neutral-500" />
-                  </button>
-                </div>
-
-                {/* Modal Body */}
-                <div className="flex-1 overflow-y-auto p-6">
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                    {/* البحث برقم الإقامة */}
-                    <div>
-                      <label className="block text-sm font-medium text-neutral-700 mb-2">
-                        البحث برقم الإقامة
-                      </label>
-                      <div className="relative">
-                        <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-400" />
-                        <input
-                          type="text"
-                          placeholder="ابحث برقم الإقامة..."
-                          value={residenceNumberSearch}
-                          onChange={(e) => setResidenceNumberSearch(e.target.value)}
-                          className="focus-ring-brand w-full rounded-md border border-input bg-surface py-2 pr-10 pl-3 text-sm transition-[border-color,box-shadow] duration-[var(--motion-fast)] ease-[var(--ease-out)]"
-                        />
-                      </div>
-                    </div>
-
-                    {/* فلتر الشركة */}
-                    <div>
-                      <label className="block text-sm font-medium text-neutral-700 mb-2">
-                        الشركة
-                      </label>
-                      <div className="relative" ref={companyDropdownRef}>
-                        <div className="relative">
-                          <input
-                            type="text"
-                            value={companySearchQuery}
-                            onChange={(e) => {
-                              setCompanySearchQuery(e.target.value)
-                              setCompanyDropdownOpen(true)
-                            }}
-                            onFocus={() => setCompanyDropdownOpen(true)}
-                            placeholder="ابحث بالاسم أو الرقم الموحد..."
-                            className="focus-ring-brand w-full rounded-md border border-input bg-surface py-2 pr-10 pl-3 text-sm transition-[border-color,box-shadow] duration-[var(--motion-fast)] ease-[var(--ease-out)]"
-                          />
-                          <div className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none">
-                            <Search className="w-4 h-4 text-neutral-400" />
-                          </div>
-                          <button
-                            type="button"
-                            onClick={() => setCompanyDropdownOpen(!isCompanyDropdownOpen)}
-                            className="absolute right-3 top-1/2 -translate-y-1/2 text-neutral-400 hover:text-neutral-600"
-                          >
-                            <ChevronDown
-                              className={`w-4 h-4 transition-transform ${isCompanyDropdownOpen ? 'rotate-180' : ''}`}
-                            />
-                          </button>
-                        </div>
-
-                        {isCompanyDropdownOpen && (
-                          <div className="absolute z-[130] w-full mt-1 bg-surface border border-neutral-300 rounded-md shadow-lg max-h-60 overflow-auto">
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setCompanyFilter('')
-                                setCompanySearchQuery('')
-                                setCompanyDropdownOpen(false)
-                              }}
-                              className="w-full px-3 py-2 text-right text-sm hover:bg-neutral-50 focus:bg-neutral-50 focus:outline-none transition-colors text-neutral-600"
-                            >
-                              جميع الشركات
-                            </button>
-                            {filteredCompanies.length === 0 ? (
-                              <div className="px-3 py-2 text-sm text-neutral-500 text-center">
-                                {companySearchQuery.trim()
-                                  ? 'لا توجد نتائج'
-                                  : 'لا توجد شركات متاحة'}
-                              </div>
-                            ) : (
-                              filteredCompanies.map((company) => {
-                                const displayText = company.unified_number
-                                  ? `${company.name} (${company.unified_number})`
-                                  : company.name
-                                return (
-                                  <button
-                                    key={company.id}
-                                    type="button"
-                                    onClick={() => {
-                                      setCompanyFilter(company.name)
-                                      setCompanySearchQuery(displayText)
-                                      setCompanyDropdownOpen(false)
-                                    }}
-                                    className="w-full px-3 py-2 text-right text-sm hover:bg-blue-50 focus:bg-blue-50 focus:outline-none transition-colors"
-                                  >
-                                    {displayText}
-                                  </button>
-                                )
-                              })
-                            )}
-                          </div>
-                        )}
-                      </div>
-                    </div>
-
-                    {/* فلتر الجنسية */}
-                    <div>
-                      <label className="block text-sm font-medium text-neutral-700 mb-2">
-                        الجنسية
-                      </label>
-                      <select
-                        value={nationalityFilter}
-                        onChange={(e) => setNationalityFilter(e.target.value)}
-                        className="focus-ring-brand w-full rounded-md border border-input bg-surface px-3 py-2 text-sm transition-[border-color,box-shadow] duration-[var(--motion-fast)] ease-[var(--ease-out)]"
-                      >
-                        <option value="">جميع الجنسيات</option>
-                        {nationalities.map((nationality) => (
-                          <option key={nationality} value={nationality}>
-                            {nationality}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-
-                    {/* فلتر المهنة */}
-                    <div>
-                      <label className="block text-sm font-medium text-neutral-700 mb-2">
-                        المهنة
-                      </label>
-                      <select
-                        value={professionFilter}
-                        onChange={(e) => setProfessionFilter(e.target.value)}
-                        className="focus-ring-brand w-full rounded-md border border-input bg-surface px-3 py-2 text-sm transition-[border-color,box-shadow] duration-[var(--motion-fast)] ease-[var(--ease-out)]"
-                      >
-                        <option value="">جميع المهن</option>
-                        {professions.map((profession) => (
-                          <option key={profession} value={profession}>
-                            {profession}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-
-                    {/* فلتر المشروع */}
-                    <div>
-                      <label className="block text-sm font-medium text-neutral-700 mb-2">
-                        المشروع
-                      </label>
-                      <select
-                        value={projectFilter}
-                        onChange={(e) => setProjectFilter(e.target.value)}
-                        className="focus-ring-brand w-full rounded-md border border-input bg-surface px-3 py-2 text-sm transition-[border-color,box-shadow] duration-[var(--motion-fast)] ease-[var(--ease-out)]"
-                      >
-                        <option value="">جميع المشاريع</option>
-                        {projects.map((project) => (
-                          <option key={project} value={project}>
-                            {project}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-
-                    {/* فلتر العقود */}
-                    <div>
-                      <label className="block text-sm font-medium text-neutral-700 mb-2">
-                        حالة العقد
-                      </label>
-                      <select
-                        value={contractFilter}
-                        onChange={(e) => setContractFilter(e.target.value)}
-                        className="focus-ring-brand w-full rounded-md border border-input bg-surface px-3 py-2 text-sm transition-[border-color,box-shadow] duration-[var(--motion-fast)] ease-[var(--ease-out)]"
-                      >
-                        <option value="">جميع العقود</option>
-                        <option value="منتهي">عقود منتهية</option>
-                        <option value="طارئ">عقود طارئة</option>
-                        <option value="عاجل">عقود عاجلة</option>
-                        <option value="متوسط">عقود متوسطة</option>
-                        <option value="ساري">عقود سارية</option>
-                      </select>
-                    </div>
-
-                    {/* فلتر عقد أجير */}
-                    <div>
-                      <label className="block text-sm font-medium text-neutral-700 mb-2">
-                        حالة عقد أجير
-                      </label>
-                      <select
-                        value={hiredWorkerContractFilter}
-                        onChange={(e) => setHiredWorkerContractFilter(e.target.value)}
-                        className="focus-ring-brand w-full rounded-md border border-input bg-surface px-3 py-2 text-sm transition-[border-color,box-shadow] duration-[var(--motion-fast)] ease-[var(--ease-out)]"
-                      >
-                        <option value="">جميع الحالات</option>
-                        <option value="منتهي">منتهي</option>
-                        <option value="طارئ">طارئ</option>
-                        <option value="عاجل">عاجل</option>
-                        <option value="متوسط">متوسط</option>
-                        <option value="ساري">ساري</option>
-                      </select>
-                    </div>
-
-                    {/* فلتر الإقامات */}
-                    <div>
-                      <label className="block text-sm font-medium text-neutral-700 mb-2">
-                        حالة الإقامة
-                      </label>
-                      <select
-                        value={residenceFilter}
-                        onChange={(e) => setResidenceFilter(e.target.value)}
-                        className="focus-ring-brand w-full rounded-md border border-input bg-surface px-3 py-2 text-sm transition-[border-color,box-shadow] duration-[var(--motion-fast)] ease-[var(--ease-out)]"
-                      >
-                        <option value="">جميع الإقامات</option>
-                        <option value="منتهي">إقامات منتهية</option>
-                        <option value="طارئ">إقامات طارئة</option>
-                        <option value="عاجل">إقامات عاجلة</option>
-                        <option value="متوسط">إقامات متوسطة</option>
-                        <option value="ساري">إقامات سارية</option>
-                      </select>
-                    </div>
-
-                    {/* فلتر التأمين */}
-                    <div>
-                      <label className="block text-sm font-medium text-neutral-700 mb-2">
-                        حالة التأمين
-                      </label>
-                      <select
-                        value={healthInsuranceFilter}
-                        onChange={(e) => setHealthInsuranceFilter(e.target.value)}
-                        className="focus-ring-brand w-full rounded-md border border-input bg-surface px-3 py-2 text-sm transition-[border-color,box-shadow] duration-[var(--motion-fast)] ease-[var(--ease-out)]"
-                      >
-                        <option value="">جميع الموظفين</option>
-                        <option value="ساري">التأمين ساري</option>
-                        <option value="منتهي">التأمين منتهي</option>
-                        <option value="طارئ">التأمين طارئ</option>
-                        <option value="عاجل">التأمين عاجل</option>
-                        <option value="متوسط">التأمين متوسط</option>
-                      </select>
-                    </div>
-                  </div>
-
-                  {/* Active Filters Display */}
-                  {hasActiveFilters && (
-                    <div className="mt-6 pt-6 border-t border-neutral-200">
-                      <h3 className="text-sm font-medium text-neutral-700 mb-3">الفلاتر النشطة:</h3>
-                      <div className="flex flex-wrap gap-2">
-                        {searchTerm && (
-                          <span className="px-3 py-1.5 bg-blue-50 text-info-700 text-sm rounded-full flex items-center gap-2">
-                            البحث: {searchTerm}
-                            <button
-                              onClick={() => setSearchTerm('')}
-                              className="touch-feedback rounded-full p-0.5 transition-colors duration-[var(--motion-fast)] ease-[var(--ease-out)] hover:bg-black/10"
-                            >
-                              <X className="w-3 h-3" />
-                            </button>
-                          </span>
-                        )}
-                        {residenceNumberSearch && (
-                          <span className="px-3 py-1.5 bg-cyan-50 text-cyan-700 text-sm rounded-full flex items-center gap-2">
-                            رقم الإقامة: {residenceNumberSearch}
-                            <button
-                              onClick={() => setResidenceNumberSearch('')}
-                              className="touch-feedback rounded-full p-0.5 transition-colors duration-[var(--motion-fast)] ease-[var(--ease-out)] hover:bg-black/10"
-                            >
-                              <X className="w-3 h-3" />
-                            </button>
-                          </span>
-                        )}
-                        {companyFilter && (
-                          <span className="px-3 py-1.5 bg-green-50 text-success-700 text-sm rounded-full flex items-center gap-2">
-                            الشركة: {companyFilter}
-                            <button
-                              onClick={() => setCompanyFilter('')}
-                              className="touch-feedback rounded-full p-0.5 transition-colors duration-[var(--motion-fast)] ease-[var(--ease-out)] hover:bg-black/10"
-                            >
-                              <X className="w-3 h-3" />
-                            </button>
-                          </span>
-                        )}
-                        {nationalityFilter && (
-                          <span className="px-3 py-1.5 bg-purple-50 text-purple-700 text-sm rounded-full flex items-center gap-2">
-                            الجنسية: {nationalityFilter}
-                            <button
-                              onClick={() => setNationalityFilter('')}
-                              className="touch-feedback rounded-full p-0.5 transition-colors duration-[var(--motion-fast)] ease-[var(--ease-out)] hover:bg-black/10"
-                            >
-                              <X className="w-3 h-3" />
-                            </button>
-                          </span>
-                        )}
-                        {professionFilter && (
-                          <span className="px-3 py-1.5 bg-orange-50 text-warning-700 text-sm rounded-full flex items-center gap-2">
-                            المهنة: {professionFilter}
-                            <button
-                              onClick={() => setProfessionFilter('')}
-                              className="touch-feedback rounded-full p-0.5 transition-colors duration-[var(--motion-fast)] ease-[var(--ease-out)] hover:bg-black/10"
-                            >
-                              <X className="w-3 h-3" />
-                            </button>
-                          </span>
-                        )}
-                        {projectFilter && (
-                          <span className="px-3 py-1.5 bg-indigo-50 text-indigo-700 text-sm rounded-full flex items-center gap-2">
-                            المشروع: {projectFilter}
-                            <button
-                              onClick={() => setProjectFilter('')}
-                              className="touch-feedback rounded-full p-0.5 transition-colors duration-[var(--motion-fast)] ease-[var(--ease-out)] hover:bg-black/10"
-                            >
-                              <X className="w-3 h-3" />
-                            </button>
-                          </span>
-                        )}
-                        {contractFilter && (
-                          <span className="px-3 py-1.5 bg-red-50 text-red-700 text-sm rounded-full flex items-center gap-2">
-                            العقد: {contractFilter}
-                            <button
-                              onClick={() => setContractFilter('')}
-                              className="touch-feedback rounded-full p-0.5 transition-colors duration-[var(--motion-fast)] ease-[var(--ease-out)] hover:bg-black/10"
-                            >
-                              <X className="w-3 h-3" />
-                            </button>
-                          </span>
-                        )}
-                        {hiredWorkerContractFilter && (
-                          <span className="px-3 py-1.5 bg-indigo-50 text-indigo-700 text-sm rounded-full flex items-center gap-2">
-                            عقد أجير: {hiredWorkerContractFilter}
-                            <button
-                              onClick={() => setHiredWorkerContractFilter('')}
-                              className="touch-feedback rounded-full p-0.5 transition-colors duration-[var(--motion-fast)] ease-[var(--ease-out)] hover:bg-black/10"
-                            >
-                              <X className="w-3 h-3" />
-                            </button>
-                          </span>
-                        )}
-                        {residenceFilter && (
-                          <span className="px-3 py-1.5 bg-rose-50 text-rose-700 text-sm rounded-full flex items-center gap-2">
-                            الإقامة: {residenceFilter}
-                            <button
-                              onClick={() => setResidenceFilter('')}
-                              className="touch-feedback rounded-full p-0.5 transition-colors duration-[var(--motion-fast)] ease-[var(--ease-out)] hover:bg-black/10"
-                            >
-                              <X className="w-3 h-3" />
-                            </button>
-                          </span>
-                        )}
-                        {healthInsuranceFilter && (
-                          <span className="px-3 py-1.5 bg-emerald-50 text-emerald-700 text-sm rounded-full flex items-center gap-2">
-                            التأمين الصحي: {healthInsuranceFilter}
-                            <button
-                              onClick={() => setHealthInsuranceFilter('')}
-                              className="touch-feedback rounded-full p-0.5 transition-colors duration-[var(--motion-fast)] ease-[var(--ease-out)] hover:bg-black/10"
-                            >
-                              <X className="w-3 h-3" />
-                            </button>
-                          </span>
-                        )}
-                        {showAlertsOnly && (
-                          <span className="px-3 py-1.5 bg-red-50 text-red-700 text-sm rounded-full flex items-center gap-2">
-                            تنبيهات فقط
-                            <button
-                              onClick={() => setShowAlertsOnly(false)}
-                              className="touch-feedback rounded-full p-0.5 transition-colors duration-[var(--motion-fast)] ease-[var(--ease-out)] hover:bg-black/10"
-                            >
-                              <X className="w-3 h-3" />
-                            </button>
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                  )}
-                </div>
-
-                {/* Modal Footer */}
-                <div className="flex items-center justify-between border-t border-border bg-muted/30 p-6">
-                  <Button
-                    onClick={clearFilters}
-                    disabled={activeFiltersCount === 0}
-                    variant="secondary"
-                    size="sm"
-                  >
-                    <X className="w-4 h-4" />
-                    مسح جميع الفلاتر
-                  </Button>
-                  <Button onClick={() => setShowFiltersModal(false)} size="sm">
-                    تطبيق الفلاتر
-                  </Button>
-                </div>
-              </div>
-            </div>
-          </div>
+          <EmployeesFiltersModal
+            activeFiltersCount={activeFiltersCount}
+            hasActiveFilters={hasActiveFilters}
+            searchTerm={searchTerm}
+            setSearchTerm={setSearchTerm}
+            residenceNumberSearch={residenceNumberSearch}
+            setResidenceNumberSearch={setResidenceNumberSearch}
+            companyFilter={companyFilter}
+            setCompanyFilter={setCompanyFilter}
+            companySearchQuery={companySearchQuery}
+            setCompanySearchQuery={setCompanySearchQuery}
+            isCompanyDropdownOpen={isCompanyDropdownOpen}
+            setCompanyDropdownOpen={setCompanyDropdownOpen}
+            filteredCompanies={filteredCompanies}
+            companyDropdownRef={companyDropdownRef}
+            nationalityFilter={nationalityFilter}
+            setNationalityFilter={setNationalityFilter}
+            nationalities={nationalities}
+            professionFilter={professionFilter}
+            setProfessionFilter={setProfessionFilter}
+            professions={professions}
+            projectFilter={projectFilter}
+            setProjectFilter={setProjectFilter}
+            projects={projects}
+            contractFilter={contractFilter}
+            setContractFilter={setContractFilter}
+            hiredWorkerContractFilter={hiredWorkerContractFilter}
+            setHiredWorkerContractFilter={setHiredWorkerContractFilter}
+            residenceFilter={residenceFilter}
+            setResidenceFilter={setResidenceFilter}
+            healthInsuranceFilter={healthInsuranceFilter}
+            setHealthInsuranceFilter={setHealthInsuranceFilter}
+            showAlertsOnly={showAlertsOnly}
+            setShowAlertsOnly={setShowAlertsOnly}
+            clearFilters={clearFilters}
+            onClose={() => setShowFiltersModal(false)}
+          />
         )}
 
         {/* Bulk Actions Bar */}
@@ -1801,315 +1424,17 @@ export default function Employees() {
         ) : viewMode === 'grid' ? (
           // Grid View
           <div className={employeeGridClass}>
-            {sortedAndFilteredEmployees.map((employee, index) => {
-              const contractDays = employee.contract_expiry
-                ? getDaysRemaining(employee.contract_expiry)
-                : null
-              const hiredWorkerContractDays = employee.hired_worker_contract_expiry
-                ? getDaysRemaining(employee.hired_worker_contract_expiry)
-                : null
-              const residenceDays = employee.residence_expiry
-                ? getDaysRemaining(employee.residence_expiry)
-                : null
-              const healthInsuranceDays = employee.health_insurance_expiry
-                ? getDaysRemaining(employee.health_insurance_expiry)
-                : null
-
-              // تحديد لون الحدود حسب أعلى أولوية
-              const getBorderColor = () => {
-                const priorities = [
-                  contractDays !== null && contractDays < 0
-                    ? 'critical'
-                    : contractDays !== null && contractDays <= 7
-                      ? 'critical'
-                      : contractDays !== null && contractDays <= 30
-                        ? 'medium'
-                        : 'low',
-                  hiredWorkerContractDays !== null && hiredWorkerContractDays < 0
-                    ? 'critical'
-                    : hiredWorkerContractDays !== null && hiredWorkerContractDays <= 7
-                      ? 'critical'
-                      : hiredWorkerContractDays !== null && hiredWorkerContractDays <= 30
-                        ? 'medium'
-                        : 'low',
-                  residenceDays !== null && residenceDays < 0
-                    ? 'critical'
-                    : residenceDays !== null && residenceDays <= 7
-                      ? 'critical'
-                      : residenceDays !== null && residenceDays <= 30
-                        ? 'medium'
-                        : 'low',
-                  healthInsuranceDays !== null && healthInsuranceDays < 0
-                    ? 'critical'
-                    : healthInsuranceDays !== null && healthInsuranceDays <= 7
-                      ? 'critical'
-                      : healthInsuranceDays !== null && healthInsuranceDays <= 30
-                        ? 'medium'
-                        : 'low',
-                ]
-
-                if (priorities.includes('critical')) return 'border-red-400'
-                if (priorities.includes('medium')) return 'border-yellow-400'
-                if (priorities.includes('low')) return 'border-green-400'
-                return 'border-neutral-200'
-              }
-
-              // دالة للحصول على حالة التاريخ
-              const getDateStatus = (days: number | null, expiredText: string = 'منتهي') => {
-                if (days === null)
-                  return {
-                    status: 'غير محدد',
-                    description: '',
-                    emoji: '❌',
-                    color: 'bg-neutral-100 text-neutral-600 border-neutral-200',
-                  }
-                if (days < 0)
-                  return {
-                    status: expiredText,
-                    description: 'منتهي',
-                    emoji: '🚨',
-                    color: 'bg-red-50 text-red-700 border-red-300',
-                  }
-                if (days <= 7)
-                  return {
-                    status: 'طارئ',
-                    description: `${days} يوم`,
-                    emoji: '🚨',
-                    color: 'bg-red-50 text-red-700 border-red-300',
-                  }
-                if (days <= 15)
-                  return {
-                    status: 'عاجل',
-                    description: `${days} يوم`,
-                    emoji: '🔥',
-                    color: 'bg-orange-50 text-warning-700 border-orange-300',
-                  }
-                if (days <= 30)
-                  return {
-                    status: 'متوسط',
-                    description: `${days} يوم`,
-                    emoji: '⚠️',
-                    color: 'bg-yellow-50 text-yellow-700 border-yellow-300',
-                  }
-                return {
-                  status: 'ساري',
-                  description: `${days} يوم`,
-                  emoji: '✅',
-                  color: 'bg-green-50 text-success-700 border-green-300',
-                }
-              }
-
-              const contractStatus = getDateStatus(contractDays, 'منتهي')
-              const hiredWorkerStatus = getDateStatus(hiredWorkerContractDays, 'منتهي')
-              const residenceStatus = getDateStatus(residenceDays, 'منتهية')
-              const insuranceStatus = getDateStatus(healthInsuranceDays, 'منتهي')
-
-              return (
-                <div
-                  key={employee.id}
-                  onClick={() => handleEmployeeClick(employee)}
-                  className={`stagger-item group relative cursor-pointer overflow-hidden rounded-2xl border-2 ${getBorderColor()} bg-surface/95 p-3.5 shadow-[0_10px_30px_-24px_rgba(15,23,42,0.8)] transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_20px_40px_-26px_rgba(14,116,144,0.65)]`}
-                  style={{ '--i': Math.min(index, 11) } as CSSProperties}
-                >
-                  <div className="pointer-events-none absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-cyan-400/70 via-sky-300/60 to-emerald-300/70 opacity-70 transition group-hover:opacity-100" />
-
-                  <div className="flex items-start justify-between mb-2.5">
-                    <div className="app-icon-chip scale-90">
-                      <User className="h-4 w-4" />
-                    </div>
-                    <div className="flex gap-1" onClick={(e) => e.stopPropagation()}>
-                      {canEdit('employees') && (
-                        <button
-                          onClick={() => handleEmployeeClick(employee)}
-                          className="rounded-md p-1 text-foreground-secondary transition hover:bg-primary/10"
-                          title="عرض/تعديل الموظف"
-                        >
-                          <Edit2 className="w-3.5 h-3.5" />
-                        </button>
-                      )}
-                      {canDelete('employees') && (
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation()
-                            handleDeleteEmployee(employee)
-                          }}
-                          className="p-1 text-red-600 hover:bg-red-100 rounded-md transition"
-                          title="حذف الموظف"
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </button>
-                      )}
-                    </div>
-                  </div>
-
-                  <h3 className="mb-1.5 line-clamp-1 text-base font-bold text-neutral-900">
-                    {employee.name}
-                  </h3>
-
-                  <div className="app-card-meta text-[12.5px]">
-                    {employee.project?.name || employee.project_name ? (
-                      <div className="app-card-meta-row">
-                        <span className="app-card-meta-label">المشروع:</span>
-                        <span className="app-badge-brand text-[13px] font-medium">
-                          {employee.project?.name || employee.project_name}
-                        </span>
-                      </div>
-                    ) : null}
-                    <div className="app-card-meta-row">
-                      <span className="app-card-meta-label">الشركة:</span>
-                      <span className="app-card-meta-value">
-                        {employee.company?.name || '-'}
-                        {employee.company?.unified_number && (
-                          <span className="text-neutral-500 mr-1">
-                            ({employee.company.unified_number})
-                          </span>
-                        )}
-                      </span>
-                    </div>
-                    {employee.residence_number && (
-                      <div className="app-card-meta-row">
-                        <span className="app-card-meta-label">رقم الإقامة:</span>
-                        <span className="app-card-meta-value font-mono">
-                          {employee.residence_number}
-                        </span>
-                      </div>
-                    )}
-                    {employee.profession && (
-                      <div className="app-card-meta-row">
-                        <span className="app-card-meta-label">المهنة:</span>
-                        <span className="app-card-meta-value">{employee.profession}</span>
-                      </div>
-                    )}
-                    {employee.nationality && (
-                      <div className="app-card-meta-row">
-                        <span className="app-card-meta-label">الجنسية:</span>
-                        <span className="app-card-meta-value">{employee.nationality}</span>
-                      </div>
-                    )}
-                  </div>
-
-                  {/* مربعات الحالات - grid من عمودين */}
-                  <div className="pt-2.5 border-t border-neutral-200">
-                    <div className="grid grid-cols-2 gap-2">
-                      {/* حالة انتهاء العقد */}
-                      <div>
-                        <div className="mb-1 text-[12px] font-semibold text-neutral-600">
-                          انتهاء العقد
-                        </div>
-                        {employee.contract_expiry ? (
-                          <div
-                            className={`rounded-lg border-2 px-2 py-1 text-xs font-medium ${contractStatus.color}`}
-                          >
-                            <div className="flex items-center gap-1">
-                              <div className="text-xs">{contractStatus.emoji}</div>
-                              <div className="flex flex-col">
-                                <span className="font-bold">{contractStatus.status}</span>
-                                <span className="text-xs opacity-75">
-                                  {contractStatus.description}
-                                </span>
-                              </div>
-                            </div>
-                          </div>
-                        ) : (
-                          <div className="rounded-lg border-2 border-neutral-200 bg-neutral-100 px-2 py-1 text-xs font-medium text-neutral-600">
-                            غير محدد
-                          </div>
-                        )}
-                      </div>
-
-                      {/* حالة انتهاء عقد أجير */}
-                      <div>
-                        <div className="mb-1 text-[12px] font-semibold text-neutral-600">
-                          انتهاء عقد أجير
-                        </div>
-                        {employee.hired_worker_contract_expiry ? (
-                          <div
-                            className={`rounded-lg border-2 px-2 py-1 text-xs font-medium ${hiredWorkerStatus.color}`}
-                          >
-                            <div className="flex items-center gap-1">
-                              <div className="text-xs">{hiredWorkerStatus.emoji}</div>
-                              <div className="flex flex-col">
-                                <span className="font-bold">{hiredWorkerStatus.status}</span>
-                                <span className="text-xs opacity-75">
-                                  {hiredWorkerStatus.description}
-                                </span>
-                              </div>
-                            </div>
-                          </div>
-                        ) : (
-                          <div className="rounded-lg border-2 border-neutral-200 bg-neutral-100 px-2 py-1 text-xs font-medium text-neutral-600">
-                            غير محدد
-                          </div>
-                        )}
-                      </div>
-
-                      {/* حالة انتهاء الإقامة */}
-                      <div>
-                        <div className="mb-1 text-[12px] font-semibold text-neutral-600">
-                          انتهاء الإقامة
-                        </div>
-                        {employee.residence_expiry ? (
-                          <div
-                            className={`rounded-lg border-2 px-2 py-1 text-xs font-medium ${residenceStatus.color}`}
-                          >
-                            <div className="flex items-center gap-1">
-                              <div className="text-xs">{residenceStatus.emoji}</div>
-                              <div className="flex flex-col">
-                                <span className="font-bold">{residenceStatus.status}</span>
-                                <span className="text-xs opacity-75">
-                                  {residenceStatus.description}
-                                </span>
-                              </div>
-                            </div>
-                          </div>
-                        ) : (
-                          <div className="rounded-lg border-2 border-neutral-200 bg-neutral-100 px-2 py-1 text-xs font-medium text-neutral-600">
-                            غير محدد
-                          </div>
-                        )}
-                      </div>
-
-                      {/* حالة التأمين */}
-                      <div>
-                        <div className="mb-1 text-[12px] font-semibold text-neutral-600">
-                          حالة التأمين
-                        </div>
-                        {employee.health_insurance_expiry ? (
-                          <div
-                            className={`rounded-lg border-2 px-2 py-1 text-xs font-medium ${insuranceStatus.color}`}
-                          >
-                            <div className="flex items-center gap-1">
-                              <div className="text-xs">{insuranceStatus.emoji}</div>
-                              <div className="flex flex-col">
-                                <span className="font-bold">{insuranceStatus.status}</span>
-                                <span className="text-xs opacity-75">
-                                  {insuranceStatus.description}
-                                </span>
-                              </div>
-                            </div>
-                          </div>
-                        ) : (
-                          <div className="rounded-lg border-2 border-neutral-200 bg-neutral-100 px-2 py-1 text-xs font-medium text-neutral-600">
-                            غير محدد
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* الملاحظات */}
-                  <div className="pt-2.5 border-t border-neutral-200">
-                    <div className="mb-1.5 flex items-center gap-2 text-[12px] font-semibold text-neutral-600">
-                      <FileText className="w-3.5 h-3.5" />
-                      الملاحظات
-                    </div>
-                    <div className="min-h-[42px] whitespace-pre-wrap rounded-lg border border-neutral-200 bg-neutral-50 px-3 py-1.5 text-xs text-neutral-700">
-                      {employee.notes || 'لا توجد ملاحظات'}
-                    </div>
-                  </div>
-                </div>
-              )
-            })}
+            {sortedAndFilteredEmployees.map((employee, index) => (
+              <EmployeeGridCard
+                key={employee.id}
+                employee={employee}
+                index={index}
+                canEditEmployee={canEdit('employees')}
+                canDeleteEmployee={canDelete('employees')}
+                onEmployeeClick={handleEmployeeClick}
+                onDeleteEmployee={handleDeleteEmployee}
+              />
+            ))}
           </div>
         ) : (
           <div className="space-y-3">
@@ -2136,125 +1461,20 @@ export default function Employees() {
               </span>
             </div>
 
-            {sortedAndFilteredEmployees.map((employee, index) => {
-              const contractDays = employee.contract_expiry
-                ? getDaysRemaining(employee.contract_expiry)
-                : null
-              const hiredWorkerContractDays = employee.hired_worker_contract_expiry
-                ? getDaysRemaining(employee.hired_worker_contract_expiry)
-                : null
-              const residenceDays = employee.residence_expiry
-                ? getDaysRemaining(employee.residence_expiry)
-                : null
-              const healthInsuranceDays = employee.health_insurance_expiry
-                ? getDaysRemaining(employee.health_insurance_expiry)
-                : null
-              const isSelected = selectedRowIndex === index
-
-              return (
-                <div
-                  key={employee.id}
-                  ref={(el) => {
-                    rowRefs.current[index] = el
-                  }}
-                  className={`app-data-strip ${isSelected ? 'border-blue-500/80 ring-2 ring-blue-500/20' : ''}`}
-                >
-                  <div className="flex min-h-fit flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-                    <div className="flex items-start gap-3">
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          toggleEmployeeSelection(employee.id)
-                        }}
-                        className="mt-1 flex h-5 w-5 items-center justify-center"
-                      >
-                        {selectedEmployees.has(employee.id) ? (
-                          <CheckSquare className="w-4 h-4 text-info-600" />
-                        ) : (
-                          <Square className="w-4 h-4 text-foreground-tertiary" />
-                        )}
-                      </button>
-
-                      <div className="cursor-pointer" onClick={() => handleEmployeeClick(employee)}>
-                        <p className="text-sm font-semibold text-foreground dark:text-foreground">
-                          {employee.name}
-                        </p>
-                        <p className="text-xs text-foreground-secondary dark:text-foreground-secondary">
-                          {employee.profession || '-'} • {employee.nationality || '-'}
-                        </p>
-                        <p className="text-xs text-foreground-tertiary dark:text-foreground-tertiary">
-                          {employee.company?.name || '-'}
-                          {employee.company?.unified_number
-                            ? ` (${employee.company.unified_number})`
-                            : ''}
-                        </p>
-                      </div>
-                    </div>
-
-                    <div className="grid flex-1 grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-4 lg:max-w-[760px]">
-                      <div
-                        className={`rounded-xl border px-3 py-2 text-xs ${getCellBackgroundColor(contractDays)}`}
-                      >
-                        <p className="mb-1 text-[11px] text-foreground-tertiary">العقد</p>
-                        <p className={getTextColor(contractDays)}>
-                          {formatDateStatus(contractDays, 'منتهي')}
-                        </p>
-                      </div>
-                      <div
-                        className={`rounded-xl border px-3 py-2 text-xs ${getCellBackgroundColor(hiredWorkerContractDays)}`}
-                      >
-                        <p className="mb-1 text-[11px] text-foreground-tertiary">عقد أجير</p>
-                        <p className={getTextColor(hiredWorkerContractDays)}>
-                          {formatDateStatus(hiredWorkerContractDays, 'منتهي')}
-                        </p>
-                      </div>
-                      <div
-                        className={`rounded-xl border px-3 py-2 text-xs ${getCellBackgroundColor(residenceDays)}`}
-                      >
-                        <p className="mb-1 text-[11px] text-foreground-tertiary">الإقامة</p>
-                        <p className={getTextColor(residenceDays)}>
-                          {formatDateStatus(residenceDays, 'منتهية')}
-                        </p>
-                      </div>
-                      <div
-                        className={`rounded-xl border px-3 py-2 text-xs ${getCellBackgroundColor(healthInsuranceDays)}`}
-                      >
-                        <p className="mb-1 text-[11px] text-foreground-tertiary">التأمين</p>
-                        <p className={getTextColor(healthInsuranceDays)}>
-                          {formatDateStatus(healthInsuranceDays, 'منتهي')}
-                        </p>
-                      </div>
-                    </div>
-
-                    <div className="flex items-center gap-2">
-                      <Button
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          handleEmployeeClick(employee)
-                        }}
-                        size="sm"
-                      >
-                        <Eye className="w-3.5 h-3.5" />
-                        عرض
-                      </Button>
-                      {canDelete('employees') && (
-                        <Button
-                          onClick={(e) => {
-                            e.stopPropagation()
-                            handleDeleteEmployee(employee)
-                          }}
-                          variant="destructive"
-                          size="sm"
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                          حذف
-                        </Button>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              )
-            })}
+            {sortedAndFilteredEmployees.map((employee, index) => (
+              <EmployeeListRow
+                key={employee.id}
+                employee={employee}
+                index={index}
+                isSelected={selectedRowIndex === index}
+                isChecked={selectedEmployees.has(employee.id)}
+                setRowRef={(el) => { rowRefs.current[index] = el }}
+                canDeleteEmployee={canDelete('employees')}
+                onEmployeeClick={handleEmployeeClick}
+                onDeleteEmployee={handleDeleteEmployee}
+                onToggleSelection={toggleEmployeeSelection}
+              />
+            ))}
 
             {sortedAndFilteredEmployees.length === 0 && (
               <div className="text-center py-12 text-neutral-500">
@@ -2285,49 +1505,14 @@ export default function Employees() {
 
       {/* مودال تأكيد حذف الموظف */}
       {showDeleteModal && (
-        <div
-          className="fixed inset-0 z-[100] bg-black/50 flex items-center justify-center p-4"
-          onClick={() => {
+        <EmployeeDeleteConfirmModal
+          employeeName={employeeToDelete?.name}
+          onConfirm={confirmDeleteEmployee}
+          onCancel={() => {
             setShowDeleteModal(false)
             setEmployeeToDelete(null)
           }}
-        >
-          <div className="bg-surface rounded-xl shadow-2xl max-w-md w-full" onClick={(e) => e.stopPropagation()}>
-            <div className="p-6">
-              <div className="flex items-center gap-3 mb-4">
-                <div className="bg-red-100 p-3 rounded-lg">
-                  <AlertCircle className="w-6 h-6 text-red-600" />
-                </div>
-                <div>
-                  <h3 className="text-lg font-bold text-neutral-900">تأكيد حذف الموظف</h3>
-                  <p className="text-sm text-neutral-600">هذا الإجراء لا يمكن التراجع عنه</p>
-                </div>
-              </div>
-              <p className="text-neutral-700 mb-6">
-                هل أنت متأكد من حذف الموظف "<strong>{employeeToDelete?.name}</strong>"؟
-                <br />
-                <span className="text-sm text-red-600 mt-2 block">
-                  سيتم حذف جميع بيانات هذا الموظف نهائياً
-                </span>
-              </p>
-              <div className="flex gap-3">
-                <Button onClick={confirmDeleteEmployee} className="flex-1" variant="destructive">
-                  نعم، احذف
-                </Button>
-                <Button
-                  onClick={() => {
-                    setShowDeleteModal(false)
-                    setEmployeeToDelete(null)
-                  }}
-                  className="flex-1"
-                  variant="secondary"
-                >
-                  إلغاء
-                </Button>
-              </div>
-            </div>
-          </div>
-        </div>
+        />
       )}
 
       {/* مودال حذف جماعي */}
