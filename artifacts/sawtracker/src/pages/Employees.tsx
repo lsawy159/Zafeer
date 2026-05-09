@@ -27,7 +27,6 @@ import {
   Shield,
 } from 'lucide-react'
 import CascadeDeleteModal, { type ObligationHeaderInfo } from '@/components/employees/CascadeDeleteModal'
-import { differenceInDays } from 'date-fns'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/Tooltip'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { toast } from 'sonner'
@@ -51,21 +50,19 @@ import {
   DropdownMenuLabel,
   DropdownMenuTrigger,
 } from '@/components/ui/DropdownMenu'
-
-const COLOR_THRESHOLD_FALLBACK: EmployeeNotificationThresholds = {
-  residence_urgent_days: 7,
-  residence_high_days: 15,
-  residence_medium_days: 30,
-  contract_urgent_days: 7,
-  contract_high_days: 15,
-  contract_medium_days: 30,
-  health_insurance_urgent_days: 30,
-  health_insurance_high_days: 45,
-  health_insurance_medium_days: 60,
-  hired_worker_contract_urgent_days: 7,
-  hired_worker_contract_high_days: 15,
-  hired_worker_contract_medium_days: 30,
-}
+import {
+  COLOR_THRESHOLD_FALLBACK,
+  getDaysRemaining,
+  getStatusForField,
+  hasAlert,
+  getCellBackgroundColor,
+  getTextColor,
+  truncateText,
+  formatDateStatus,
+  getFieldLabel,
+} from './employees/employeeUtils'
+import { BulkDeleteModal } from './employees/BulkDeleteModal'
+import { BulkDateModal } from './employees/BulkDateModal'
 
 export default function Employees() {
   const { canView, canCreate, canEdit, canDelete } = usePermissions()
@@ -421,97 +418,6 @@ export default function Employees() {
     }
   }
 
-  const getDaysRemaining = (date: string | null | undefined): number | null => {
-    if (!date) return null
-    try {
-      const dateObj = new Date(date)
-      if (isNaN(dateObj.getTime())) return null
-      return differenceInDays(dateObj, new Date())
-    } catch {
-      return null
-    }
-  }
-
-  const getStatusForField = (
-    expiryDate: string | null | undefined,
-    fieldType: 'contract' | 'hired_worker_contract' | 'residence' | 'health_insurance'
-  ): 'غير محدد' | 'منتهي' | 'طارئ' | 'عاجل' | 'متوسط' | 'ساري' => {
-    if (!expiryDate) return 'غير محدد'
-    const days = getDaysRemaining(expiryDate)
-    if (days === null) return 'غير محدد'
-
-    const thresholds = colorThresholds || COLOR_THRESHOLD_FALLBACK
-    const urgentDays = thresholds[
-      `${fieldType}_urgent_days` as keyof EmployeeNotificationThresholds
-    ] as number
-    const highDays = thresholds[
-      `${fieldType}_high_days` as keyof EmployeeNotificationThresholds
-    ] as number
-    const mediumDays = thresholds[
-      `${fieldType}_medium_days` as keyof EmployeeNotificationThresholds
-    ] as number
-
-    if (days < 0) return 'منتهي'
-    if (days <= urgentDays) return 'طارئ'
-    if (days <= highDays) return 'عاجل'
-    if (days <= mediumDays) return 'متوسط'
-    return 'ساري'
-  }
-
-  // دالة للتحقق من وجود تنبيه
-  const hasAlert = (
-    contractExpiry: string | null | undefined,
-    hiredWorkerContractExpiry: string | null | undefined,
-    residenceExpiry: string | null | undefined,
-    healthInsuranceExpiry: string | null | undefined
-  ): boolean => {
-    const statuses = [
-      getStatusForField(contractExpiry, 'contract'),
-      getStatusForField(hiredWorkerContractExpiry, 'hired_worker_contract'),
-      getStatusForField(residenceExpiry, 'residence'),
-      getStatusForField(healthInsuranceExpiry, 'health_insurance'),
-    ]
-
-    // يعتبر تنبيه إذا كانت الحالة منتهية أو ضمن نطاق طارئ/عاجل/متوسط
-    return statuses.some((status) => ['منتهي', 'طارئ', 'عاجل', 'متوسط'].includes(status))
-  }
-
-  // دالة للحصول على لون خلفية الخلية بناءً على حالة الانتهاء
-  const getCellBackgroundColor = (days: number | null) => {
-    // إذا كان null (لا يوجد تاريخ انتهاء)، لا لون خلفية
-    if (days === null) return ''
-    // منتهي: خلفية حمراء
-    if (days < 0) return 'bg-red-50'
-    return ''
-  }
-
-  // دالة للحصول على لون النص بناءً على حالة الانتهاء
-  const getTextColor = (days: number | null) => {
-    // إذا كان null (لا يوجد تاريخ انتهاء)، لون رمادي
-    if (days === null) return 'text-neutral-700'
-    // منتهي: لون أحمر
-    if (days < 0) return 'text-red-600'
-    return 'text-neutral-700'
-  }
-
-  // دالة لتقليص النصوص
-  const truncateText = (text: string | number | null | undefined, maxLength: number): string => {
-    if (text === null || text === undefined) return '-'
-    // تحويل القيمة إلى نص
-    const textStr = String(text)
-    if (textStr.length <= maxLength) return textStr
-    return textStr.substring(0, maxLength)
-  }
-
-  // دالة لتنسيق حالة التاريخ (عدد الأيام)
-  const formatDateStatus = (days: number | null, expiredText: string = 'منتهي'): string => {
-    if (days === null) return '-'
-    if (days < 0) return expiredText
-    // تقليص النص ليكون ضمن 10 أحرف
-    const statusText = `${days} يوم`
-    return truncateText(statusText, 10)
-  }
-
   const clearFilters = () => {
     setSearchTerm('')
     setResidenceNumberSearch('')
@@ -542,31 +448,6 @@ export default function Employees() {
   const handleUpdateEmployee = async () => {
     // إعادة تحميل قائمة الموظفين بعد التحديث
     await loadEmployees()
-  }
-
-  const getFieldLabel = (key: string): string => {
-    const fieldLabels: Record<string, string> = {
-      name: 'الاسم',
-      phone: 'رقم الهاتف',
-      profession: 'المهنة',
-      nationality: 'الجنسية',
-      residence_number: 'رقم الإقامة',
-      passport_number: 'رقم الجواز',
-      bank_account: 'الحساب البنكي',
-      salary: 'الراتب',
-      project_id: 'المشروع',
-      company_id: 'المؤسسة',
-      birth_date: 'تاريخ الميلاد',
-      joining_date: 'تاريخ الالتحاق',
-      residence_expiry: 'تاريخ انتهاء الإقامة',
-      contract_expiry: 'تاريخ انتهاء العقد',
-      hired_worker_contract_expiry: 'تاريخ انتهاء عقد أجير',
-      health_insurance_expiry: 'تاريخ انتهاء التأمين الصحي',
-      notes: 'الملاحظات',
-      employee_name: 'اسم الموظف',
-      company: 'المؤسسة',
-    }
-    return fieldLabels[key] || key
   }
 
   // تم إزالة دوال التعديل السريع
@@ -979,7 +860,8 @@ export default function Employees() {
         emp.contract_expiry,
         emp.hired_worker_contract_expiry,
         emp.residence_expiry,
-        emp.health_insurance_expiry
+        emp.health_insurance_expiry,
+        colorThresholds ?? COLOR_THRESHOLD_FALLBACK
       )
         ? 1
         : 0)
@@ -987,13 +869,14 @@ export default function Employees() {
   }, 0)
 
   const filteredEmployees = employees.filter((emp) => {
-    const contractStatus = getStatusForField(emp.contract_expiry, 'contract')
+    const contractStatus = getStatusForField(emp.contract_expiry, 'contract', colorThresholds ?? COLOR_THRESHOLD_FALLBACK)
     const hiredWorkerStatus = getStatusForField(
       emp.hired_worker_contract_expiry,
-      'hired_worker_contract'
+      'hired_worker_contract',
+      colorThresholds ?? COLOR_THRESHOLD_FALLBACK
     )
-    const residenceStatus = getStatusForField(emp.residence_expiry, 'residence')
-    const insuranceStatus = getStatusForField(emp.health_insurance_expiry, 'health_insurance')
+    const residenceStatus = getStatusForField(emp.residence_expiry, 'residence', colorThresholds ?? COLOR_THRESHOLD_FALLBACK)
+    const insuranceStatus = getStatusForField(emp.health_insurance_expiry, 'health_insurance', colorThresholds ?? COLOR_THRESHOLD_FALLBACK)
 
     // البحث الشامل في الاسم، رقم الإقامة، رقم الجواز، المهنة، والجنسية
     const searchLower = searchTerm.toLowerCase()
@@ -1023,7 +906,8 @@ export default function Employees() {
             emp.contract_expiry,
             emp.hired_worker_contract_expiry,
             emp.residence_expiry,
-            emp.health_insurance_expiry
+            emp.health_insurance_expiry,
+            colorThresholds ?? COLOR_THRESHOLD_FALLBACK
           )
         : contractStatus === contractFilter)
     const matchesHiredWorkerContract =
@@ -1033,7 +917,8 @@ export default function Employees() {
             emp.contract_expiry,
             emp.hired_worker_contract_expiry,
             emp.residence_expiry,
-            emp.health_insurance_expiry
+            emp.health_insurance_expiry,
+            colorThresholds ?? COLOR_THRESHOLD_FALLBACK
           )
         : hiredWorkerStatus === hiredWorkerContractFilter)
     const matchesResidence =
@@ -1043,7 +928,8 @@ export default function Employees() {
             emp.contract_expiry,
             emp.hired_worker_contract_expiry,
             emp.residence_expiry,
-            emp.health_insurance_expiry
+            emp.health_insurance_expiry,
+            colorThresholds ?? COLOR_THRESHOLD_FALLBACK
           )
         : residenceStatus === residenceFilter)
     const matchesInsurance =
@@ -1053,7 +939,8 @@ export default function Employees() {
             emp.contract_expiry,
             emp.hired_worker_contract_expiry,
             emp.residence_expiry,
-            emp.health_insurance_expiry
+            emp.health_insurance_expiry,
+            colorThresholds ?? COLOR_THRESHOLD_FALLBACK
           )
         : insuranceStatus === healthInsuranceFilter)
 
@@ -1063,7 +950,8 @@ export default function Employees() {
         emp.contract_expiry,
         emp.hired_worker_contract_expiry,
         emp.residence_expiry,
-        emp.health_insurance_expiry
+        emp.health_insurance_expiry,
+        colorThresholds ?? COLOR_THRESHOLD_FALLBACK
       )
 
     return (
@@ -2505,173 +2393,5 @@ export default function Employees() {
         />
       )}
     </Layout>
-  )
-}
-
-// مكون مودال الحذف الجماعي
-function BulkDeleteModal({
-  selectedCount,
-  selectedEmployees,
-  onConfirm,
-  onCancel,
-  isDeleting = false,
-}: {
-  selectedCount: number
-  selectedEmployees: (Employee & { company: Company })[]
-  onConfirm: () => void
-  onCancel: () => void
-  isDeleting?: boolean
-}) {
-  const handleConfirm = () => {
-    if (!isDeleting) {
-      onConfirm()
-    }
-  }
-
-  const handleCancel = () => {
-    if (!isDeleting) {
-      onCancel()
-    }
-  }
-
-  return (
-    <div
-      className="fixed inset-0 z-[100] bg-black/50 flex items-center justify-center p-4"
-      onClick={handleCancel}
-    >
-      <div
-        className="bg-surface rounded-xl shadow-2xl max-w-2xl w-full max-h-[80vh] overflow-y-auto"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div className="p-6">
-          <div className="flex items-center gap-3 mb-4">
-            <div className="bg-red-100 p-3 rounded-lg">
-              <AlertCircle className="w-6 h-6 text-red-600" />
-            </div>
-            <div>
-              <h3 className="text-lg font-bold text-neutral-900">تأكيد حذف الموظفين</h3>
-              <p className="text-sm text-neutral-600">هذا الإجراء لا يمكن التراجع عنه</p>
-            </div>
-          </div>
-          <p className="text-neutral-700 mb-4">
-            هل أنت متأكد من حذف <strong>{selectedCount} موظف</strong>؟
-            <br />
-            <span className="text-sm text-red-600 mt-2 block">
-              سيتم حذف جميع بيانات هؤلاء الموظفين نهائياً
-            </span>
-          </p>
-          {isDeleting && (
-            <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
-              <div className="flex items-center gap-2 text-info-700">
-                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
-                <span className="text-sm font-medium">جاري حذف الموظفين، يرجى الانتظار...</span>
-              </div>
-            </div>
-          )}
-          <div className="max-h-60 overflow-y-auto border border-neutral-200 rounded-lg p-4 mb-4">
-            <p className="text-sm font-medium text-neutral-700 mb-2">الموظفون المحددون:</p>
-            <ul className="space-y-1">
-              {selectedEmployees.slice(0, 50).map((emp) => (
-                <li key={emp.id} className="text-sm text-neutral-600">
-                  • {emp.name} {emp.company?.name && `(${emp.company.name})`}
-                </li>
-              ))}
-              {selectedEmployees.length > 50 && (
-                <li className="text-sm text-neutral-500 italic">
-                  ... و {selectedEmployees.length - 50} موظف آخر
-                </li>
-              )}
-            </ul>
-          </div>
-          <div className="flex gap-3">
-            <Button
-              onClick={handleConfirm}
-              disabled={isDeleting}
-              className="flex-1"
-              variant="destructive"
-            >
-              {isDeleting ? (
-                <>
-                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                  جاري الحذف...
-                </>
-              ) : (
-                `نعم، احذف (${selectedCount})`
-              )}
-            </Button>
-            <Button
-              onClick={handleCancel}
-              disabled={isDeleting}
-              className="flex-1"
-              variant="secondary"
-            >
-              إلغاء
-            </Button>
-          </div>
-        </div>
-      </div>
-    </div>
-  )
-}
-
-// مكون مودال تعديل التاريخ
-function BulkDateModal({
-  title,
-  selectedCount,
-  onConfirm,
-  onCancel,
-}: {
-  title: string
-  selectedCount: number
-  onConfirm: (date: string) => void
-  onCancel: () => void
-}) {
-  const [selectedDate, setSelectedDate] = useState('')
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault()
-    if (selectedDate) {
-      onConfirm(selectedDate)
-    }
-  }
-
-  return (
-    <div className="fixed inset-0 z-[100] bg-black/50 flex items-center justify-center p-4" onClick={onCancel}>
-      <div className="bg-surface rounded-xl shadow-2xl max-w-md w-full" onClick={(e) => e.stopPropagation()}>
-        <div className="p-6">
-          <div className="flex items-center gap-3 mb-4">
-            <div className="bg-blue-100 p-3 rounded-lg">
-              <Calendar className="w-6 h-6 text-info-600" />
-            </div>
-            <div>
-              <h3 className="text-lg font-bold text-neutral-900">{title}</h3>
-              <p className="text-sm text-neutral-600">{selectedCount} موظف محدد</p>
-            </div>
-          </div>
-          <form onSubmit={handleSubmit}>
-            <div className="mb-6">
-              <label className="block text-sm font-medium text-neutral-700 mb-2">
-                التاريخ الجديد
-              </label>
-              <input
-                type="date"
-                value={selectedDate}
-                onChange={(e) => setSelectedDate(e.target.value)}
-                className="w-full rounded-lg border border-neutral-300 px-4 py-2 focus-ring-brand"
-                required
-              />
-            </div>
-            <div className="flex gap-3">
-              <Button type="submit" disabled={!selectedDate} className="flex-1">
-                تأكيد التعديل
-              </Button>
-              <Button type="button" onClick={onCancel} className="flex-1" variant="secondary">
-                إلغاء
-              </Button>
-            </div>
-          </form>
-        </div>
-      </div>
-    </div>
   )
 }
