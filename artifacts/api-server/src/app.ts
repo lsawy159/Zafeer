@@ -1,30 +1,29 @@
 import express, { type Express } from "express";
 import cors from "cors";
-import pinoHttp from "pino-http";
+import pinoHttp, { type Options as PinoHttpOptions } from "pino-http";
 import router from "./routes";
 import { logger } from "./lib/logger";
 
 const app: Express = express();
 
-app.use(
-  pinoHttp({
-    logger,
-    serializers: {
-      req(req) {
-        return {
-          id: req.id,
-          method: req.method,
-          url: req.url?.split("?")[0],
-        };
-      },
-      res(res) {
-        return {
-          statusCode: res.statusCode,
-        };
-      },
+const pinoHttpOpts: PinoHttpOptions = {
+  logger,
+  serializers: {
+    req(req: { id: string; method: string; url?: string }) {
+      return {
+        id: req.id,
+        method: req.method,
+        url: req.url?.split("?")[0],
+      };
     },
-  }),
-);
+    res(res: { statusCode: number }) {
+      return {
+        statusCode: res.statusCode,
+      };
+    },
+  },
+};
+app.use(pinoHttp(pinoHttpOpts));
 
 const allowedOrigins = process.env.ALLOWED_ORIGINS?.split(",").map((o) => o.trim()).filter(Boolean) ?? [];
 if (process.env.NODE_ENV === "production" && allowedOrigins.length === 0) {
