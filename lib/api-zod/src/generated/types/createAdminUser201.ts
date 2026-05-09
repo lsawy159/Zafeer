@@ -5,7 +5,8 @@
  * Zafeer HR Management API — privileged admin operations via Supabase Admin SDK
  * OpenAPI spec version: 0.2.0
  */
+import type { UserProfile } from './userProfile';
 
-export interface HealthStatus {
-  status: string;
-}
+export type CreateAdminUser201 = {
+  user: UserProfile;
+};
