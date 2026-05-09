@@ -83,3 +83,6 @@ desktop.ini
 /test-results
 /blob-report
 /playwright/.cache
+
+.vercel
+.env*.local
