@@ -2,14 +2,17 @@ openapi: 3.1.0
 info:
   # Do not change the title, if the title changes, the import paths will be broken
   title: Api
-  version: 0.1.0
-  description: API specification
+  version: 0.2.0
+  description: Zafeer HR Management API — privileged admin operations via Supabase Admin SDK
 servers:
   - url: /api
     description: Base API path
 tags:
   - name: health
     description: Health operations
+  - name: admin-users
+    description: User management (admin only)
+
 paths:
   /healthz:
     get:
@@ -24,13 +27,404 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+
+  /admin/users:
+    get:
+      operationId: listAdminUsers
+      tags: [admin-users]
+      summary: List all users
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: List of users
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  users:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/UserProfile"
+                required: [users]
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+    post:
+      operationId: createAdminUser
+      tags: [admin-users]
+      summary: Create a new user
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateUserRequest"
+      responses:
+        "201":
+          description: User created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  user:
+                    $ref: "#/components/schemas/UserProfile"
+                required: [user]
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+  /admin/users/{id}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+
+    patch:
+      operationId: updateAdminUser
+      tags: [admin-users]
+      summary: Update a user
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateUserRequest"
+      responses:
+        "200":
+          description: User updated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  user:
+                    $ref: "#/components/schemas/UserProfile"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+    delete:
+      operationId: deleteAdminUser
+      tags: [admin-users]
+      summary: Delete a user
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: User deleted
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                required: [success]
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
 components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  responses:
+    BadRequest:
+      description: Invalid request body or parameters
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+    Unauthorized:
+      description: Missing or invalid authentication token
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+    Forbidden:
+      description: Insufficient permissions (admin required)
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+
   schemas:
+    # ── Utility ───────────────────────────────────────────────────────────────
     HealthStatus:
       type: object
       properties:
         status:
           type: string
-      required:
-        - status
+      required: [status]
 
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: string
+      required: [error]
+
+    # ── Users ─────────────────────────────────────────────────────────────────
+    UserRole:
+      type: string
+      enum: [admin, manager, user]
+
+    UserProfile:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        email:
+          type: string
+          format: email
+        username:
+          type: string
+          nullable: true
+        full_name:
+          type: string
+        role:
+          $ref: "#/components/schemas/UserRole"
+        permissions:
+          type: array
+          items:
+            type: string
+        is_active:
+          type: boolean
+        created_at:
+          type: string
+          format: date-time
+        last_login:
+          type: string
+          format: date-time
+          nullable: true
+      required: [id, email, full_name, role, permissions, is_active, created_at]
+
+    CreateUserRequest:
+      type: object
+      properties:
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+          minLength: 8
+        full_name:
+          type: string
+          minLength: 1
+        role:
+          type: string
+          enum: [manager, user]
+          default: user
+        permissions:
+          type: array
+          items:
+            type: string
+          default: []
+      required: [email, password, full_name]
+
+    UpdateUserRequest:
+      type: object
+      properties:
+        full_name:
+          type: string
+          minLength: 1
+        role:
+          type: string
+          enum: [manager, user]
+        permissions:
+          type: array
+          items:
+            type: string
+        is_active:
+          type: boolean
+        password:
+          type: string
+          minLength: 8
+
+    # ── Domain Schemas (read-only reference — Supabase SDK handles CRUD) ──────
+    Company:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        unified_number:
+          type: integer
+          nullable: true
+        commercial_registration_expiry:
+          type: string
+          format: date
+          nullable: true
+        commercial_registration_status:
+          type: string
+          nullable: true
+        social_insurance_number:
+          type: string
+          nullable: true
+        social_insurance_expiry:
+          type: string
+          format: date
+          nullable: true
+        ending_subscription_power_date:
+          type: string
+          format: date
+          nullable: true
+        ending_subscription_moqeem_date:
+          type: string
+          format: date
+          nullable: true
+        ending_subscription_insurance_date:
+          type: string
+          format: date
+          nullable: true
+        employee_count:
+          type: integer
+          nullable: true
+        max_employees:
+          type: integer
+          nullable: true
+        company_type:
+          type: string
+          nullable: true
+        notes:
+          type: string
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+      required: [id, name, created_at, updated_at]
+
+    Employee:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        company_id:
+          type: string
+          format: uuid
+        project_id:
+          type: string
+          format: uuid
+          nullable: true
+        name:
+          type: string
+        profession:
+          type: string
+          nullable: true
+        nationality:
+          type: string
+          nullable: true
+        birth_date:
+          type: string
+          format: date
+          nullable: true
+        phone:
+          type: string
+          nullable: true
+        passport_number:
+          type: string
+          nullable: true
+        residence_number:
+          type: integer
+          nullable: true
+        joining_date:
+          type: string
+          format: date
+          nullable: true
+        contract_expiry:
+          type: string
+          format: date
+          nullable: true
+        hired_worker_contract_expiry:
+          type: string
+          format: date
+          nullable: true
+        residence_expiry:
+          type: string
+          format: date
+          nullable: true
+        health_insurance_expiry:
+          type: string
+          format: date
+          nullable: true
+        salary:
+          type: number
+          nullable: true
+        is_deleted:
+          type: boolean
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+      required: [id, company_id, name, is_deleted, created_at, updated_at]
+
+    Project:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        description:
+          type: string
+          nullable: true
+        status:
+          type: string
+          enum: [active, inactive, completed]
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+      required: [id, name, status, created_at, updated_at]
+
+    ObligationType:
+      type: string
+      enum: [transfer, renewal, penalty, advance, other]
+
+    PayrollScopeType:
+      type: string
+      enum: [company, project]

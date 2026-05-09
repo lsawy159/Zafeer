@@ -3,8 +3,8 @@ import { createClient, type SupabaseClient } from '@supabase/supabase-js'
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY
 
-// T-410: Use sessionStorage for JWT tokens (tab close = logout)
-// sessionStorage is cleared when the tab/window closes, improving security
+// T-410: tab close = logout — sessionStorage بدلاً من localStorage
+// persistSession: false لأن sessionStorage تنتهي بإغلاق التبويب (لا حاجة لـ persist)
 const sessionStorageAdapter = {
   getItem: (key: string) => sessionStorage.getItem(key),
   setItem: (key: string, value: string) => sessionStorage.setItem(key, value),
@@ -33,7 +33,7 @@ if (!supabaseUrl || !supabaseAnonKey) {
     auth: {
       storage: sessionStorageAdapter,
       autoRefreshToken: true,
-      persistSession: true,
+      persistSession: false,
       detectSessionInUrl: true,
     },
   })
@@ -181,7 +181,6 @@ export interface PayrollRun {
   scope_id: string
   input_mode: PayrollInputMode
   status: PayrollRunStatus
-  uploaded_file_path?: string | null
   notes?: string | null
   created_by_user_id?: string | null
   approved_by_user_id?: string | null
@@ -233,7 +232,6 @@ export interface PayrollSlip {
   id: string
   payroll_entry_id: string
   slip_number: string
-  storage_path?: string | null
   template_version: string
   snapshot_data: Record<string, unknown>
   generated_at?: string | null

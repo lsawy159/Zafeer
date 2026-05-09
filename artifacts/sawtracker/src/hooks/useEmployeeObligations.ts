@@ -532,7 +532,7 @@ export function useBulkCreatePenaltyPlans() {
 
   return useMutation({
     mutationFn: async (inputs: BulkPenaltyPlanInput[]): Promise<BulkCreatePenaltyPlansResult> => {
-      if (inputs.length === 0) return { success_count: 0, error_count: 0 }
+      if (inputs.length === 0) return { success_count: 0, error_count: 0, employee_ids: [] }
 
       // ① Batch-insert all obligation headers in a single round-trip
       const { data: headers, error: headersError } = await supabase
@@ -559,7 +559,7 @@ export function useBulkCreatePenaltyPlans() {
 
       const headerList = (headers ?? []) as { id: string; employee_id: string }[]
       if (headerList.length === 0) {
-        return { success_count: 0, error_count: inputs.length }
+        return { success_count: 0, error_count: inputs.length, employee_ids: [] }
       }
 
       // Build a lookup: employee_id → input (unique per batch)

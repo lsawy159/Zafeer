@@ -173,8 +173,8 @@ export default function CompanyDetailModal({
                   available_slots: company.available_slots,
                   max_employees: company.max_employees || 4,
                 }}
-                onEdit={onEdit}
-                onDelete={onDelete}
+                onEdit={onEdit ?? (() => {})}
+                onDelete={onDelete ?? (() => {})}
                 getAvailableSlotsColor={getAvailableSlotsColor}
                 getAvailableSlotsTextColor={getAvailableSlotsTextColor}
                 getAvailableSlotsText={getAvailableSlotsText}

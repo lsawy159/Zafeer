@@ -1,3 +1,4 @@
+import React from 'react'
 import { X, AlertCircle } from 'lucide-react'
 import { ActivityLog, User } from '@/lib/supabase'
 import { HijriDateDisplay } from '@/components/ui/HijriDateDisplay'
@@ -14,11 +15,11 @@ interface LogDetailsModalProps {
     badge: string
     icon: string
   }
-  getActionIcon: (action: string) => JSX.Element
+  getActionIcon: (action: string) => React.JSX.Element
   getActionLabel: (action: string) => string
   getEntityLabel: (entity: string) => string
   formatDateTimeWithHijri: (date: string) => string
-  generateActivityDescription: (log: ActivityLog) => string | JSX.Element
+  generateActivityDescription: (log: ActivityLog) => string | React.JSX.Element
 }
 
 // Helper functions for processing update details
@@ -121,7 +122,7 @@ export function LogDetailsModal(props: LogDetailsModalProps) {
   if (!open || !log) return null
 
   // Function to render update details with diff
-  const renderUpdateDetails = (): JSX.Element | null => {
+  const renderUpdateDetails = (): React.JSX.Element | null => {
     const action = log.action.toLowerCase()
 
     // Only show diff for update actions

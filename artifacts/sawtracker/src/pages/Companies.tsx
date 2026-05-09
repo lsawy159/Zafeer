@@ -259,11 +259,12 @@ export default function Companies() {
       logger.debug(`Successfully loaded ${companiesWithCount.length} companies`)
     } catch (error) {
       logger.error('Critical error in loadCompanies:', error)
+      const errObj = error as Record<string, unknown>
       console.error('❌ [DEBUG] Error details:', {
-        message: error?.message,
-        code: error?.code,
-        details: error?.details,
-        hint: error?.hint,
+        message: errObj?.message,
+        code: errObj?.code,
+        details: errObj?.details,
+        hint: errObj?.hint,
       })
 
       // في حالة الخطأ، قم بمسح البيانات وتعيين قائمة فارغة
@@ -530,7 +531,7 @@ export default function Companies() {
     if (!openId) return
     const company = companies.find((c) => c.id === openId)
     if (company) {
-      setSelectedCompanyForDetail(company as Company)
+      setSelectedCompanyForDetail(company)
       setShowCompanyDetailModal(true)
       openCompanyHandledRef.current = true
     }
@@ -1000,7 +1001,7 @@ export default function Companies() {
           className="mb-6"
           actions={
             canCreate('companies') ? (
-              <Button onClick={handleAddCompany} variant="success">
+              <Button onClick={handleAddCompany} variant="default">
                 <Building2 className="w-4 h-4" />
                 إضافة مؤسسة
               </Button>
@@ -1021,9 +1022,9 @@ export default function Companies() {
               companies.map((c) => ({
                 id: c.id,
                 name: c.name,
-                commercial_registration_expiry: c.commercial_registration_expiry,
-                ending_subscription_power_date: c.ending_subscription_power_date,
-                ending_subscription_moqeem_date: c.ending_subscription_moqeem_date,
+                commercial_registration_expiry: c.commercial_registration_expiry ?? null,
+                ending_subscription_power_date: c.ending_subscription_power_date ?? null,
+                ending_subscription_moqeem_date: c.ending_subscription_moqeem_date ?? null,
               }))
             )
             return (

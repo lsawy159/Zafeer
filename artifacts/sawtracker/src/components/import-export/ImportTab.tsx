@@ -1652,6 +1652,96 @@ export default function ImportTab({
         // تهيئة شريط التقدم
         setImportProgress({ current: 0, total: totalItems })
 
+        // [PERF] Batch insert state — نجمع الموظفين الجدد ونرسلهم دفعات
+        const INSERT_BATCH_SIZE = 100
+        const pendingInserts: Record<string, unknown>[] = []
+        const flushInsertBatch = async () => {
+          if (pendingInserts.length === 0) return
+          const batch = pendingInserts.splice(0, pendingInserts.length)
+          const { data: inserted, error: batchError } = await supabase
+            .from('employees')
+            .insert(batch)
+            .select('id, residence_number')
+
+          if (batchError) {
+            // Fallback: insert one-by-one to handle race conditions / individual failures
+            for (const row of batch) {
+              try {
+                const { data: single, error: singleErr } = await supabase
+                  .from('employees')
+                  .insert(row)
+                  .select('id, residence_number')
+                  .single()
+                if (singleErr) {
+                  if (singleErr.code === '23505') {
+                    const rn = (row.residence_number as { toString?: () => string })?.toString?.()?.trim()
+                    if (rn) {
+                      const { data: existing } = await supabase
+                        .from('employees')
+                        .select('id')
+                        .eq('residence_number', rn)
+                        .single()
+                      if (existing) {
+                        const cleaned = cleanEmployeeDataForUpdate(row)
+                        const { error: updErr } = await supabase
+                          .from('employees')
+                          .update(cleaned)
+                          .eq('id', existing.id)
+                        if (updErr) failCount++
+                        else successCount++
+                        continue
+                      }
+                    }
+                  }
+                  console.error('Single-row insert failed:', singleErr)
+                  failCount++
+                } else if (single) {
+                  successCount++
+                  const rn = single.residence_number?.toString().trim()
+                  if (rn) existingEmployeesByResidenceNumber.set(rn, single.id)
+                  setImportedIds((prev) => {
+                    const updated = { ...prev, employees: [...prev.employees, single.id] }
+                    importedIdsRef.current = updated
+                    return updated
+                  })
+                }
+              } catch (e) {
+                console.error('Single-row insert exception:', e)
+                failCount++
+              }
+            }
+          } else if (inserted && inserted.length > 0) {
+            successCount += inserted.length
+            inserted.forEach((emp) => {
+              const rn = emp.residence_number?.toString().trim()
+              if (rn) existingEmployeesByResidenceNumber.set(rn, emp.id)
+            })
+            setImportedIds((prev) => {
+              const updated = {
+                ...prev,
+                employees: [...prev.employees, ...inserted.map((e) => e.id)],
+              }
+              importedIdsRef.current = updated
+              return updated
+            })
+          }
+        }
+        // تعريف cleanEmployeeDataForUpdate خارج الحلقة عشان flushInsertBatch يقدر يستخدمها
+        const cleanEmployeeDataForUpdate = (
+          data: Record<string, unknown>
+        ): Record<string, unknown> => {
+          const cleaned: Record<string, unknown> = {}
+          const requiredFields = ['name', 'residence_number', 'company_id']
+          Object.keys(data).forEach((key) => {
+            if (requiredFields.includes(key)) {
+              cleaned[key] = data[key]
+            } else if (data[key] !== null && data[key] !== undefined) {
+              cleaned[key] = data[key]
+            }
+          })
+          return cleaned
+        }
+
         let currentIndex = 0
         for (const row of uniqueJsonData as Record<string, unknown>[]) {
           // التحقق من حالة الإلغاء
@@ -1857,29 +1947,6 @@ export default function ImportTab({
               employeeData.health_insurance_expiry = normalizeDate(String(healthInsuranceExpiry))
             }
 
-            // دالة لتنظيف البيانات قبل التحديث - إزالة الحقول null/undefined للحفاظ على القيم الموجودة
-            const cleanEmployeeDataForUpdate = (
-              data: Record<string, unknown>
-            ): Record<string, unknown> => {
-              const cleaned: Record<string, unknown> = {}
-              // قائمة الحقول المطلوبة التي يجب الحفاظ عليها حتى لو كانت null
-              const requiredFields = ['name', 'residence_number', 'company_id']
-
-              Object.keys(data).forEach((key) => {
-                // الحفاظ على الحقول المطلوبة دائماً
-                if (requiredFields.includes(key)) {
-                  cleaned[key] = data[key]
-                }
-                // للحقول الأخرى: الحفاظ عليها فقط إذا لم تكن null/undefined
-                else if (data[key] !== null && data[key] !== undefined) {
-                  cleaned[key] = data[key]
-                }
-                // للحقول التواريخ: إذا كانت null، لا نضيفها (للحفاظ على القيم الموجودة في DB)
-                // (لا نحتاج إلى فعل شيء هنا لأننا نتحقق من null/undefined أعلاه)
-              })
-              return cleaned
-            }
-
             // Check if residence number already exists - update instead of insert
             const residenceNumberStr = employeeData.residence_number?.toString().trim()
 
@@ -1940,72 +2007,24 @@ export default function ImportTab({
                   }
                 )
               }
-              const { error: insertError } = await supabase.from('employees').insert(employeeData)
-              if (insertError) {
-                // Check if error is due to duplicate residence number (race condition)
-                if (
-                  insertError.code === '23505' ||
-                  insertError.message?.includes('unique') ||
-                  insertError.message?.includes('duplicate')
-                ) {
-                  // Try to update instead
-                  if (residenceNumberStr) {
-                    const { data: existingEmp } = await supabase
-                      .from('employees')
-                      .select('id')
-                      .eq('residence_number', residenceNumberStr)
-                      .single()
-
-                    if (existingEmp) {
-                      // تنظيف البيانات قبل التحديث
-                      const cleanedEmployeeData = cleanEmployeeDataForUpdate(employeeData)
-                      const { error: updateError } = await supabase
-                        .from('employees')
-                        .update(cleanedEmployeeData)
-                        .eq('id', existingEmp.id)
-
-                      if (updateError) throw updateError
-                    } else {
-                      throw insertError
-                    }
-                  } else {
-                    throw insertError
-                  }
-                } else {
-                  throw insertError
-                }
-              } else {
-                // Add to map for future checks in same batch and track for rollback
-                if (residenceNumberStr) {
-                  const { data: newEmp } = await supabase
-                    .from('employees')
-                    .select('id, residence_number')
-                    .eq('residence_number', residenceNumberStr)
-                    .single()
-
-                  if (newEmp) {
-                    existingEmployeesByResidenceNumber.set(residenceNumberStr, newEmp.id)
-                    // تتبع ID للموظف المضاف (لحذفه عند الإلغاء)
-                    setImportedIds((prev) => {
-                      const updated = {
-                        ...prev,
-                        employees: [...prev.employees, newEmp.id],
-                      }
-                      importedIdsRef.current = updated
-                      return updated
-                    })
-                  }
-                }
+              // [PERF] Push to batch instead of immediate INSERT
+              pendingInserts.push(employeeData)
+              if (pendingInserts.length >= INSERT_BATCH_SIZE) {
+                await flushInsertBatch()
               }
+              // ملاحظة: successCount يُحسب في flushInsertBatch للـ INSERTs
+              continue
             }
 
-            // إذا كان التحديث، لا نضيف ID لأننا لا نريد حذف السجلات المحدثة
+            // إذا وصلنا هنا فهي عملية UPDATE ناجحة
             successCount++
           } catch (error) {
             console.error('Error inserting employee:', error)
             failCount++
           }
         }
+        // [PERF] Flush remaining INSERTs after the loop
+        await flushInsertBatch()
       } else if (importType === 'companies') {
         // تحديد العدد الإجمالي للعناصر المستوردة
         const totalItems = jsonData.length
@@ -2026,6 +2045,79 @@ export default function ImportTab({
             companiesByUnifiedNumber.set(Number(company.unified_number), company.id)
           }
         })
+
+        // [PERF] Batch insert state for companies
+        const COMPANY_INSERT_BATCH_SIZE = 100
+        const pendingCompanyInserts: Record<string, unknown>[] = []
+        const flushCompanyInsertBatch = async () => {
+          if (pendingCompanyInserts.length === 0) return
+          const batch = pendingCompanyInserts.splice(0, pendingCompanyInserts.length)
+          const { data: inserted, error: batchError } = await supabase
+            .from('companies')
+            .insert(batch)
+            .select('id, unified_number')
+
+          if (batchError) {
+            // Fallback: per-row inserts to handle race conditions
+            for (const row of batch) {
+              try {
+                const { data: single, error: singleErr } = await supabase
+                  .from('companies')
+                  .insert(row)
+                  .select('id, unified_number')
+                  .single()
+                if (singleErr) {
+                  if (singleErr.code === '23505' && row.unified_number) {
+                    const { data: found } = await supabase
+                      .from('companies')
+                      .select('id')
+                      .eq('unified_number', row.unified_number)
+                      .single()
+                    if (found) {
+                      const { error: updErr } = await supabase
+                        .from('companies')
+                        .update(row)
+                        .eq('id', found.id)
+                      if (updErr) failCount++
+                      else successCount++
+                      continue
+                    }
+                  }
+                  console.error('Single company insert failed:', singleErr)
+                  failCount++
+                } else if (single) {
+                  successCount++
+                  if (single.unified_number) {
+                    companiesByUnifiedNumber.set(Number(single.unified_number), single.id)
+                  }
+                  setImportedIds((prev) => {
+                    const updated = { ...prev, companies: [...prev.companies, single.id] }
+                    importedIdsRef.current = updated
+                    return updated
+                  })
+                }
+              } catch (e) {
+                console.error('Single company insert exception:', e)
+                failCount++
+              }
+            }
+          } else if (inserted && inserted.length > 0) {
+            successCount += inserted.length
+            inserted.forEach((c) => {
+              if (c.unified_number) {
+                companiesByUnifiedNumber.set(Number(c.unified_number), c.id)
+              }
+            })
+            setImportedIds((prev) => {
+              const updated = {
+                ...prev,
+                companies: [...prev.companies, ...inserted.map((c) => c.id)],
+              }
+              importedIdsRef.current = updated
+              return updated
+            })
+          }
+        }
 
         let currentIndex = 0
         for (const row of jsonData as Record<string, unknown>[]) {
@@ -2077,68 +2169,22 @@ export default function ImportTab({
 
               if (updateError) throw updateError
             } else {
-              // Insert new company
-              const { error: insertError } = await supabase.from('companies').insert(companyData)
-              if (insertError) {
-                // تكرار محتمل بسبب الرقم الموحد فقط
-                if (
-                  insertError.code === '23505' ||
-                  insertError.message?.includes('unique') ||
-                  insertError.message?.includes('duplicate')
-                ) {
-                  if (companyData.unified_number) {
-                    const { data: foundCompany } = await supabase
-                      .from('companies')
-                      .select('id')
-                      .eq('unified_number', companyData.unified_number)
-                      .single()
-                    if (foundCompany) {
-                      const { error: updateError } = await supabase
-                        .from('companies')
-                        .update(companyData)
-                        .eq('id', foundCompany.id)
-                      if (updateError) throw updateError
-                    } else {
-                      throw insertError
-                    }
-                  } else {
-                    throw insertError
-                  }
-                } else {
-                  throw insertError
-                }
-              } else {
-                // Add to maps for future checks in same batch
-                // Try to find the newly inserted company by its unique identifiers
-                if (companyData.unified_number) {
-                  const { data: newCompany } = await supabase
-                    .from('companies')
-                    .select('id, unified_number')
-                    .eq('unified_number', companyData.unified_number)
-                    .single()
-
-                  if (newCompany) {
-                    companiesByUnifiedNumber.set(Number(newCompany.unified_number), newCompany.id)
-                    // تتبع ID للشركة المضافة (لحذفها عند الإلغاء)
-                    setImportedIds((prev) => {
-                      const updated = {
-                        ...prev,
-                        companies: [...prev.companies, newCompany.id],
-                      }
-                      importedIdsRef.current = updated
-                      return updated
-                    })
-                  }
-                }
+              // [PERF] Push to batch instead of immediate INSERT
+              pendingCompanyInserts.push(companyData)
+              if (pendingCompanyInserts.length >= COMPANY_INSERT_BATCH_SIZE) {
+                await flushCompanyInsertBatch()
               }
+              continue
             }
-            // إذا كان التحديث، لا نضيف ID لأننا لا نريد حذف السجلات المحدثة
+            // إذا وصلنا هنا فهي عملية UPDATE ناجحة
             successCount++
           } catch (error) {
             console.error('Error inserting/updating company:', error)
             failCount++
           }
         }
+        // [PERF] Flush remaining company INSERTs after the loop
+        await flushCompanyInsertBatch()
       }
 
       // التحقق من حالة الإلغاء

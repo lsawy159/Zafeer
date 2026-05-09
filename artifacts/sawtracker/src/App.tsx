@@ -1,5 +1,6 @@
 import { ReactNode, Suspense, lazy } from 'react'
 import { BrowserRouter, Routes, Route, Navigate, useLocation, Outlet } from 'react-router-dom'
+import NotFound from './pages/not-found'
 import { QueryClientProvider } from '@tanstack/react-query'
 import { AuthProvider, useAuth } from './contexts/AuthContext'
 import { Toaster } from 'sonner'
@@ -48,7 +49,6 @@ const Alerts = lazy(() => import('./pages/Alerts'))
 const Reports = lazy(() => import('./pages/Reports'))
 const PayrollDeductions = lazy(() => import('./pages/PayrollDeductions'))
 const ImportExport = lazy(() => import('./pages/ImportExport'))
-const DesignSystem = lazy(() => import('./pages/DesignSystem'))
 const AdvancedSearch = lazy(() => import('./pages/AdvancedSearch'))
 const GeneralSettings = lazy(() => import('./pages/GeneralSettings'))
 
@@ -129,41 +129,41 @@ function AppRoutes() {
           <Route
             path="/employees"
             element={
-              <Suspense fallback={<PageLoader />}>
+              <RouteGuard>
                 <Employees />
-              </Suspense>
+              </RouteGuard>
             }
           />
           <Route
             path="/companies"
             element={
-              <Suspense fallback={<PageLoader />}>
+              <RouteGuard>
                 <Companies />
-              </Suspense>
+              </RouteGuard>
             }
           />
           <Route
             path="/projects"
             element={
-              <Suspense fallback={<PageLoader />}>
+              <RouteGuard>
                 <Projects />
-              </Suspense>
+              </RouteGuard>
             }
           />
           <Route
             path="/transfer-procedures"
             element={
-              <Suspense fallback={<PageLoader />}>
+              <RouteGuard>
                 <TransferProcedures />
-              </Suspense>
+              </RouteGuard>
             }
           />
           <Route
             path="/advanced-search"
             element={
-              <Suspense fallback={<PageLoader />}>
+              <RouteGuard>
                 <AdvancedSearch />
-              </Suspense>
+              </RouteGuard>
             }
           />
           <Route
@@ -177,9 +177,9 @@ function AppRoutes() {
           <Route
             path="/admin-settings"
             element={
-              <Suspense fallback={<PageLoader />}>
+              <RouteGuard>
                 <GeneralSettings />
-              </Suspense>
+              </RouteGuard>
             }
           />
           <Route path="/backup-settings" element={<Navigate to="/admin-settings?tab=backup" replace />} />
@@ -187,33 +187,33 @@ function AppRoutes() {
           <Route
             path="/notifications"
             element={
-              <Suspense fallback={<PageLoader />}>
+              <RouteGuard>
                 <Notifications />
-              </Suspense>
+              </RouteGuard>
             }
           />
           <Route
             path="/alerts"
             element={
-              <Suspense fallback={<PageLoader />}>
+              <RouteGuard>
                 <Alerts />
-              </Suspense>
+              </RouteGuard>
             }
           />
           <Route
             path="/reports"
             element={
-              <Suspense fallback={<PageLoader />}>
+              <RouteGuard>
                 <Reports />
-              </Suspense>
+              </RouteGuard>
             }
           />
           <Route
             path="/payroll-deductions"
             element={
-              <Suspense fallback={<PageLoader />}>
+              <RouteGuard>
                 <PayrollDeductions />
-              </Suspense>
+              </RouteGuard>
             }
           />
           <Route
@@ -223,20 +223,11 @@ function AppRoutes() {
           <Route
             path="/import-export"
             element={
-              <Suspense fallback={<PageLoader />}>
+              <RouteGuard>
                 <ImportExport />
-              </Suspense>
+              </RouteGuard>
             }
           />
-          <Route
-            path="/design-system"
-            element={
-              <Suspense fallback={<PageLoader />}>
-                <DesignSystem />
-              </Suspense>
-            }
-          />
-
           {/* Legacy redirects */}
           <Route path="/email-management" element={<Navigate to="/admin-settings?tab=backup" replace />} />
           <Route
@@ -254,6 +245,7 @@ function AppRoutes() {
 
         {/* Fallback */}
         <Route path="/" element={<Navigate to="/dashboard" replace />} />
+        <Route path="*" element={<NotFound />} />
       </Routes>
     </div>
   )
@@ -265,12 +257,7 @@ function App() {
 
   return (
     <QueryClientProvider client={queryClient}>
-      <BrowserRouter
-        future={{
-          v7_startTransition: true,
-          v7_relativeSplatPath: true,
-        }}
-      >
+      <BrowserRouter>
         <AuthProvider>
           <Toaster position="top-center" richColors />
           <AppRoutes />

@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import React, { useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
 import { Button } from '@/components/ui/Button'
@@ -311,7 +311,7 @@ function StatCard({
 
 // ─── Main Component ────────────────────────────────────────────────────────────
 
-export function BackupTab(): JSX.Element {
+export function BackupTab(): React.JSX.Element {
   const qc = useQueryClient()
   const [downloadingId, setDownloadingId] = useState<string | null>(null)
 

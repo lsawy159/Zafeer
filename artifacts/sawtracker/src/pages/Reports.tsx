@@ -437,7 +437,7 @@ export default function Reports() {
                 تحديث البيانات
               </Button>
               {canExport('reports') && (
-                <Button onClick={exportExpiryReportToExcel} variant="success">
+                <Button onClick={exportExpiryReportToExcel} variant="default">
                   <Download className="w-4 h-4" />
                   تصدير Excel
                 </Button>
