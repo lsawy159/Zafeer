@@ -3,9 +3,11 @@
   "version": "0.0.0",
   "private": true,
   "scripts": {
-    "codegen": "orval --config ./orval.config.ts && pnpm -w run typecheck:libs"
+    "codegen": "orval --config ./orval.config.ts && pnpm -w run typecheck:libs",
+    "lint": "redocly lint openapi.yaml"
   },
   "devDependencies": {
+    "@redocly/cli": "^1.34.1",
     "orval": "^8.5.2"
   }
 }
