@@ -1,0 +1,12 @@
+node_modules
+.git
+.claude
+.local
+specs
+artifacts/mockup-sandbox
+artifacts/sawtracker
+artifacts/api-server/dist
+*.md
+.env
+.env.*
+!.env.example
