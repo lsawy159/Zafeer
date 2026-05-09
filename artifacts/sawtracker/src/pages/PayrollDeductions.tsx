@@ -97,6 +97,22 @@ import AddObligationDialog from './payroll/AddObligationDialog'
 import CreatePayrollRunModal from './payroll/CreatePayrollRunModal'
 import ObligationDetailModal from './payroll/ObligationDetailModal'
 import PayrollSlipModal from './payroll/PayrollSlipModal'
+import {
+  compactButtonBaseClass,
+  outlineCompactButtonClass,
+  primaryCompactButtonClass,
+  successCompactButtonClass,
+  indigoCompactButtonClass,
+  slateCompactButtonClass,
+  warningCompactButtonClass,
+  orangeCompactButtonClass,
+  dangerCompactButtonClass,
+  payrollFieldInputClass,
+  payrollReadonlyFieldClass,
+  payrollRunSectionClass,
+  payrollRunStatCardClass,
+  payrollRunListCardClass,
+} from './payroll/payrollStyles'
 
 export default function PayrollDeductions() {
   const { canEdit, canDelete, canExport, canView, isAdmin } = usePermissions()
@@ -954,27 +970,6 @@ export default function PayrollDeductions() {
       toast.error(err instanceof Error ? err.message : 'فشل تحديث السداد')
     }
   }
-
-  const compactButtonBaseClass =
-    'h-9 px-3 text-sm font-medium rounded-lg transition inline-flex items-center justify-center gap-1.5 disabled:opacity-60 disabled:cursor-not-allowed'
-  const outlineCompactButtonClass = `${compactButtonBaseClass} bg-surface border border-border-300 text-foreground-secondary hover:bg-surface-secondary-50`
-  const primaryCompactButtonClass = `${compactButtonBaseClass} bg-primary text-foreground hover:bg-[#e2b800]`
-  const successCompactButtonClass = `${compactButtonBaseClass} bg-green-600 text-white hover:bg-green-700`
-  const indigoCompactButtonClass = `${compactButtonBaseClass} bg-indigo-600 text-white hover:bg-indigo-700`
-  const slateCompactButtonClass = `${compactButtonBaseClass} bg-surface-secondary-600 text-white hover:bg-surface-secondary-700`
-  const warningCompactButtonClass = `${compactButtonBaseClass} bg-amber-600 text-white hover:bg-amber-700`
-  const orangeCompactButtonClass = `${compactButtonBaseClass} bg-orange-600 text-white hover:bg-orange-700`
-  const dangerCompactButtonClass = `${compactButtonBaseClass} bg-red-600 text-white hover:bg-red-700`
-  const payrollFieldInputClass =
-    'w-full rounded-xl border border-border-300 bg-surface px-3 py-2.5 text-sm text-foreground shadow-sm transition placeholder:text-foreground-tertiary focus:border-sky-400 focus:outline-none focus:ring-4 focus:ring-sky-100'
-  const payrollReadonlyFieldClass =
-    'w-full rounded-xl border border-border-200 bg-surface-secondary-50 px-3 py-2.5 text-sm text-foreground-secondary shadow-sm'
-  const payrollRunSectionClass =
-    'rounded-[28px] border border-border-200 bg-gradient-to-br from-surface via-surface to-surface-secondary-50 shadow-sm'
-  const payrollRunStatCardClass =
-    'relative overflow-hidden rounded-2xl border border-border-200 bg-gradient-to-br from-surface via-surface to-surface-secondary-50 p-4 md:p-5 shadow-sm'
-  const payrollRunListCardClass =
-    'group rounded-2xl border border-border-200 bg-gradient-to-br from-surface via-surface to-surface-secondary-50 p-4 transition duration-200 hover:-translate-y-0.5 hover:border-sky-200 hover:shadow-md'
 
   useEffect(() => {
     const firstId = scopeOptions[0]?.id

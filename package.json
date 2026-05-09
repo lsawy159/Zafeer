@@ -7,7 +7,8 @@
     "preinstall": "npx only-allow pnpm",
     "build": "pnpm --filter @workspace/sawtracker run build",
     "typecheck:libs": "tsc --build",
-    "typecheck": "pnpm run typecheck:libs && pnpm -r --filter \"./artifacts/**\" --filter \"./scripts\" --if-present run typecheck"
+    "typecheck": "pnpm run typecheck:libs && pnpm -r --filter \"./artifacts/**\" --filter \"./scripts\" --if-present run typecheck",
+    "test:rls": "pnpm --filter @workspace/tests-rls run test"
   },
   "private": true,
   "devDependencies": {

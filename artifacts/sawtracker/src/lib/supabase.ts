@@ -3,8 +3,8 @@ import { createClient, type SupabaseClient } from '@supabase/supabase-js'
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY
 
-// T-410: tab close = logout — sessionStorage بدلاً من localStorage
-// persistSession: false لأن sessionStorage تنتهي بإغلاق التبويب (لا حاجة لـ persist)
+// tab close = logout: sessionStorage مرتبط بالتبويب فقط، يُحذف عند إغلاقه
+// persistSession: true ضروري لكتابة الجلسة إلى storage (بدونه يُتجاهل الـ adapter كلياً)
 const sessionStorageAdapter = {
   getItem: (key: string) => sessionStorage.getItem(key),
   setItem: (key: string, value: string) => sessionStorage.setItem(key, value),
@@ -33,7 +33,7 @@ if (!supabaseUrl || !supabaseAnonKey) {
     auth: {
       storage: sessionStorageAdapter,
       autoRefreshToken: true,
-      persistSession: false,
+      persistSession: true,
       detectSessionInUrl: true,
     },
   })
