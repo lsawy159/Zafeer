@@ -749,7 +749,7 @@ export function usePayrollRuns() {
       const { data: runs, error: runsError } = await supabase
         .from('payroll_runs')
         .select(
-          'id,payroll_month,scope_type,scope_id,input_mode,status,uploaded_file_path,notes,created_by_user_id,approved_by_user_id,created_at,updated_at,approved_at'
+          'id,payroll_month,scope_type,scope_id,input_mode,status,notes,created_by_user_id,approved_by_user_id,created_at,updated_at,approved_at'
         )
         .order('payroll_month', { ascending: false })
         .order('created_at', { ascending: false })
@@ -1016,7 +1016,7 @@ export function useCreatePayrollRun() {
           notes: input.notes ?? null,
         })
         .select(
-          'id,payroll_month,scope_type,scope_id,input_mode,status,uploaded_file_path,notes,created_by_user_id,approved_by_user_id,created_at,updated_at,approved_at'
+          'id,payroll_month,scope_type,scope_id,input_mode,status,notes,created_by_user_id,approved_by_user_id,created_at,updated_at,approved_at'
         )
         .single()
 
@@ -1131,7 +1131,7 @@ export function useUpdatePayrollRunStatus() {
         .update(payload)
         .eq('id', runId)
         .select(
-          'id,payroll_month,scope_type,scope_id,input_mode,status,uploaded_file_path,notes,created_by_user_id,approved_by_user_id,created_at,updated_at,approved_at'
+          'id,payroll_month,scope_type,scope_id,input_mode,status,notes,created_by_user_id,approved_by_user_id,created_at,updated_at,approved_at'
         )
         .single()
 
