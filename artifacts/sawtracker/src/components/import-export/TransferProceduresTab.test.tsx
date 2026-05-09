@@ -1,6 +1,7 @@
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { MemoryRouter } from 'react-router-dom'
 
 import TransferProceduresTab from '@/components/import-export/TransferProceduresTab'
 
@@ -202,7 +203,11 @@ describe('TransferProceduresTab conversion flow', () => {
 
   it('opens employee creation with transfer data then deletes the transfer record and opens financial overlay', async () => {
     const user = userEvent.setup()
-    render(<TransferProceduresTab canImport={false} canExport={false} />)
+    render(
+      <MemoryRouter>
+        <TransferProceduresTab canImport={false} canExport={false} />
+      </MemoryRouter>
+    )
 
     expect(await screen.findByText('أحمد علي')).toBeInTheDocument()
 
