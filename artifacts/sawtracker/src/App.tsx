@@ -129,41 +129,41 @@ function AppRoutes() {
           <Route
             path="/employees"
             element={
-              <Suspense fallback={<PageLoader />}>
+              <RouteGuard>
                 <Employees />
-              </Suspense>
+              </RouteGuard>
             }
           />
           <Route
             path="/companies"
             element={
-              <Suspense fallback={<PageLoader />}>
+              <RouteGuard>
                 <Companies />
-              </Suspense>
+              </RouteGuard>
             }
           />
           <Route
             path="/projects"
             element={
-              <Suspense fallback={<PageLoader />}>
+              <RouteGuard>
                 <Projects />
-              </Suspense>
+              </RouteGuard>
             }
           />
           <Route
             path="/transfer-procedures"
             element={
-              <Suspense fallback={<PageLoader />}>
+              <RouteGuard>
                 <TransferProcedures />
-              </Suspense>
+              </RouteGuard>
             }
           />
           <Route
             path="/advanced-search"
             element={
-              <Suspense fallback={<PageLoader />}>
+              <RouteGuard>
                 <AdvancedSearch />
-              </Suspense>
+              </RouteGuard>
             }
           />
           <Route
@@ -177,9 +177,9 @@ function AppRoutes() {
           <Route
             path="/admin-settings"
             element={
-              <Suspense fallback={<PageLoader />}>
+              <RouteGuard>
                 <GeneralSettings />
-              </Suspense>
+              </RouteGuard>
             }
           />
           <Route path="/backup-settings" element={<Navigate to="/admin-settings?tab=backup" replace />} />
@@ -187,33 +187,33 @@ function AppRoutes() {
           <Route
             path="/notifications"
             element={
-              <Suspense fallback={<PageLoader />}>
+              <RouteGuard>
                 <Notifications />
-              </Suspense>
+              </RouteGuard>
             }
           />
           <Route
             path="/alerts"
             element={
-              <Suspense fallback={<PageLoader />}>
+              <RouteGuard>
                 <Alerts />
-              </Suspense>
+              </RouteGuard>
             }
           />
           <Route
             path="/reports"
             element={
-              <Suspense fallback={<PageLoader />}>
+              <RouteGuard>
                 <Reports />
-              </Suspense>
+              </RouteGuard>
             }
           />
           <Route
             path="/payroll-deductions"
             element={
-              <Suspense fallback={<PageLoader />}>
+              <RouteGuard>
                 <PayrollDeductions />
-              </Suspense>
+              </RouteGuard>
             }
           />
           <Route
@@ -223,9 +223,9 @@ function AppRoutes() {
           <Route
             path="/import-export"
             element={
-              <Suspense fallback={<PageLoader />}>
+              <RouteGuard>
                 <ImportExport />
-              </Suspense>
+              </RouteGuard>
             }
           />
           {/* Legacy redirects */}
