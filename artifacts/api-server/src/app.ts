@@ -1,6 +1,10 @@
 import express, { type Express } from "express";
 import cors from "cors";
-import pinoHttp, { type Options as PinoHttpOptions } from "pino-http";
+import pinoHttpModule from "pino-http";
+import type { Options as PinoHttpOptions, HttpLogger } from "pino-http";
+
+// pino-http uses CJS `export =` — not callable via default import under moduleResolution:bundler
+const pinoHttp = pinoHttpModule as unknown as (opts: PinoHttpOptions) => HttpLogger;
 import router from "./routes";
 import { logger } from "./lib/logger";
 
