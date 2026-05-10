@@ -84,19 +84,17 @@ export function EmployeesFiltersModal({
   onClose,
 }: EmployeesFiltersModalProps) {
   return (
-    <div className="fixed inset-0 z-[100] overflow-y-auto">
-      {/* Backdrop */}
+    <div
+      className="fixed inset-0 z-[100] flex items-end justify-center bg-black/50 p-0 md:items-center md:p-4"
+      onClick={onClose}
+    >
+      {/* Modal Card — stopPropagation يمنع إغلاق المودال عند الضغط داخله */}
       <div
-        className="fixed inset-0 bg-black/50"
-        style={{ contain: 'strict', willChange: 'opacity' }}
-        onClick={onClose}
-      />
-
-      {/* Modal Content */}
-      <div className="fixed inset-0 flex items-end justify-center p-0 md:items-center md:p-4 pointer-events-none">
-        <div className="w-full max-h-[92vh] max-w-4xl overflow-hidden rounded-t-2xl border border-border bg-card shadow-xl motion-safe-enter md:rounded-2xl flex flex-col pointer-events-auto">
+        className="w-full max-h-[92vh] max-w-4xl flex flex-col overflow-hidden rounded-t-2xl border border-border bg-card shadow-xl motion-safe-enter md:rounded-2xl"
+        onClick={(e) => e.stopPropagation()}
+      >
           {/* Modal Header */}
-          <div className="flex items-center justify-between p-6 border-b border-neutral-200">
+          <div className="flex-shrink-0 flex items-center justify-between p-6 border-b border-neutral-200">
             <div>
               <h2 className="text-xl font-bold text-neutral-900">الفلاتر والبحث</h2>
               {activeFiltersCount > 0 && (
@@ -474,7 +472,7 @@ export function EmployeesFiltersModal({
           </div>
 
           {/* Modal Footer */}
-          <div className="flex items-center justify-between border-t border-border bg-muted/30 p-6">
+          <div className="flex-shrink-0 flex items-center justify-between border-t border-border bg-muted/30 p-6">
             <Button
               onClick={clearFilters}
               disabled={activeFiltersCount === 0}
@@ -489,7 +487,6 @@ export function EmployeesFiltersModal({
             </Button>
           </div>
         </div>
-      </div>
     </div>
   )
 }
