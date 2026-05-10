@@ -131,7 +131,7 @@ class SecurityLogger {
         ip_address: entry.ip_address || (this.getClientIP()),
         user_agent: entry.user_agent || navigator.userAgent,
         status: entry.status || 'success',
-        error_message: entry.error_message,
+        ...(entry.error_message ? { details: { error_message: entry.error_message } } : {}),
       }
 
       const { error } = await supabase.from('audit_log').insert(auditEntry)
