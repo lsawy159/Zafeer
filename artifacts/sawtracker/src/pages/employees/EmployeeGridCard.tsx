@@ -93,7 +93,7 @@ export const EmployeeGridCard = memo(function EmployeeGridCard({
           <div className="flex-shrink-0 w-6 h-6 rounded-lg bg-primary/10 flex items-center justify-center">
             <User className="h-3 w-3 text-primary" />
           </div>
-          <h3 className="text-[13px] font-bold text-neutral-900 line-clamp-1 leading-tight">{employee.name}</h3>
+          <h3 className="text-[11px] font-bold text-neutral-900 line-clamp-1 leading-tight">{employee.name}</h3>
         </div>
         <div className="flex gap-0.5 flex-shrink-0" onClick={(e) => e.stopPropagation()}>
           {canEditEmployee && (

@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useAuth } from '@/contexts/AuthContext'
 import { useNavigate } from 'react-router-dom'
-import { LogIn, Eye, EyeOff, Moon, Sun } from 'lucide-react'
+import { Eye, EyeOff, Moon, Sun } from 'lucide-react'
 import { useThemeMode } from '@/hooks/useUiPreferences'
 import { Button } from '@/components/ui/Button'
 
@@ -68,12 +68,10 @@ export default function Login() {
         <div className="mx-auto w-full rounded-[26px] border border-border/80 bg-surface/74 p-4 shadow-[0_35px_120px_-50px_rgba(15,23,42,0.42)] backdrop-blur-xl dark:border-white/10 dark:bg-[var(--color-card)]/60 sm:p-6">
           <div className="rounded-[22px] border border-border/80 bg-surface/95 p-6 shadow-[var(--shadow-xl)] dark:border-white/10 dark:bg-[var(--color-card)]/90 sm:p-7">
             <div className="mb-6 text-center">
-              <div className="mb-4 inline-flex h-16 w-16 items-center justify-center rounded-2xl bg-[var(--color-primary-800)] text-white shadow-[var(--shadow-primary)]">
-                <LogIn className="h-8 w-8" />
+              <div className="mb-2 flex items-center justify-center">
+                <img src="/logo.png" alt="ZaFeer" className="h-16 w-auto dark:hidden" />
+                <img src="/logo-dark.png" alt="ZaFeer" className="h-16 w-auto hidden dark:block" />
               </div>
-              <h1 className="text-3xl font-black tracking-[0.14em] text-foreground dark:text-white">
-                زفير
-              </h1>
             </div>
 
             <form onSubmit={handleSubmit} className="space-y-5">
