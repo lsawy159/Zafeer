@@ -724,15 +724,19 @@ export default function Employees() {
 
   // Virtual grid: tracks container width to calculate columns, renders only visible rows
   const gridContainerRef = useRef<HTMLDivElement>(null)
-  const [gridColumnsCount, setGridColumnsCount] = useState(3)
+  const [gridColumnsCount, setGridColumnsCount] = useState(6)
 
   useEffect(() => {
     const el = gridContainerRef.current
     if (!el) return
     const observer = new ResizeObserver(([entry]) => {
       const width = entry.contentRect.width
-      // 260px min card + 14px gap
-      setGridColumnsCount(Math.max(1, Math.floor((width + 14) / 274)))
+      if (width >= 1200) setGridColumnsCount(6)
+      else if (width >= 1000) setGridColumnsCount(5)
+      else if (width >= 780) setGridColumnsCount(4)
+      else if (width >= 560) setGridColumnsCount(3)
+      else if (width >= 360) setGridColumnsCount(2)
+      else setGridColumnsCount(1)
     })
     observer.observe(el)
     return () => observer.disconnect()
@@ -742,7 +746,7 @@ export default function Employees() {
 
   const gridVirtualizer = useWindowVirtualizer({
     count: viewMode === 'grid' ? gridRowCount : 0,
-    estimateSize: () => 220,
+    estimateSize: () => 165,
     overscan: 2,
     scrollMargin: gridContainerRef.current?.offsetTop ?? 0,
   })
