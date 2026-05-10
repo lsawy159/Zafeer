@@ -1,10 +1,8 @@
 export default {
   ci: {
     collect: {
-      url: ['http://localhost:5173/login', 'http://localhost:5173/employees'],
-      startServerCommand: 'pnpm --filter @workspace/sawtracker run dev',
-      startServerReadyPattern: 'Local.*:5173',
-      startServerReadyTimeout: 30000,
+      staticDistDir: 'artifacts/sawtracker/dist',
+      url: ['/login', '/'],
       numberOfRuns: 1,
     },
     assert: {
