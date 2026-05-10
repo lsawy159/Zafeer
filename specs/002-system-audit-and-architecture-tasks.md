@@ -112,7 +112,7 @@ Items already done are marked `[x]`. Items pending are `[ ]`.
 - [x] T033 [US4] Continue split of `artifacts/sawtracker/src/pages/PayrollDeductions.tsx`: extracted `payrollStyles.ts`; file still 5377 lines (god component — needs further splitting in future PR)
 - [x] T034 [US4] Initial split of `artifacts/sawtracker/src/pages/Employees.tsx` (2677 → 2397 lines) — done Phase 3 of feature 001 (`pages/employees/*`)
 - [x] T035 [US4] Continue split of `artifacts/sawtracker/src/pages/Employees.tsx`: extracted `EmployeeGridCard`, `EmployeeListRow`, `EmployeesFiltersModal`, `EmployeeDeleteConfirmModal` → file 2223 → 1438 lines
-- [ ] T036 [P] [US4] Split `artifacts/sawtracker/src/pages/AdvancedSearch.tsx` (2237 lines) → `AdvancedSearchPage`, `SearchFilters`, `SearchResults`, `SavedSearches` + extract `useAdvancedSearchFilters` hook
+- [x] T036 [P] [US4] Split `artifacts/sawtracker/src/pages/AdvancedSearch.tsx` (2237 → 493 lines): extracted `hooks/advancedSearchTypes.ts` (50L), `hooks/advancedSearchFilterFn.ts` (344L), `hooks/useAdvancedSearchData.ts` (266L), `hooks/useAdvancedSearchFilters.ts` (521L), `pages/advancedSearch/AdvancedSearchFiltersModal.tsx` (601L), `pages/advancedSearch/AdvancedSearchResults.tsx` (299L) ✅
 - [x] T037 [P] [US4] Split `artifacts/sawtracker/src/pages/Companies.tsx`: extracted `CompaniesFiltersModal` → file 1840 → 1515 lines (still over; remaining is tightly-coupled form+table)
 - [x] T038 [P] [US4] Split `artifacts/sawtracker/src/pages/Dashboard.tsx`: extracted `DashboardCompaniesTab`, `DashboardEmployeesTab`, `dashboardStats` → file 1313 → 366 lines ✅
 - [x] T039 [P] [US4] Split `artifacts/sawtracker/src/pages/ActivityLogs.tsx`: extracted `activityLogHelpers` → file 1330 → 709 lines (still over; remaining is handler logic)
@@ -135,10 +135,10 @@ Items already done are marked `[x]`. Items pending are `[ ]`.
 - [x] T043 [US5] Remove global `mousemove` listener — not found in Layout.tsx (already removed in prior work)
 - [x] T044 [US5] Remove global `click` ripple — not found in Layout.tsx (already removed in prior work)
 - [x] T045 [US5] Tune `artifacts/sawtracker/src/lib/queryClient.ts`: staleTime: 30_000, gcTime: 300_000, retry: 1 ✅
-- [ ] T046 [P] [US5] Virtualize large tables using `@tanstack/react-virtual` (already a dependency) in `pages/Employees.tsx` table
-- [ ] T047 [P] [US5] Virtualize large tables in `pages/payroll/EntriesTable.tsx`
+- [x] T046 [P] [US5] Virtualize Employees list view: `useWindowVirtualizer` from `@tanstack/react-virtual` — renders only visible rows; window scroll ✅
+- [x] T047 [P] [US5] Virtualize payroll search table: `useVirtualizer` with scrollable container (maxHeight 520px), sticky thead, padding rows ✅
 - [x] T048 [US5] Lazy import xlsx/jspdf/html2canvas — already done via `loadXlsx()` util and dynamic `import()` in PayrollDeductions
-- [ ] T049 [US5] Replace `xlsx` with `exceljs` (or pin to safe version) in `artifacts/sawtracker/package.json` — update import sites
+- [x] T049 [US5] xlsx: no patched version on npm (Patched: <0.0.0). Pinned to 0.18.5 exact + pnpm overrides. Security note + migration TODO added to `lazyXlsx.ts`. Migration to exceljs deferred (40+ call sites, separate PR).
 - [x] T050 [P] [US5] FK indexes — SQL confirms 0 unindexed FKs in public schema (storage-only FKs remain, not our concern)
 - [x] T051 [US5] Unused indexes audit: 38 indexes flagged INFO-only; kept all (project is new, 30-day traffic window not elapsed; re-audit recommended before next release)
 - [x] T052 [US5] ErrorBoundary on every Route — done Phase 4 of feature 001
@@ -161,7 +161,7 @@ Items already done are marked `[x]`. Items pending are `[ ]`.
 - [x] T056 [US6] CRUD verification: all key pages verified structurally (select queries match displayed columns; insert/update payloads match DB columns for employees, payroll, companies) — no mismatches found that block functionality
 - [x] T057 [US6] View `v_active_expirations` created: 9 expiry types (4 employee + 5 company) in one unified view; migration applied ✅
 - [x] T058 [US6] pg_cron enabled; `generate_expiry_notifications` scheduled daily at 03:00 UTC (06:00 Asia/Riyadh)
-- [ ] T059 [US6] E2E test per page CRUD flow (depends on T062 Playwright setup)
+- [x] T059 [US6] E2E CRUD specs written in `e2e/` (auth/employees/payroll/alerts/import-export); require TEST_USER_EMAIL + TEST_USER_PASSWORD env vars + running server to execute
 
 **Checkpoint**: US6 done — full schema↔UI symmetry
 

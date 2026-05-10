@@ -1,4 +1,5 @@
-import { ChangeEvent, useState, useEffect, useMemo, useRef } from 'react'
+import { ChangeEvent, useState, useEffect, useMemo, useRef, useCallback } from 'react'
+import { useVirtualizer } from '@tanstack/react-virtual'
 import { useLocation } from 'react-router-dom'
 import { createPortal } from 'react-dom'
 import { useModalScrollLock } from '@/hooks/useModalScrollLock'
@@ -1368,6 +1369,15 @@ export default function PayrollDeductions() {
       return matchesQuery && matchesMonth && matchesProject
     })
   }, [allPayrollSearchRows, payrollSearchMonth, payrollSearchProject, payrollSearchQuery])
+
+  // Virtualizer for payroll search table
+  const payrollTableContainerRef = useRef<HTMLDivElement>(null)
+  const payrollRowVirtualizer = useVirtualizer({
+    count: filteredPayrollSearchRows.length,
+    getScrollElement: () => payrollTableContainerRef.current,
+    estimateSize: useCallback(() => 48, []),
+    overscan: 10,
+  })
 
   const filteredObligationInsightRows = useMemo(() => {
     const normalizedQuery = payrollSearchQuery.trim().toLowerCase()
@@ -4433,9 +4443,13 @@ tr:last-child td{border-bottom:none}
                   لا توجد نتائج مطابقة للفلاتر الحالية.
                 </div>
               ) : (
-                <div className="overflow-x-auto rounded-xl border border-border-200">
+                <div
+                  ref={payrollTableContainerRef}
+                  className="overflow-auto rounded-xl border border-border-200"
+                  style={{ maxHeight: 520 }}
+                >
                   <table className="w-full text-sm">
-                    <thead className="bg-surface-secondary-50">
+                    <thead className="sticky top-0 z-10 bg-surface-secondary-50">
                       <tr>
                         <th className="px-4 py-3 text-right">الموظف</th>
                         <th className="px-4 py-3 text-right">الإقامة</th>
@@ -4452,54 +4466,74 @@ tr:last-child td{border-bottom:none}
                       </tr>
                     </thead>
                     <tbody>
-                      {filteredPayrollSearchRows.map((row) => (
-                        <tr key={row.id} className="border-t hover:bg-surface-secondary-50">
-                          <td className="px-4 py-3 font-medium text-foreground">
-                            {row.employee_name_snapshot}
-                          </td>
-                          <td className="px-4 py-3">{row.residence_label}</td>
-                          <td className="px-4 py-3">{row.project_label || '-'}</td>
-                          <td className="px-4 py-3">{row.payroll_month_label || '-'}</td>
-                          <td className="px-4 py-3">
-                            <span
-                              className={`inline-flex rounded-full px-2.5 py-1 text-xs font-semibold ${
-                                row.payroll_run_status === 'finalized'
-                                  ? 'bg-green-100 text-green-700'
-                                  : row.payroll_run_status === 'cancelled'
-                                    ? 'bg-red-100 text-red-700'
-                                    : 'bg-amber-100 text-amber-700'
-                              }`}
-                            >
-                              {row.payroll_run_status === 'finalized'
-                                ? 'نهائي ومحتسب'
-                                : row.payroll_run_status === 'cancelled'
-                                  ? 'ملغي'
-                                  : 'مسودة غير محتسبة'}
-                            </span>
-                          </td>
-                          <td className="px-4 py-3">
-                            {row.deduction_breakdown.transfer_renewal.toLocaleString('en-US')}
-                          </td>
-                          <td className="px-4 py-3">
-                            {row.deduction_breakdown.penalty.toLocaleString('en-US')}
-                          </td>
-                          <td className="px-4 py-3">
-                            {row.deduction_breakdown.advance.toLocaleString('en-US')}
-                          </td>
-                          <td className="px-4 py-3">
-                            {row.deduction_breakdown.other.toLocaleString('en-US')}
-                          </td>
-                          <td className="px-4 py-3 font-semibold text-red-600">
-                            {row.total_deductions.toLocaleString('en-US')}
-                          </td>
-                          <td className="px-4 py-3 font-semibold text-amber-700">
-                            {row.obligation_remaining.toLocaleString('en-US')}
-                          </td>
-                          <td className="px-4 py-3 font-semibold text-blue-700">
-                            {row.net_amount.toLocaleString('en-US')}
-                          </td>
+                      {/* top padding row */}
+                      {payrollRowVirtualizer.getVirtualItems().length > 0 && (
+                        <tr style={{ height: payrollRowVirtualizer.getVirtualItems()[0].start }}>
+                          <td colSpan={12} />
                         </tr>
-                      ))}
+                      )}
+                      {payrollRowVirtualizer.getVirtualItems().map((virtualRow) => {
+                        const row = filteredPayrollSearchRows[virtualRow.index]
+                        return (
+                          <tr key={row.id} className="border-t hover:bg-surface-secondary-50">
+                            <td className="px-4 py-3 font-medium text-foreground">
+                              {row.employee_name_snapshot}
+                            </td>
+                            <td className="px-4 py-3">{row.residence_label}</td>
+                            <td className="px-4 py-3">{row.project_label || '-'}</td>
+                            <td className="px-4 py-3">{row.payroll_month_label || '-'}</td>
+                            <td className="px-4 py-3">
+                              <span
+                                className={`inline-flex rounded-full px-2.5 py-1 text-xs font-semibold ${
+                                  row.payroll_run_status === 'finalized'
+                                    ? 'bg-green-100 text-green-700'
+                                    : row.payroll_run_status === 'cancelled'
+                                      ? 'bg-red-100 text-red-700'
+                                      : 'bg-amber-100 text-amber-700'
+                                }`}
+                              >
+                                {row.payroll_run_status === 'finalized'
+                                  ? 'نهائي ومحتسب'
+                                  : row.payroll_run_status === 'cancelled'
+                                    ? 'ملغي'
+                                    : 'مسودة غير محتسبة'}
+                              </span>
+                            </td>
+                            <td className="px-4 py-3">
+                              {row.deduction_breakdown.transfer_renewal.toLocaleString('en-US')}
+                            </td>
+                            <td className="px-4 py-3">
+                              {row.deduction_breakdown.penalty.toLocaleString('en-US')}
+                            </td>
+                            <td className="px-4 py-3">
+                              {row.deduction_breakdown.advance.toLocaleString('en-US')}
+                            </td>
+                            <td className="px-4 py-3">
+                              {row.deduction_breakdown.other.toLocaleString('en-US')}
+                            </td>
+                            <td className="px-4 py-3 font-semibold text-red-600">
+                              {row.total_deductions.toLocaleString('en-US')}
+                            </td>
+                            <td className="px-4 py-3 font-semibold text-amber-700">
+                              {row.obligation_remaining.toLocaleString('en-US')}
+                            </td>
+                            <td className="px-4 py-3 font-semibold text-blue-700">
+                              {row.net_amount.toLocaleString('en-US')}
+                            </td>
+                          </tr>
+                        )
+                      })}
+                      {/* bottom padding row */}
+                      {payrollRowVirtualizer.getVirtualItems().length > 0 && (() => {
+                        const items = payrollRowVirtualizer.getVirtualItems()
+                        const lastItem = items[items.length - 1]
+                        const paddingBottom = payrollRowVirtualizer.getTotalSize() - lastItem.end
+                        return paddingBottom > 0 ? (
+                          <tr style={{ height: paddingBottom }}>
+                            <td colSpan={12} />
+                          </tr>
+                        ) : null
+                      })()}
                     </tbody>
                   </table>
                 </div>

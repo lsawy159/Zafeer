@@ -11,6 +11,11 @@
     "test:rls": "pnpm --filter @workspace/tests-rls run test"
   },
   "private": true,
+  "pnpm": {
+    "overrides": {
+      "xlsx": "0.18.5"
+    }
+  },
   "devDependencies": {
     "@rollup/rollup-win32-x64-msvc": "^4.60.3",
     "@tailwindcss/oxide-win32-x64-msvc": "^4.2.4",
