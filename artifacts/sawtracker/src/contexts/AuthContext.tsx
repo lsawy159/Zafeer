@@ -990,7 +990,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 // --- [BEGIN FIX] ---
 
 // Hook مخصص لاستخدام AuthContext
-// eslint-disable-next-line react-refresh/only-export-components
 export const useAuth = (): AuthContextType => {
   const context = useContext(AuthContext)
   if (context === undefined) {
@@ -1000,7 +999,6 @@ export const useAuth = (): AuthContextType => {
 }
 
 // Hook للتحقق من الصلاحيات
-// eslint-disable-next-line react-refresh/only-export-components
 export const useRequireAuth = () => {
   const { user, session, loading } = useAuth()
 
@@ -1024,7 +1022,6 @@ export const useRequireAuth = () => {
 }
 
 // Hook لحماية الصفحات
-// eslint-disable-next-line react-refresh/only-export-components
 export const usePageProtection = (requiredRole?: 'admin' | 'user') => {
   const { user, session, loading, isAdmin } = useAuth()
 
