@@ -120,89 +120,6 @@ export default function AddEmployeeModal({
   const [formData, setFormData] = useState(buildInitialFormData(initialData))
   const [isDirty, setIsDirty] = useState(false)
 
-  useEffect(() => {
-    if (isOpen) {
-      loadCompanies()
-      loadProjects()
-      setFormData(buildInitialFormData(initialData))
-      setIsDirty(false)
-    } else {
-      // إعادة تعيين النموذج عند إغلاق المودال
-      setFormData(createDefaultFormData())
-      setIsDirty(false)
-      setCompanySearchQuery('')
-      setIsCompanyDropdownOpen(false)
-      setProjectSearchQuery('')
-      setIsProjectDropdownOpen(false)
-      setShowCreateProjectModal(false)
-      setNewProjectName('')
-    }
-  }, [isOpen, initialData])
-
-  // معالجة ESC لإغلاق المودال
-  useEffect(() => {
-    if (!isOpen) return
-
-    function handleKeyDown(e: KeyboardEvent) {
-      if (e.key === 'Escape') {
-        // التحقق من أن المستخدم لا يكتب في حقل إدخال
-        const target = e.target as HTMLElement
-        if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA') {
-          return
-        }
-        // إغلاق مودال إنشاء المشروع أولاً إذا كان مفتوحاً
-        if (showCreateProjectModal) {
-          setShowCreateProjectModal(false)
-          setNewProjectName('')
-          return
-        }
-        onClose()
-      }
-    }
-    document.addEventListener('keydown', handleKeyDown)
-    return () => document.removeEventListener('keydown', handleKeyDown)
-  }, [isOpen, onClose, showCreateProjectModal])
-
-  useModalScrollLock(isOpen)
-
-  // تحديث نص البحث عند تغيير المؤسسة المختارة (فقط عند اختيار مؤسسة، وليس عند الكتابة)
-  useEffect(() => {
-    if (formData.company_id && companies.length > 0) {
-      const selectedCompany = companies.find((c) => c.id === formData.company_id)
-      if (selectedCompany) {
-        const displayText = `${selectedCompany.name} - ${selectedCompany.unified_number} - (${selectedCompany.employee_count}/${selectedCompany.max_employees})`
-        // تحديث فقط إذا كان النص مختلف (لتجنب التداخل مع الكتابة)
-        if (companySearchQuery !== displayText) {
-          setCompanySearchQuery(displayText)
-        }
-      }
-    } else if (!formData.company_id && companySearchQuery) {
-      // إعادة تعيين فقط إذا لم تكن هناك مؤسسة مختارة
-      setCompanySearchQuery('')
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [formData.company_id]) // companies يتم تحديثه عند loadCompanies، لذلك لا نحتاج إضافته
-
-  // إغلاق القائمة عند النقر خارجها
-  useEffect(() => {
-    function handleClickOutside(event: MouseEvent) {
-      if (
-        companyDropdownRef.current &&
-        !companyDropdownRef.current.contains(event.target as Node)
-      ) {
-        setIsCompanyDropdownOpen(false)
-      }
-      if (
-        projectDropdownRef.current &&
-        !projectDropdownRef.current.contains(event.target as Node)
-      ) {
-        setIsProjectDropdownOpen(false)
-      }
-    }
-    document.addEventListener('mousedown', handleClickOutside)
-    return () => document.removeEventListener('mousedown', handleClickOutside)
-  }, [])
-
   const loadCompanies = async () => {
     try {
       const { data: companiesData, error } = await supabase
@@ -264,6 +181,93 @@ export default function AddEmployeeModal({
     }
   }
 
+  useEffect(() => {
+    if (isOpen) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      loadCompanies()
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      loadProjects()
+      setFormData(buildInitialFormData(initialData))
+      setIsDirty(false)
+    } else {
+      // إعادة تعيين النموذج عند إغلاق المودال
+      setFormData(createDefaultFormData())
+      setIsDirty(false)
+      setCompanySearchQuery('')
+      setIsCompanyDropdownOpen(false)
+      setProjectSearchQuery('')
+      setIsProjectDropdownOpen(false)
+      setShowCreateProjectModal(false)
+      setNewProjectName('')
+    }
+  }, [isOpen, initialData])
+
+  // معالجة ESC لإغلاق المودال
+  useEffect(() => {
+    if (!isOpen) return
+
+    function handleKeyDown(e: KeyboardEvent) {
+      if (e.key === 'Escape') {
+        // التحقق من أن المستخدم لا يكتب في حقل إدخال
+        const target = e.target as HTMLElement
+        if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA') {
+          return
+        }
+        // إغلاق مودال إنشاء المشروع أولاً إذا كان مفتوحاً
+        if (showCreateProjectModal) {
+          setShowCreateProjectModal(false)
+          setNewProjectName('')
+          return
+        }
+        onClose()
+      }
+    }
+    document.addEventListener('keydown', handleKeyDown)
+    return () => document.removeEventListener('keydown', handleKeyDown)
+  }, [isOpen, onClose, showCreateProjectModal])
+
+  useModalScrollLock(isOpen)
+
+  // تحديث نص البحث عند تغيير المؤسسة المختارة (فقط عند اختيار مؤسسة، وليس عند الكتابة)
+  useEffect(() => {
+    if (formData.company_id && companies.length > 0) {
+      const selectedCompany = companies.find((c) => c.id === formData.company_id)
+      if (selectedCompany) {
+        const displayText = `${selectedCompany.name} - ${selectedCompany.unified_number} - (${selectedCompany.employee_count}/${selectedCompany.max_employees})`
+        // تحديث فقط إذا كان النص مختلف (لتجنب التداخل مع الكتابة)
+        if (companySearchQuery !== displayText) {
+          // eslint-disable-next-line react-hooks/set-state-in-effect
+          setCompanySearchQuery(displayText)
+        }
+      }
+    } else if (!formData.company_id && companySearchQuery) {
+      // إعادة تعيين فقط إذا لم تكن هناك مؤسسة مختارة
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setCompanySearchQuery('')
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [formData.company_id]) // companies يتم تحديثه عند loadCompanies، لذلك لا نحتاج إضافته
+
+  // إغلاق القائمة عند النقر خارجها
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (
+        companyDropdownRef.current &&
+        !companyDropdownRef.current.contains(event.target as Node)
+      ) {
+        setIsCompanyDropdownOpen(false)
+      }
+      if (
+        projectDropdownRef.current &&
+        !projectDropdownRef.current.contains(event.target as Node)
+      ) {
+        setIsProjectDropdownOpen(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [])
+
   // دالة الحصول على لون حالة الأماكن الشاغرة
   const getAvailableSlotsColor = (availableSlots: number) => {
     if (availableSlots === 0) return 'text-red-600 bg-red-50'
@@ -317,10 +321,12 @@ export default function AddEmployeeModal({
       if (selectedProject) {
         const displayText = selectedProject.name
         if (projectSearchQuery !== displayText) {
+          // eslint-disable-next-line react-hooks/set-state-in-effect
           setProjectSearchQuery(displayText)
         }
       }
     } else if (!formData.project_id && projectSearchQuery) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setProjectSearchQuery('')
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps

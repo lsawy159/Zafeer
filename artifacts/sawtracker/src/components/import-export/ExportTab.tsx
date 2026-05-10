@@ -38,6 +38,35 @@ interface ExportTabProps {
   hideTypeSelector?: boolean
 }
 
+function Chip({
+  active,
+  onClick,
+  children,
+  color = 'blue',
+}: {
+  active: boolean
+  onClick: () => void
+  children: ReactNode
+  color?: 'blue' | 'green'
+}) {
+  return (
+    <button
+      onClick={onClick}
+      className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-[12px] font-medium leading-4 transition ${
+        active
+          ? color === 'blue'
+            ? 'border-primary bg-primary text-slate-950 hover:bg-primary/90'
+            : 'border-green-600 bg-green-600 text-white hover:bg-green-700'
+          : color === 'blue'
+            ? 'border-neutral-200 bg-white text-neutral-700 hover:bg-primary/10'
+            : 'border-neutral-200 bg-white text-neutral-700 hover:bg-green-50'
+      }`}
+    >
+      {children}
+    </button>
+  )
+}
+
 export default function ExportTab({
   initialExportType = 'employees',
   hideTypeSelector = false,
@@ -91,38 +120,6 @@ export default function ExportTab({
     exempted: false,
     notExempted: false,
   })
-
-  // UI chip component
-  const Chip = ({
-    active,
-    onClick,
-    children,
-    color = 'blue',
-  }: {
-    active: boolean
-    onClick: () => void
-    children: ReactNode
-    color?: 'blue' | 'green'
-  }) => (
-    <button
-      onClick={onClick}
-      className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-[12px] font-medium leading-4 transition ${
-        active
-          ? color === 'blue'
-            ? 'border-primary bg-primary text-slate-950 hover:bg-primary/90'
-            : 'border-green-600 bg-green-600 text-white hover:bg-green-700'
-          : color === 'blue'
-            ? 'border-neutral-200 bg-white text-neutral-700 hover:bg-primary/10'
-            : 'border-neutral-200 bg-white text-neutral-700 hover:bg-green-50'
-      }`}
-    >
-      {children}
-    </button>
-  )
-
-  useEffect(() => {
-    loadData()
-  }, [])
 
   const loadData = async () => {
     try {
@@ -182,6 +179,11 @@ export default function ExportTab({
       setLoading(false)
     }
   }
+
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    loadData()
+  }, [])
 
   // Helper functions for date checks
   const isExpired = (date: string | null | undefined): boolean => {
