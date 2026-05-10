@@ -152,7 +152,12 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Run RLS tests
-        run: pnpm run test:rls
+        run: |
+          if [ -z "$SUPABASE_URL" ]; then
+            echo "SUPABASE_URL not set — skipping RLS tests (add GitHub secret to enable)"
+            exit 0
+          fi
+          pnpm run test:rls
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}

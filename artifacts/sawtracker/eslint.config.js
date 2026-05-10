@@ -21,7 +21,6 @@ export default tseslint.config(
       'react-hooks/use-memo': 'warn',
       'react-hooks/preserve-manual-memoization': 'warn',
       // Other rule downgrades
-      'react-refresh/only-export-components': 'warn',
       'no-useless-assignment': 'warn',
       'preserve-caught-error': 'warn',
       'no-irregular-whitespace': 'warn',
