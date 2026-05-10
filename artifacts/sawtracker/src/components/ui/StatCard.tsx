@@ -111,8 +111,8 @@ export const StatCard = ({
     <Card
       ref={rootRef}
       className={cn(
-        'motion-safe-enter parallax-card overflow-hidden before:pointer-events-none before:absolute before:inset-0 before:bg-[radial-gradient(circle_at_20%_20%,rgba(59,130,246,0.16),transparent_52%)]',
-        onClick && 'cursor-pointer',
+        'motion-safe-enter overflow-hidden rounded-[var(--radius-xl)] shadow-[var(--shadow-md)] border-border',
+        onClick && 'cursor-pointer focus-visible:outline-none focus-visible:shadow-[var(--shadow-focus)]',
         className
       )}
       onClick={onClick}
@@ -129,10 +129,10 @@ export const StatCard = ({
       <CardContent className="p-5">
         <div className="flex items-start justify-between gap-4">
           <div className="space-y-1.5">
-            <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+            <p className="eyebrow">
               {title}
             </p>
-            <p className="text-3xl font-bold text-foreground">{shownValue}</p>
+            <p className="metric text-foreground">{shownValue}</p>
             {trend || trendLabel ? (
               <div className="flex items-center gap-2 text-xs">
                 {trend ? (
