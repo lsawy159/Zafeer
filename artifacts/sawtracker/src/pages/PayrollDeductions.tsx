@@ -2410,7 +2410,7 @@ tr:last-child td{border-bottom:none}
   <div class="header">
     <div class="header-right">
       <div class="header-title">قسيمة راتب</div>
-      <div class="header-sub">${selectedSlipEntry.company_name_snapshot || selectedSlipEntry.project_name_snapshot || 'MinMax SawTracker'}</div>
+      <div class="header-sub">${selectedSlipEntry.company_name_snapshot || selectedSlipEntry.project_name_snapshot || 'زفير'}</div>
     </div>
     <div class="header-left">
       <div>${selectedPayrollSlip.slip_number}</div>

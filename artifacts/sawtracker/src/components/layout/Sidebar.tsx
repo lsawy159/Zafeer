@@ -43,13 +43,13 @@ export function Sidebar({ isOpen = true, onClose }: SidebarProps) {
   })).filter((group) => group.items.length > 0)
 
   const sidebarContent = (
-    <nav className="flex flex-col h-full bg-white dark:bg-neutral-900 border-l border-neutral-200 dark:border-neutral-700">
+    <nav className="flex flex-col h-full bg-surface dark:bg-[var(--color-card)] border-s border-border">
       {/* Close button for mobile */}
       {isMobile && (
-        <div className="flex justify-end p-4 border-b border-neutral-200 dark:border-neutral-700">
+        <div className="flex justify-end p-4 border-b border-border">
           <button
             onClick={onClose}
-            className="p-2 hover:bg-neutral-100 dark:hover:bg-neutral-800 rounded-lg transition-colors"
+            className="p-2 hover:bg-muted rounded-[var(--radius-lg)] transition-colors focus-visible:outline-none focus-visible:shadow-[var(--shadow-focus)]"
             aria-label="إغلاق القائمة الجانبية"
           >
             <X className="h-5 w-5" />
@@ -58,20 +58,20 @@ export function Sidebar({ isOpen = true, onClose }: SidebarProps) {
       )}
 
       {/* Nav Groups */}
-      <div className="flex-1 overflow-y-auto">
+      <div className="flex-1 overflow-y-auto py-[14px]">
         {visibleGroups.map((group, groupIndex) => (
-          <div key={group.id}>
+          <div key={group.id} className="mb-[14px]">
             {/* Group Label (show if multiple groups) */}
             {visibleGroups.length > 1 && (
-              <div className="px-4 py-3 mt-6 first:mt-0">
-                <h3 className="text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider">
+              <div className="px-5 py-1.5 mt-4 first:mt-0">
+                <h3 className="eyebrow">
                   {group.labelAr}
                 </h3>
               </div>
             )}
 
             {/* Group Items */}
-            <div className="space-y-1 px-2">
+            <div className="flex flex-col gap-0.5 px-[10px]">
               {group.items.map((item) => {
                 const isActive = location.pathname === item.to
                 const Icon = item.icon
@@ -81,18 +81,22 @@ export function Sidebar({ isOpen = true, onClose }: SidebarProps) {
                     key={item.id}
                     to={item.to}
                     className={cn(
-                      'flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-medium transition-all',
+                      'relative flex items-center gap-3 px-3 py-[9px] rounded-[var(--radius-lg)] text-sm font-medium transition-all duration-[var(--duration-fast)] focus-visible:outline-none focus-visible:shadow-[var(--shadow-focus)]',
                       isActive
-                        ? 'bg-primary-100 text-primary-900 dark:bg-primary-900/30 dark:text-primary-300'
-                        : 'text-neutral-700 dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-800'
+                        ? 'bg-[var(--color-primary-100)] text-[var(--color-primary-900)] dark:bg-[var(--color-primary-800)]/30 dark:text-[var(--color-primary-200)] font-semibold'
+                        : 'text-[var(--color-neutral-700)] dark:text-[var(--color-neutral-300)] hover:bg-muted'
                     )}
                     aria-current={isActive ? 'page' : undefined}
                   >
-                    <Icon className="h-5 w-5 flex-shrink-0" />
-                    <span className="flex-1">{item.labelAr}</span>
+                    {/* Active indicator bar */}
                     {isActive && (
-                      <div className="h-1 w-1 rounded-full bg-primary-600 dark:bg-primary-400" />
+                      <span
+                        className="absolute inset-inline-start-[6px] top-1/2 -translate-y-1/2 w-[3px] h-[18px] rounded-full bg-[var(--color-primary-800)] dark:bg-[var(--color-primary-300)]"
+                        aria-hidden="true"
+                      />
                     )}
+                    <Icon className="h-[18px] w-[18px] flex-shrink-0" aria-hidden="true" />
+                    <span className="flex-1">{item.labelAr}</span>
                   </Link>
                 )
               })}
@@ -100,20 +104,26 @@ export function Sidebar({ isOpen = true, onClose }: SidebarProps) {
 
             {/* Divider between groups */}
             {groupIndex < visibleGroups.length - 1 && (
-              <div className="my-4 mx-2 h-px bg-neutral-200 dark:bg-neutral-700" />
+              <div className="my-4 mx-2 h-px bg-border" />
             )}
           </div>
         ))}
       </div>
 
-      {/* Footer (optional: user info) */}
+      {/* Footer */}
       {user && (
-        <div className="border-t border-neutral-200 dark:border-neutral-700 p-4">
-          <div className="text-xs text-neutral-600 dark:text-neutral-400">
-            <p className="font-medium text-neutral-900 dark:text-neutral-50">
+        <div className="border-t border-border p-[14px] flex items-center gap-[10px]">
+          <div
+            className="h-9 w-9 rounded-full bg-[var(--color-primary-800)] text-white flex items-center justify-center text-xs font-bold flex-shrink-0"
+            aria-hidden="true"
+          >
+            {(user.full_name || user.username || 'U').charAt(0).toUpperCase()}
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-semibold text-foreground truncate">
               {user.full_name || user.username}
             </p>
-            <p className="text-neutral-500 dark:text-neutral-400 capitalize">
+            <p className="text-xs text-muted-foreground capitalize">
               {user.role === 'admin' ? 'مدير' : user.role === 'manager' ? 'مسؤول' : 'مستخدم'}
             </p>
           </div>
@@ -134,7 +144,7 @@ export function Sidebar({ isOpen = true, onClose }: SidebarProps) {
         {/* Drawer */}
         <div
           className={cn(
-            'fixed inset-y-0 right-0 z-50 w-64 transform transition-transform duration-200 ease-in-out',
+            'fixed inset-y-0 inset-inline-end-0 z-50 w-64 transform transition-transform duration-200 ease-in-out',
             isOpen ? 'translate-x-0' : 'translate-x-full'
           )}
         >
@@ -146,7 +156,7 @@ export function Sidebar({ isOpen = true, onClose }: SidebarProps) {
 
   // Desktop: render as fixed sidebar
   return (
-    <div className="hidden md:block w-64 h-screen border-r border-neutral-200 dark:border-neutral-700">
+    <div className="hidden md:block w-[268px] h-screen border-s border-border">
       {sidebarContent}
     </div>
   )
