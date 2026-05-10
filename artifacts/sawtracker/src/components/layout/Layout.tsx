@@ -139,7 +139,8 @@ export default function Layout({ children }: { children: ReactNode }) {
                     className="flex flex-col items-center transition-opacity hover:opacity-90 flex-1"
                   >
                     <div className="rounded-[var(--radius-xl)] border border-border bg-surface px-3 py-2 shadow-[var(--shadow-sm)]">
-                      <img src="/logo.png" alt="زفير" className="h-14 w-auto" />
+                      <img src="/logo.png" alt="ZaFeer" className="h-14 w-auto dark:hidden" />
+                      <img src="/logo-dark.png" alt="ZaFeer" className="h-14 w-auto hidden dark:block" />
                     </div>
                   </Link>
                 ) : (
@@ -148,7 +149,8 @@ export default function Layout({ children }: { children: ReactNode }) {
                     className="flex items-center justify-center transition-opacity hover:opacity-90 flex-1"
                   >
                     <div className="rounded-[var(--radius-xl)] border border-border bg-surface p-2 shadow-[var(--shadow-sm)]">
-                      <img src="/logo.png" alt="زفير" className="h-10 w-auto" />
+                      <img src="/logo.png" alt="ZaFeer" className="h-10 w-auto dark:hidden" />
+                      <img src="/logo-dark.png" alt="ZaFeer" className="h-10 w-auto hidden dark:block" />
                     </div>
                   </Link>
                 )}

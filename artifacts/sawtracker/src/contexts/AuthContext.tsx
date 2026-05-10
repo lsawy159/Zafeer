@@ -697,8 +697,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             })
         }
 
-        // onAuthStateChange سيتولى تحديث الجلسة وجلب بيانات المستخدم
-        logger.debug('[Auth] Sign in successful, waiting for auth state change...')
+        // ضبط الجلسة مباشرة كـ fallback في حالة تأخر onAuthStateChange
+        // (يحدث أحياناً على Vercel preview أو شبكات بطيئة)
+        // fetchingRef guard في fetchUserData يمنع التكرار لو onAuthStateChange جاء بعدها
+        if (signInData?.session) {
+          setSession(signInData.session)
+        }
+
+        logger.debug('[Auth] Sign in successful, session set explicitly as fallback.')
       } catch (err: unknown) {
         let errorMessage = 'An error occurred during sign in.'
 
