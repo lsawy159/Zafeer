@@ -123,6 +123,7 @@ class SecurityLogger {
 
       const auditEntry = {
         user_id: entry.user_id || userId,
+        action: entry.action_type,
         action_type: entry.action_type,
         resource_type: entry.resource_type,
         resource_id: entry.resource_id,
