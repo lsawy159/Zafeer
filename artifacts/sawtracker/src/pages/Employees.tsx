@@ -427,10 +427,10 @@ export default function Employees() {
     navigate('/employees')
   }
 
-  const handleEmployeeClick = (employee: Employee & { company: Company }) => {
+  const handleEmployeeClick = useCallback((employee: Employee & { company: Company }) => {
     setSelectedEmployee(employee)
     setIsCardOpen(true)
-  }
+  }, [])
 
   const handleCloseCard = () => {
     setIsCardOpen(false)
@@ -487,7 +487,7 @@ export default function Employees() {
     }
   }
 
-  const handleDeleteEmployee = async (employee: Employee & { company: Company }) => {
+  const handleDeleteEmployee = useCallback(async (employee: Employee & { company: Company }) => {
     setEmployeeToDelete(employee)
 
     // فحص الالتزامات المرتبطة بالموظف
@@ -508,7 +508,7 @@ export default function Employees() {
     } else {
       setShowDeleteModal(true)
     }
-  }
+  }, [])
 
   const confirmDeleteEmployee = async () => {
     if (!employeeToDelete) return

@@ -62,8 +62,8 @@ export function CompaniesFiltersModal({
         onClick={onClose}
       />
 
-      <div className="fixed inset-0 flex items-end justify-center p-0 md:items-center md:p-4">
-        <div className="w-full max-h-[92vh] max-w-4xl overflow-hidden rounded-t-2xl border border-border bg-card shadow-xl motion-safe-enter md:rounded-2xl">
+      <div className="fixed inset-0 flex items-end justify-center p-0 md:items-center md:p-4 pointer-events-none">
+        <div className="w-full max-h-[92vh] max-w-4xl overflow-hidden rounded-t-2xl border border-border bg-card shadow-xl motion-safe-enter md:rounded-2xl flex flex-col pointer-events-auto">
           <div className="flex items-center justify-between p-6 border-b border-neutral-200">
             <div>
               <h2 className="text-xl font-bold text-neutral-900">الفلاتر والبحث</h2>
