@@ -1,27 +1,24 @@
 import { memo, type CSSProperties } from 'react'
-import { User, Edit2, Trash2, FileText } from 'lucide-react'
+import { User, Edit2, Trash2 } from 'lucide-react'
 import { type EmployeeWithRelations } from '@/lib/supabase'
 import { getDaysRemaining } from './employeeUtils'
 
 interface DateStatus {
   status: string
-  description: string
   emoji: string
   color: string
 }
 
 function getDateStatus(days: number | null, expiredText: string = 'منتهي'): DateStatus {
   if (days === null)
-    return { status: 'غير محدد', description: '', emoji: '❌', color: 'bg-neutral-100 text-neutral-600 border-neutral-200' }
+    return { status: 'غير محدد', emoji: '—', color: 'bg-neutral-100 text-neutral-500 border-neutral-200' }
   if (days < 0)
-    return { status: expiredText, description: 'منتهي', emoji: '🚨', color: 'bg-red-50 text-red-700 border-red-300' }
-  if (days <= 7)
-    return { status: 'طارئ', description: `${days} يوم`, emoji: '🚨', color: 'bg-red-50 text-red-700 border-red-300' }
+    return { status: expiredText, emoji: '🚨', color: 'bg-red-50 text-red-700 border-red-300' }
   if (days <= 15)
-    return { status: 'عاجل', description: `${days} يوم`, emoji: '🔥', color: 'bg-orange-50 text-warning-700 border-orange-300' }
+    return { status: `${days}ي`, emoji: '🔥', color: 'bg-orange-50 text-orange-700 border-orange-300' }
   if (days <= 30)
-    return { status: 'متوسط', description: `${days} يوم`, emoji: '⚠️', color: 'bg-yellow-50 text-yellow-700 border-yellow-300' }
-  return { status: 'ساري', description: `${days} يوم`, emoji: '✅', color: 'bg-green-50 text-success-700 border-green-300' }
+    return { status: `${days}ي`, emoji: '⚠️', color: 'bg-yellow-50 text-yellow-700 border-yellow-300' }
+  return { status: 'ساري', emoji: '✅', color: 'bg-green-50 text-green-700 border-green-200' }
 }
 
 function getBorderColor(
@@ -30,45 +27,22 @@ function getBorderColor(
   residenceDays: number | null,
   healthInsuranceDays: number | null,
 ): string {
-  const priority = (days: number | null) =>
-    days !== null && (days < 0 || days <= 7) ? 'critical' : days !== null && days <= 30 ? 'medium' : 'low'
-  const priorities = [
-    priority(contractDays),
-    priority(hiredWorkerContractDays),
-    priority(residenceDays),
-    priority(healthInsuranceDays),
-  ]
-  if (priorities.includes('critical')) return 'border-red-400'
-  if (priorities.includes('medium')) return 'border-yellow-400'
-  if (priorities.includes('low')) return 'border-green-400'
+  const isCritical = (d: number | null) => d !== null && (d < 0 || d <= 15)
+  const isMedium = (d: number | null) => d !== null && d <= 30
+  const vals = [contractDays, hiredWorkerContractDays, residenceDays, healthInsuranceDays]
+  if (vals.some(isCritical)) return 'border-red-400'
+  if (vals.some(isMedium)) return 'border-yellow-400'
   return 'border-neutral-200'
 }
 
-interface StatusBoxProps {
-  label: string
-  hasValue: boolean
-  status: DateStatus
-}
-
-function StatusBox({ label, hasValue, status }: StatusBoxProps) {
+function StatusPill({ label, status }: { label: string; status: DateStatus }) {
   return (
-    <div>
-      <div className="mb-1 text-[12px] font-semibold text-neutral-600">{label}</div>
-      {hasValue ? (
-        <div className={`rounded-lg border-2 px-2 py-1 text-xs font-medium ${status.color}`}>
-          <div className="flex items-center gap-1">
-            <div className="text-xs">{status.emoji}</div>
-            <div className="flex flex-col">
-              <span className="font-bold">{status.status}</span>
-              <span className="text-xs opacity-75">{status.description}</span>
-            </div>
-          </div>
-        </div>
-      ) : (
-        <div className="rounded-lg border-2 border-neutral-200 bg-neutral-100 px-2 py-1 text-xs font-medium text-neutral-600">
-          غير محدد
-        </div>
-      )}
+    <div className={`rounded border px-1.5 py-1 ${status.color}`}>
+      <div className="text-[9px] text-neutral-400 leading-none mb-0.5 truncate">{label}</div>
+      <div className="flex items-center gap-0.5 leading-none">
+        <span className="text-[9px]">{status.emoji}</span>
+        <span className="text-[10px] font-bold truncate">{status.status}</span>
+      </div>
     </div>
   )
 }
@@ -108,99 +82,67 @@ export const EmployeeGridCard = memo(function EmployeeGridCard({
   return (
     <div
       onClick={() => onEmployeeClick(employee)}
-      className={`stagger-item group relative cursor-pointer overflow-hidden rounded-2xl border-2 ${borderColor} bg-surface/95 p-3.5 shadow-[0_10px_30px_-24px_rgba(15,23,42,0.8)] transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_20px_40px_-26px_rgba(14,116,144,0.65)]`}
+      className={`stagger-item group relative cursor-pointer overflow-hidden rounded-xl border-2 ${borderColor} bg-surface/95 p-2.5 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md`}
       style={{ '--i': Math.min(index, 11) } as CSSProperties}
     >
-      <div className="pointer-events-none absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-cyan-400/70 via-sky-300/60 to-emerald-300/70 opacity-70 transition group-hover:opacity-100" />
+      <div className="pointer-events-none absolute inset-x-0 top-0 h-0.5 bg-gradient-to-r from-cyan-400/70 via-sky-300/60 to-emerald-300/70 opacity-60 transition group-hover:opacity-100" />
 
-      <div className="flex items-start justify-between mb-2.5">
-        <div className="app-icon-chip scale-90">
-          <User className="h-4 w-4" />
+      {/* رأس الكارت */}
+      <div className="flex items-start justify-between mb-1.5">
+        <div className="flex items-center gap-1.5 min-w-0">
+          <div className="flex-shrink-0 w-6 h-6 rounded-lg bg-primary/10 flex items-center justify-center">
+            <User className="h-3 w-3 text-primary" />
+          </div>
+          <h3 className="text-[13px] font-bold text-neutral-900 line-clamp-1 leading-tight">{employee.name}</h3>
         </div>
-        <div className="flex gap-1" onClick={(e) => e.stopPropagation()}>
+        <div className="flex gap-0.5 flex-shrink-0" onClick={(e) => e.stopPropagation()}>
           {canEditEmployee && (
             <button
               onClick={() => onEmployeeClick(employee)}
-              className="rounded-md p-1 text-foreground-secondary transition hover:bg-primary/10"
-              title="عرض/تعديل الموظف"
+              className="rounded p-0.5 text-neutral-400 transition hover:bg-primary/10 hover:text-primary"
             >
-              <Edit2 className="w-3.5 h-3.5" />
+              <Edit2 className="w-3 h-3" />
             </button>
           )}
           {canDeleteEmployee && (
             <button
-              onClick={(e) => {
-                e.stopPropagation()
-                onDeleteEmployee(employee)
-              }}
-              className="p-1 text-red-600 hover:bg-red-100 rounded-md transition"
-              title="حذف الموظف"
+              onClick={(e) => { e.stopPropagation(); onDeleteEmployee(employee) }}
+              className="rounded p-0.5 text-neutral-400 transition hover:bg-red-100 hover:text-red-600"
             >
-              <Trash2 className="w-3.5 h-3.5" />
+              <Trash2 className="w-3 h-3" />
             </button>
           )}
         </div>
       </div>
 
-      <h3 className="mb-1.5 line-clamp-1 text-base font-bold text-neutral-900">{employee.name}</h3>
-
-      <div className="app-card-meta text-[12.5px]">
-        {employee.project?.name || employee.project_name ? (
-          <div className="app-card-meta-row">
-            <span className="app-card-meta-label">المشروع:</span>
-            <span className="app-badge-brand text-[13px] font-medium">
-              {employee.project?.name || employee.project_name}
-            </span>
+      {/* معلومات أساسية */}
+      <div className="space-y-0.5 mb-2">
+        {(employee.company?.name) && (
+          <div className="flex items-center gap-1 text-[11px] text-neutral-500 leading-tight">
+            <span className="text-neutral-400 flex-shrink-0">م:</span>
+            <span className="truncate font-medium text-neutral-700">{employee.company.name}</span>
           </div>
-        ) : null}
-        <div className="app-card-meta-row">
-          <span className="app-card-meta-label">الشركة:</span>
-          <span className="app-card-meta-value">
-            {employee.company?.name || '-'}
-            {employee.company?.unified_number && (
-              <span className="text-neutral-500 mr-1">({employee.company.unified_number})</span>
-            )}
-          </span>
-        </div>
-        {employee.residence_number && (
-          <div className="app-card-meta-row">
-            <span className="app-card-meta-label">رقم الإقامة:</span>
-            <span className="app-card-meta-value font-mono">{employee.residence_number}</span>
+        )}
+        {(employee.project?.name || employee.project_name) && (
+          <div className="flex items-center gap-1 text-[11px] text-neutral-500 leading-tight">
+            <span className="text-neutral-400 flex-shrink-0">مش:</span>
+            <span className="truncate font-medium text-primary/80">{employee.project?.name || employee.project_name}</span>
           </div>
         )}
         {employee.profession && (
-          <div className="app-card-meta-row">
-            <span className="app-card-meta-label">المهنة:</span>
-            <span className="app-card-meta-value">{employee.profession}</span>
-          </div>
-        )}
-        {employee.nationality && (
-          <div className="app-card-meta-row">
-            <span className="app-card-meta-label">الجنسية:</span>
-            <span className="app-card-meta-value">{employee.nationality}</span>
+          <div className="flex items-center gap-1 text-[11px] text-neutral-500 leading-tight">
+            <span className="text-neutral-400 flex-shrink-0">مهنة:</span>
+            <span className="truncate">{employee.profession}</span>
           </div>
         )}
       </div>
 
-      {/* مربعات الحالات */}
-      <div className="pt-2.5 border-t border-neutral-200">
-        <div className="grid grid-cols-2 gap-2">
-          <StatusBox label="انتهاء العقد" hasValue={!!employee.contract_expiry} status={contractStatus} />
-          <StatusBox label="انتهاء عقد أجير" hasValue={!!employee.hired_worker_contract_expiry} status={hiredWorkerStatus} />
-          <StatusBox label="انتهاء الإقامة" hasValue={!!employee.residence_expiry} status={residenceStatus} />
-          <StatusBox label="حالة التأمين" hasValue={!!employee.health_insurance_expiry} status={insuranceStatus} />
-        </div>
-      </div>
-
-      {/* الملاحظات */}
-      <div className="pt-2.5 border-t border-neutral-200">
-        <div className="mb-1.5 flex items-center gap-2 text-[12px] font-semibold text-neutral-600">
-          <FileText className="w-3.5 h-3.5" />
-          الملاحظات
-        </div>
-        <div className="min-h-[42px] whitespace-pre-wrap rounded-lg border border-neutral-200 bg-neutral-50 px-3 py-1.5 text-xs text-neutral-700">
-          {employee.notes || 'لا توجد ملاحظات'}
-        </div>
+      {/* حالات الوثائق */}
+      <div className="grid grid-cols-2 gap-1 border-t border-neutral-100 pt-1.5">
+        <StatusPill label="عقد عمل" status={contractStatus} />
+        <StatusPill label="عقد أجير" status={hiredWorkerStatus} />
+        <StatusPill label="إقامة" status={residenceStatus} />
+        <StatusPill label="تأمين" status={insuranceStatus} />
       </div>
     </div>
   )
