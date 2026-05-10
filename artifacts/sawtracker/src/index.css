@@ -85,6 +85,7 @@
   --color-muted-foreground: var(--color-muted-foreground);
   --color-accent: var(--color-accent);
   --color-accent-foreground: var(--color-accent-foreground);
+  --color-primary-foreground: #ffffff;
   --color-border: var(--color-border);
   --color-input: var(--color-input);
   --color-ring: var(--color-ring);
@@ -857,6 +858,54 @@
     box-shadow: var(--shadow-focus);
   }
 }
+
+/* ═══════════════════════════════════════════════════════════════
+   DARK MODE — Global text/bg overrides for legacy components
+   Rules outside @layer win over layered Tailwind utilities.
+   ═══════════════════════════════════════════════════════════════ */
+
+/* Text: dark neutrals → light foreground */
+.dark .text-neutral-900,
+.dark .text-neutral-800,
+.dark .text-slate-900,
+.dark .text-slate-800 { color: hsl(210 20% 96%); }
+
+.dark .text-neutral-700,
+.dark .text-slate-700 { color: hsl(210 17% 88%); }
+
+.dark .text-neutral-600,
+.dark .text-slate-600 { color: hsl(216 12% 72%); }
+
+.dark .text-neutral-500,
+.dark .text-slate-500 { color: hsl(216 12% 62%); }
+
+.dark .text-neutral-400,
+.dark .text-slate-400 { color: hsl(216 12% 54%); }
+
+/* Backgrounds: hardcoded light → semantic dark */
+.dark .bg-white { background-color: var(--color-surface); }
+.dark .bg-slate-50 { background-color: var(--color-card); }
+.dark .bg-neutral-100 { background-color: hsl(217 33% 14%); }
+.dark .bg-neutral-50 { background-color: hsl(222 47% 10%); }
+
+/* Borders: light → semantic dark */
+.dark .border-neutral-200,
+.dark .border-slate-200 { border-color: var(--color-border); }
+.dark .border-neutral-100 { border-color: hsl(217 19% 22%); }
+
+/* Status pills: light-mode semantic colors → dark-mode variants */
+.dark .bg-red-50 { background-color: hsl(0 70% 14%); }
+.dark .bg-orange-50 { background-color: hsl(20 70% 12%); }
+.dark .bg-yellow-50 { background-color: hsl(45 70% 12%); }
+.dark .bg-green-50 { background-color: hsl(163 60% 10%); }
+.dark .text-red-700 { color: hsl(0 86% 75%); }
+.dark .text-orange-700 { color: hsl(28 90% 72%); }
+.dark .text-yellow-700 { color: hsl(38 92% 70%); }
+.dark .text-green-700 { color: hsl(156 70% 65%); }
+.dark .border-red-300 { border-color: hsl(0 70% 40%); }
+.dark .border-orange-300 { border-color: hsl(20 70% 38%); }
+.dark .border-yellow-300 { border-color: hsl(45 70% 38%); }
+.dark .border-green-200 { border-color: hsl(163 60% 28%); }
 
 /* ─── Click Ripple (outside @layer) ─────────────────── */
 .app-click-ripple {
