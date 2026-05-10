@@ -1,104 +1,97 @@
-/* Design System v3 Tokens — Modern Fintech Edition */
-/* Light: Modern Fintech System | Dark: Modern Fintech Dark */
+/* ══════════════════════════════════════════════════════════════════
+   ZaFeer — Design System Tokens
+   System: "Graphite Fintech" — slate/graphite primary + cool mint accent
+   Locale: Arabic-first, RTL, Hijri-aware
+   ══════════════════════════════════════════════════════════════════ */
 
 :root {
-  /* ═══════════════════════════════════════════════════════ */
-  /* PRIMARY COLOR SCALE — Electric Blue (#0050cb / #0066ff) */
-  /* ═══════════════════════════════════════════════════════ */
-  --color-primary:     hsl(219 100% 40%);   /* base alias → primary-600 */
-  --color-primary-50:  hsl(219 100% 97%);
-  --color-primary-100: hsl(219 100% 92%);
-  --color-primary-200: hsl(220 100% 86%);   /* #dae1ff */
-  --color-primary-300: hsl(228 100% 75%);   /* #b3c5ff */
-  --color-primary-400: hsl(219 100% 63%);
-  --color-primary-500: hsl(219 100% 50%);   /* #0066ff — primary-container */
-  --color-primary-600: hsl(219 100% 40%);   /* #0050cb — primary (light mode brand) */
-  --color-primary-700: hsl(219 100% 32%);   /* #003fa4 */
-  --color-primary-800: hsl(219 100% 23%);   /* #002b75 */
-  --color-primary-900: hsl(219 100% 14%);   /* #001849 */
-  --color-primary-950: hsl(219 100% 7%);
+  /* ───── PRIMARY — Graphite (slate) ────────────────────────── */
+  --color-primary:     hsl(217 33% 17%);   /* base = primary-800 */
+  --color-primary-50:  hsl(210 20% 98%);
+  --color-primary-100: hsl(214 32% 95%);
+  --color-primary-200: hsl(213 27% 89%);
+  --color-primary-300: hsl(212 19% 78%);
+  --color-primary-400: hsl(215 16% 60%);
+  --color-primary-500: hsl(215 19% 47%);
+  --color-primary-600: hsl(215 25% 35%);
+  --color-primary-700: hsl(215 28% 25%);
+  --color-primary-800: hsl(217 33% 17%);   /* #1f2937 brand */
+  --color-primary-900: hsl(222 47% 11%);   /* #0f172a deepest */
+  --color-primary-950: hsl(229 84% 5%);
 
-  /* ═══════════════════════════════════════════════════════ */
-  /* NEUTRAL COLOR SCALE — Blue-tinted (Fintech palette)    */
-  /* Light: warm white surfaces | Dark: deep navy surfaces  */
-  /* ═══════════════════════════════════════════════════════ */
-  --color-neutral-50:  hsl(210 17% 98%);    /* #f7fafc — light bg */
-  --color-neutral-100: hsl(210 14% 95%);    /* #f1f4f6 */
-  --color-neutral-200: hsl(210 9% 93%);     /* #ebeef0 */
-  --color-neutral-300: hsl(208 9% 90%);     /* #e5e9eb */
-  --color-neutral-400: hsl(213 9% 86%);     /* #e0e3e5 */
-  --color-neutral-500: hsl(232 9% 49%);     /* #727687 — outline */
-  --color-neutral-600: hsl(233 15% 30%);    /* #424656 — on-surface-variant */
-  --color-neutral-700: hsl(225 10% 24%);    /* #363943 */
-  --color-neutral-800: hsl(225 10% 22%);    /* #32343e */
-  --color-neutral-900: hsl(229 17% 14%);    /* #1d1f28 — card surface dark */
-  --color-neutral-950: hsl(228 28% 9%);     /* #10131c — background dark */
+  /* ───── ACCENT — Mint (the only chromatic in the system) ─── */
+  --color-accent-50:   hsl(152 81% 96%);
+  --color-accent-100:  hsl(150 80% 90%);
+  --color-accent-300:  hsl(156 72% 67%);
+  --color-accent-500:  hsl(160 84% 39%);   /* #10b981 */
+  --color-accent-600:  hsl(161 94% 30%);
+  --color-accent-700:  hsl(163 94% 24%);
+  --color-mint:        var(--color-accent-500);
 
-  /* ═══════════════════════════════════════════════════════ */
-  /* SEMANTIC COLORS — Success / Warning / Danger / Info    */
-  /* ═══════════════════════════════════════════════════════ */
-  --color-success-50:  hsl(142 71% 95%);
-  --color-success-100: hsl(142 71% 90%);
-  --color-success-200: hsl(142 71% 80%);
-  --color-success-300: hsl(142 71% 68%);
-  --color-success-400: hsl(142 71% 56%);
-  --color-success-500: hsl(142 71% 45%);
-  --color-success-600: hsl(142 71% 35%);
-  --color-success-700: hsl(142 71% 28%);
-  --color-success-800: hsl(142 71% 20%);
-  --color-success-900: hsl(142 71% 14%);
-  --color-success-950: hsl(142 71% 8%);
-  --color-success-subtle: hsl(142 71% 90%);
-  --color-success-foreground: hsl(142 71% 22%);
+  /* ───── NEUTRALS — warm-cool grey, fintech canvas ─────────── */
+  --color-neutral-50:  hsl(210 20% 98%);
+  --color-neutral-100: hsl(220 14% 96%);
+  --color-neutral-200: hsl(220 13% 91%);
+  --color-neutral-300: hsl(216 12% 84%);
+  --color-neutral-400: hsl(218 11% 65%);
+  --color-neutral-500: hsl(220 9% 46%);
+  --color-neutral-600: hsl(215 14% 34%);
+  --color-neutral-700: hsl(217 19% 27%);
+  --color-neutral-800: hsl(215 28% 17%);
+  --color-neutral-900: hsl(221 39% 11%);
+  --color-neutral-950: hsl(224 71% 4%);
 
-  --color-warning-50:  hsl(38 92% 95%);
-  --color-warning-100: hsl(38 92% 88%);
-  --color-warning-200: hsl(38 92% 78%);
-  --color-warning-300: hsl(38 92% 66%);
-  --color-warning-400: hsl(38 92% 58%);
+  /* ───── SEMANTIC — Success / Warning / Danger / Info ─────── */
+  --color-success-500: hsl(160 84% 39%);
+  --color-success-600: hsl(161 94% 30%);
+  --color-success-700: hsl(163 94% 24%);
+  --color-success-subtle:     hsl(150 80% 94%);
+  --color-success-foreground: hsl(163 94% 18%);
+  --color-success: var(--color-success-500);
+
   --color-warning-500: hsl(38 92% 50%);
-  --color-warning-600: hsl(38 92% 40%);
-  --color-warning-700: hsl(38 92% 25%);
-  --color-warning-800: hsl(38 92% 18%);
-  --color-warning-900: hsl(38 92% 12%);
-  --color-warning-950: hsl(38 92% 7%);
-  --color-warning-subtle: hsl(38 92% 88%);
-  --color-warning-foreground: hsl(38 92% 20%);
+  --color-warning-600: hsl(32 95% 44%);
+  --color-warning-subtle:     hsl(48 96% 89%);
+  --color-warning-foreground: hsl(26 83% 24%);
+  --color-warning: var(--color-warning-500);
 
-  --color-danger-50:  hsl(0 84% 95%);
-  --color-danger-100: hsl(0 84% 90%);
-  --color-danger-200: hsl(0 84% 82%);
-  --color-danger-300: hsl(0 84% 72%);
-  --color-danger-400: hsl(0 84% 65%);
-  --color-danger-500: hsl(0 84% 60%);
-  --color-danger-600: hsl(0 84% 50%);
-  --color-danger-700: hsl(0 84% 35%);
-  --color-danger-800: hsl(0 84% 24%);
-  --color-danger-900: hsl(0 84% 16%);
-  --color-danger-950: hsl(0 84% 9%);
-  --color-danger-subtle: hsl(0 84% 90%);
-  --color-danger-foreground: hsl(0 84% 25%);
+  --color-danger-500: hsl(0 72% 51%);
+  --color-danger-600: hsl(0 74% 42%);
+  --color-danger-700: hsl(0 70% 35%);
+  --color-danger-subtle:     hsl(0 86% 94%);
+  --color-danger-foreground: hsl(0 70% 28%);
+  --color-danger: var(--color-danger-500);
 
-  --color-info-50:  hsl(199 89% 95%);
-  --color-info-100: hsl(199 89% 88%);
-  --color-info-200: hsl(199 89% 78%);
-  --color-info-300: hsl(199 89% 66%);
-  --color-info-400: hsl(199 89% 56%);
-  --color-info-500: hsl(199 89% 48%);
-  --color-info-600: hsl(199 89% 38%);
-  --color-info-700: hsl(199 89% 28%);
-  --color-info-800: hsl(199 89% 20%);
-  --color-info-900: hsl(199 89% 13%);
-  --color-info-950: hsl(199 89% 7%);
-  --color-info-subtle: hsl(199 89% 88%);
-  --color-info-foreground: hsl(199 89% 22%);
+  --color-info-500: hsl(217 91% 60%);
+  --color-info-subtle:     hsl(214 95% 93%);
+  --color-info-foreground: hsl(217 91% 28%);
+  --color-info: var(--color-info-500);
 
-  /* ═══════════════════════════════════════════════════════ */
-  /* TYPOGRAPHY — Manrope + Arabic fallbacks                */
-  /* ═══════════════════════════════════════════════════════ */
+  /* ───── SURFACES — Light mode (default) ──────────────────── */
+  --color-background:        hsl(210 20% 98%);   /* #f8fafc canvas */
+  --color-surface:           hsl(0 0% 100%);
+  --color-foreground:        hsl(222 47% 11%);
+  --color-card:              hsl(0 0% 100%);
+  --color-card-foreground:   hsl(222 47% 11%);
+  --color-popover:           hsl(0 0% 100%);
+  --color-popover-foreground: hsl(222 47% 11%);
+  --color-muted:             hsl(220 14% 96%);
+  --color-muted-foreground:  hsl(220 9% 46%);
+  --color-accent:            hsl(220 14% 96%);
+  --color-accent-foreground: hsl(222 47% 11%);
+  --color-border:            hsl(216 12% 88%);
+  --color-input:             hsl(216 12% 84%);
+  --color-ring:              hsl(217 33% 17%);
+
+  /* Brand wordmark colors */
+  --color-brand-graphite:    hsl(222 47% 11%);   /* "ZaFeer" letters */
+  --color-brand-mint:        hsl(160 84% 39%);   /* accent dot / glyph */
+
+  /* ───── TYPOGRAPHY ───────────────────────────────────────── */
   --font-family-display: 'Manrope', 'IBM Plex Sans Arabic', 'IBM Plex Sans', system-ui, sans-serif;
   --font-family-body:    'Manrope', 'IBM Plex Sans Arabic', 'IBM Plex Sans', system-ui, sans-serif;
-  --font-family-mono: ui-monospace, 'Cascadia Mono', 'Fira Code', monospace;
+  --font-family-arabic:  'IBM Plex Sans Arabic', 'Cairo', 'Tajawal', system-ui, sans-serif;
+  --font-family-mono:    ui-monospace, 'JetBrains Mono', 'Cascadia Mono', 'Fira Code', monospace;
 
   --font-size-xs:   0.75rem;
   --font-size-sm:   0.875rem;
@@ -109,19 +102,17 @@
   --font-size-3xl:  1.875rem;
   --font-size-4xl:  2.25rem;
 
-  --font-weight-regular:  400;
-  --font-weight-medium:   500;
-  --font-weight-semibold: 600;
-  --font-weight-bold:     700;
+  --font-weight-regular:   400;
+  --font-weight-medium:    500;
+  --font-weight-semibold:  600;
+  --font-weight-bold:      700;
   --font-weight-extrabold: 800;
 
   --line-height-tight:   1.25;
   --line-height-normal:  1.5;
   --line-height-relaxed: 1.7;
 
-  /* ═══════════════════════════════════════════════════════ */
-  /* SPACING (8px base — fintech spec)                      */
-  /* ═══════════════════════════════════════════════════════ */
+  /* ───── SPACING — 8px base ───────────────────────────────── */
   --space-1:  0.25rem;
   --space-2:  0.5rem;
   --space-3:  0.75rem;
@@ -135,166 +126,150 @@
   --space-20: 5rem;
   --space-24: 6rem;
 
-  /* ═══════════════════════════════════════════════════════ */
-  /* BORDER RADIUS — Fintech large-radius language          */
-  /* Light: pill buttons + 24px cards                      */
-  /* Dark:  8px components, 16px cards                     */
-  /* ═══════════════════════════════════════════════════════ */
-  --radius-sm:   0.375rem;    /* 6px  */
-  --radius-md:   0.625rem;    /* 10px */
-  --radius-lg:   0.875rem;    /* 14px */
-  --radius-xl:   1.25rem;     /* 20px */
-  --radius-2xl:  1.5rem;      /* 24px */
+  /* ───── RADIUS — large fintech language ──────────────────── */
+  --radius-sm:   0.375rem;
+  --radius-md:   0.625rem;
+  --radius-lg:   0.875rem;
+  --radius-xl:   1.25rem;
+  --radius-2xl:  1.5rem;
   --radius-full: 9999px;
 
-  /* ═══════════════════════════════════════════════════════ */
-  /* SHADOWS — Diffused blue-tinted (Fintech style)         */
-  /* ═══════════════════════════════════════════════════════ */
-  --shadow-sm:      0 1px 4px hsl(219 100% 40% / 0.05), 0 1px 2px hsl(219 100% 40% / 0.05);
-  --shadow-md:      0 4px 20px hsl(219 100% 40% / 0.07), 0 2px 6px hsl(219 100% 40% / 0.04);
-  --shadow-lg:      0 12px 40px hsl(219 100% 40% / 0.09), 0 4px 12px hsl(219 100% 40% / 0.05);
-  --shadow-xl:      0 24px 64px hsl(219 100% 40% / 0.11), 0 8px 24px hsl(219 100% 40% / 0.06);
-  --shadow-primary: 0 8px 28px hsl(219 100% 50% / 0.38);    /* Blue glow for CTA buttons */
+  /* ───── SHADOWS — graphite-tinted, restrained ────────────── */
+  --shadow-sm: 0 1px 2px hsl(222 47% 11% / 0.05),
+               0 1px 1px hsl(222 47% 11% / 0.04);
+  --shadow-md: 0 4px 16px hsl(222 47% 11% / 0.06),
+               0 2px 4px  hsl(222 47% 11% / 0.04);
+  --shadow-lg: 0 10px 32px hsl(222 47% 11% / 0.08),
+               0 4px 10px  hsl(222 47% 11% / 0.05);
+  --shadow-xl: 0 24px 56px hsl(222 47% 11% / 0.12),
+               0 8px 20px  hsl(222 47% 11% / 0.06);
+  --shadow-primary: 0 8px 24px hsl(217 33% 17% / 0.30);   /* CTA lift */
+  --shadow-mint:    0 6px 20px hsl(160 84% 39% / 0.32);   /* accent */
+  --shadow-focus:   0 0 0 3px hsl(217 33% 17% / 0.18);
 
-  /* ═══════════════════════════════════════════════════════ */
-  /* MOTION / TRANSITIONS                                   */
-  /* ═══════════════════════════════════════════════════════ */
-  --duration-fast:   120ms;
-  --duration-normal: 200ms;
-  --duration-slow:   320ms;
-  --easing-standard:  cubic-bezier(0.4, 0, 0.2, 1);
+  /* ───── MOTION ───────────────────────────────────────────── */
+  --duration-fast:    120ms;
+  --duration-normal:  200ms;
+  --duration-slow:    320ms;
+  --easing-standard:   cubic-bezier(0.4, 0, 0.2, 1);
   --easing-emphasized: cubic-bezier(0.2, 0, 0, 1);
+  --easing-spring:     cubic-bezier(0.34, 1.4, 0.64, 1);
 
-  --motion-fast: 120ms;
-  --ease-out: cubic-bezier(0, 0, 0.2, 1);
-
-  /* ═══════════════════════════════════════════════════════ */
-  /* SEMANTIC SURFACE TOKENS — Light mode                   */
-  /* Based on: Modern Fintech System design file            */
-  /* ═══════════════════════════════════════════════════════ */
-  --color-background:        hsl(210 17% 98%);     /* #f7fafc — workspace canvas */
-  --color-surface:           hsl(0 0% 100%);        /* #ffffff — card base */
-  --color-foreground:        hsl(205 10% 11%);      /* #181c1e — on-surface */
-
-  --color-card:              hsl(0 0% 100%);
-  --color-card-foreground:   hsl(205 10% 11%);
-
-  --color-popover:           hsl(0 0% 100%);
-  --color-popover-foreground: hsl(205 10% 11%);
-
-  --color-muted:             hsl(210 14% 95%);      /* #f1f4f6 — surface-container-low */
-  --color-muted-foreground:  hsl(232 9% 47%);       /* #727687-ish — outline */
-
-  --color-accent:            hsl(210 14% 95%);
-  --color-accent-foreground: hsl(205 10% 11%);
-
-  --color-border:            hsl(232 22% 81%);      /* #c2c6d8 — outline-variant */
-  --color-input:             hsl(232 22% 81%);
-  --color-ring:              hsl(219 100% 40%);     /* #0050cb — primary */
-
-  --shadow-focus: 0 0 0 3px hsl(219 100% 40% / 0.22);
+  /* ───── BULLETS — list markers, status dots, urgency dots */
+  --bullet-default: '•';     /* body lists */
+  --bullet-square:  '▪';     /* data series, KPI sub-items */
+  --bullet-arrow:   '▸';     /* drill-in / link list */
+  --bullet-dash:    '—';     /* sub-items, secondary */
+  --bullet-check:   '✓';     /* completed task */
+  --bullet-cross:   '✕';     /* removed / failed */
+  --dot-size:       0.5rem;  /* status dot diameter */
+  --dot-size-sm:    0.375rem;
 }
 
-/* ═══════════════════════════════════════════════════════ */
-/* DARK MODE — Modern Fintech Dark                        */
-/* ═══════════════════════════════════════════════════════ */
+/* ───── DARK MODE — Graphite Dark ───────────────────────────── */
 .dark {
-  /* Deep navy foundation */
-  --color-background:        hsl(228 28% 9%);       /* #10131c — deepest layer */
-  --color-surface:           hsl(229 19% 12%);      /* #191b24 */
-  --color-foreground:        hsl(233 25% 91%);      /* #e1e2ee — on-surface */
+  --color-background:        hsl(224 71% 4%);
+  --color-surface:           hsl(222 47% 8%);
+  --color-foreground:        hsl(210 20% 96%);
+  --color-card:              hsl(222 47% 11%);
+  --color-card-foreground:   hsl(210 20% 96%);
+  --color-popover:           hsl(222 47% 11%);
+  --color-popover-foreground: hsl(210 20% 96%);
+  --color-muted:             hsl(217 33% 17%);
+  --color-muted-foreground:  hsl(216 12% 70%);
+  --color-accent:            hsl(217 33% 17%);
+  --color-accent-foreground: hsl(210 20% 96%);
+  --color-border:            hsl(217 19% 27%);
+  --color-input:             hsl(217 19% 27%);
+  --color-ring:              hsl(160 84% 50%);
 
-  --color-card:              hsl(229 17% 14%);      /* #1d1f28 — surface-container */
-  --color-card-foreground:   hsl(233 25% 91%);
+  --shadow-sm: 0 1px 3px hsl(224 71% 2% / 0.30);
+  --shadow-md: 0 4px 16px hsl(224 71% 2% / 0.40);
+  --shadow-lg: 0 12px 40px hsl(224 71% 2% / 0.50);
+  --shadow-xl: 0 24px 64px hsl(224 71% 2% / 0.60);
+  --shadow-primary: 0 8px 28px hsl(160 84% 39% / 0.45);
+  --shadow-focus:   0 0 0 3px hsl(160 84% 50% / 0.30);
 
-  --color-popover:           hsl(229 17% 14%);
-  --color-popover-foreground: hsl(233 25% 91%);
-
-  --color-muted:             hsl(225 13% 17%);      /* #272a33 — surface-container-high */
-  --color-muted-foreground:  hsl(232 22% 81%);      /* #c2c6d8 — on-surface-variant */
-
-  --color-accent:            hsl(225 13% 17%);
-  --color-accent-foreground: hsl(233 25% 91%);
-
-  --color-border:            hsl(233 15% 30%);      /* #424656 — outline-variant */
-  --color-input:             hsl(233 15% 30%);
-  --color-ring:              hsl(228 100% 75%);     /* lighter blue ring for dark */
-
-  --shadow-focus: 0 0 0 3px hsl(228 100% 75% / 0.25);
-
-  /* Primary scale adjustments for dark — light accent for text/icons */
-  --color-primary-200: hsl(228 100% 91%);
-  --color-primary-300: hsl(228 100% 85%);           /* #b3c5ff — brand accent dark */
-  --color-primary-400: hsl(228 100% 78%);
-  /* primary-500 stays #0066ff — solid blue for button BGs */
-
-  /* Dark shadows — deeper with higher opacity */
-  --shadow-sm:      0 1px 3px hsl(228 50% 4% / 0.20);
-  --shadow-md:      0 4px 16px hsl(228 50% 4% / 0.28);
-  --shadow-lg:      0 12px 40px hsl(228 50% 4% / 0.36);
-  --shadow-xl:      0 24px 64px hsl(228 50% 4% / 0.45);
-  --shadow-primary: 0 8px 28px hsl(219 100% 50% / 0.45);
-
-  /* Semantic subtle / foreground overrides */
-  --color-success-subtle:     hsl(142 71% 12%);
-  --color-success-foreground: hsl(142 71% 72%);
-  --color-warning-subtle:     hsl(38 92% 14%);
+  --color-success-subtle:     hsl(163 94% 12%);
+  --color-success-foreground: hsl(156 72% 72%);
+  --color-warning-subtle:     hsl(26 83% 14%);
   --color-warning-foreground: hsl(38 92% 72%);
-  --color-danger-subtle:      hsl(0 84% 14%);
-  --color-danger-foreground:  hsl(0 84% 72%);
-  --color-info-subtle:        hsl(199 89% 12%);
-  --color-info-foreground:    hsl(199 89% 72%);
+  --color-danger-subtle:      hsl(0 70% 14%);
+  --color-danger-foreground:  hsl(0 86% 78%);
+  --color-info-subtle:        hsl(217 91% 14%);
+  --color-info-foreground:    hsl(214 95% 80%);
 }
 
-/* System dark-mode fallback (for users who haven't toggled manually) */
-@media (prefers-color-scheme: dark) {
-  :root:not(.light) {
-    --color-background:        hsl(228 28% 9%);
-    --color-surface:           hsl(229 19% 12%);
-    --color-foreground:        hsl(233 25% 91%);
-    --color-card:              hsl(229 17% 14%);
-    --color-card-foreground:   hsl(233 25% 91%);
-    --color-popover:           hsl(229 17% 14%);
-    --color-popover-foreground: hsl(233 25% 91%);
-    --color-muted:             hsl(225 13% 17%);
-    --color-muted-foreground:  hsl(232 22% 81%);
-    --color-accent:            hsl(225 13% 17%);
-    --color-accent-foreground: hsl(233 25% 91%);
-    --color-border:            hsl(233 15% 30%);
-    --color-input:             hsl(233 15% 30%);
-    --color-ring:              hsl(228 100% 75%);
-    --shadow-focus:            0 0 0 3px hsl(228 100% 75% / 0.25);
+/* ══════════════════════════════════════════════════════════════════
+   SEMANTIC TYPE STYLES
+   ══════════════════════════════════════════════════════════════════ */
 
-    --color-primary-200: hsl(228 100% 91%);
-    --color-primary-300: hsl(228 100% 85%);
-    --color-primary-400: hsl(228 100% 78%);
+html { font-family: var(--font-family-body); font-size: 16px; -webkit-font-smoothing: antialiased; }
+body { background: var(--color-background); color: var(--color-foreground); margin: 0; line-height: var(--line-height-normal); }
 
-    --shadow-sm:      0 1px 3px hsl(228 50% 4% / 0.20);
-    --shadow-md:      0 4px 16px hsl(228 50% 4% / 0.28);
-    --shadow-lg:      0 12px 40px hsl(228 50% 4% / 0.36);
-    --shadow-xl:      0 24px 64px hsl(228 50% 4% / 0.45);
-    --shadow-primary: 0 8px 28px hsl(219 100% 50% / 0.45);
-
-    --color-success-subtle:     hsl(142 71% 12%);
-    --color-success-foreground: hsl(142 71% 72%);
-    --color-warning-subtle:     hsl(38 92% 14%);
-    --color-warning-foreground: hsl(38 92% 72%);
-    --color-danger-subtle:      hsl(0 84% 14%);
-    --color-danger-foreground:  hsl(0 84% 72%);
-    --color-info-subtle:        hsl(199 89% 12%);
-    --color-info-foreground:    hsl(199 89% 72%);
-  }
+h1, .h1 {
+  font-family: var(--font-family-display);
+  font-size: var(--font-size-4xl);
+  font-weight: var(--font-weight-extrabold);
+  line-height: var(--line-height-tight);
+  letter-spacing: -0.015em;
+  color: var(--color-foreground);
 }
-
-/* ═══════════════════════════════════════════════════════ */
-/* RTL SUPPORT                                            */
-/* ═══════════════════════════════════════════════════════ */
-[dir='rtl'] {
-  direction: rtl;
-  text-align: right;
+h2, .h2 {
+  font-family: var(--font-family-display);
+  font-size: var(--font-size-3xl);
+  font-weight: var(--font-weight-bold);
+  line-height: var(--line-height-tight);
+  letter-spacing: -0.01em;
 }
+h3, .h3 { font-size: var(--font-size-2xl); font-weight: var(--font-weight-bold); line-height: var(--line-height-tight); }
+h4, .h4 { font-size: var(--font-size-xl); font-weight: var(--font-weight-semibold); line-height: var(--line-height-tight); }
+h5, .h5 { font-size: var(--font-size-lg); font-weight: var(--font-weight-semibold); }
+p, .body { font-size: var(--font-size-base); line-height: var(--line-height-relaxed); color: var(--color-foreground); }
+small, .caption { font-size: var(--font-size-xs); color: var(--color-muted-foreground); }
+.eyebrow {
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-semibold);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-muted-foreground);
+}
+.metric {
+  font-family: var(--font-family-display);
+  font-size: var(--font-size-3xl);
+  font-weight: var(--font-weight-bold);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.015em;
+}
+code, kbd, .mono { font-family: var(--font-family-mono); font-size: 0.92em; }
 
-[dir='ltr'] {
-  direction: ltr;
-  text-align: left;
+/* ───── BULLET / LIST UTILITIES ─────────────────────────────── */
+.zf-list { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 6px; }
+.zf-list li { position: relative; padding-inline-start: 1.4em; line-height: 1.5; }
+.zf-list li::before {
+  position: absolute; inset-inline-start: 0; top: 0;
+  font-weight: 700; color: var(--color-primary-800);
+}
+.zf-list--dot   li::before { content: '•'; font-size: 1.4em; line-height: 0.9; top: -0.05em; }
+.zf-list--arrow li::before { content: '▸'; color: var(--color-accent-500); }
+.zf-list--square li::before { content: '▪'; color: var(--color-primary-800); font-size: 1.1em; }
+.zf-list--dash  li::before { content: '—'; color: var(--color-neutral-500); }
+.zf-list--check li::before { content: '✓'; color: var(--color-success-600); font-weight: 800; }
+
+/* Status / urgency dot — use inline before label */
+.zf-dot { display: inline-block; width: var(--dot-size); height: var(--dot-size); border-radius: 9999px; vertical-align: 0.05em; margin-inline-end: 8px; flex-shrink: 0; }
+.zf-dot--mint    { background: var(--color-mint); box-shadow: 0 0 0 3px hsl(160 84% 39% / 0.18); }
+.zf-dot--graphite{ background: var(--color-primary-800); }
+.zf-dot--warning { background: var(--color-warning-500); box-shadow: 0 0 0 3px hsl(38 92% 50% / 0.20); }
+.zf-dot--danger  { background: var(--color-danger-500); box-shadow: 0 0 0 3px hsl(0 72% 51% / 0.20); animation: zf-pulse 1.6s ease-in-out infinite; }
+.zf-dot--neutral { background: var(--color-neutral-400); }
+@keyframes zf-pulse { 0%,100% { box-shadow: 0 0 0 3px hsl(0 72% 51% / 0.22); } 50% { box-shadow: 0 0 0 7px hsl(0 72% 51% / 0); } }
+
+/* RTL helpers */
+[dir='rtl'] { direction: rtl; text-align: right; }
+[dir='ltr'] { direction: ltr; text-align: left; }
+
+/* Reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: 0ms !important; transition-duration: 0ms !important; }
 }

@@ -8,15 +8,15 @@ import { StatusBadgeProps } from '@/types'
  */
 export function StatusBadge({ status, label, className }: StatusBadgeProps) {
   const statusColors = {
-    active: 'bg-green-100 text-success-700',
-    inactive: 'bg-red-100 text-red-700',
-    warning: 'bg-amber-100 text-amber-700',
-    expired: 'bg-neutral-100 text-neutral-600',
+    active: 'bg-[var(--color-success-subtle)] text-[var(--color-success-foreground)]',
+    inactive: 'bg-[var(--color-danger-subtle)] text-[var(--color-danger-foreground)]',
+    warning: 'bg-[var(--color-warning-subtle)] text-[var(--color-warning-foreground)]',
+    expired: 'bg-[var(--color-muted)] text-muted-foreground',
   }
 
   return (
     <span
-      className={cn('rounded-full px-3 py-1 text-xs font-medium', statusColors[status], className)}
+      className={cn('rounded-full px-3 py-1 text-xs font-semibold', statusColors[status], className)}
     >
       {label}
     </span>
@@ -29,9 +29,9 @@ export function StatusBadge({ status, label, className }: StatusBadgeProps) {
  */
 export function RoleBadge({ role, className }: { role: string; className?: string }) {
   const roleColors: Record<string, string> = {
-    admin: 'bg-red-100 text-red-700',
-    manager: 'bg-blue-100 text-blue-700',
-    user: 'bg-neutral-100 text-neutral-700',
+    admin: 'bg-[var(--color-primary-800)] text-white',
+    manager: 'bg-[var(--color-info-subtle)] text-[var(--color-info-foreground)]',
+    user: 'bg-[var(--color-muted)] text-muted-foreground',
   }
 
   const label: Record<string, string> = {
