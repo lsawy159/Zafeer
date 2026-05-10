@@ -1,0 +1,2 @@
+-- Migration: fix_users_rls_recursion
+-- Applied to production. Stub for local version tracking.

@@ -1,0 +1,2 @@
+-- Migration: fix_v_active_expirations_security_invoker
+-- Applied to production. Stub for local version tracking.

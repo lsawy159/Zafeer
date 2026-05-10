@@ -1,0 +1,2 @@
+-- Migration: 20260120_normalize_permissions_deny_by_default
+-- Applied to production. Stub for local version tracking.

@@ -1,0 +1,2 @@
+-- Migration: 20260501080000_create_dashboard_stats_rpc
+-- Applied to production. Stub for local version tracking.

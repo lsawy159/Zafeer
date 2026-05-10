@@ -1,0 +1,2 @@
+-- Migration: create_missing_tables
+-- Applied to production. Stub for local version tracking.

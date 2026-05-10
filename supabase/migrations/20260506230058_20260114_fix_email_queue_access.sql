@@ -1,0 +1,2 @@
+-- Migration: 20260114_fix_email_queue_access
+-- Applied to production. Stub for local version tracking.

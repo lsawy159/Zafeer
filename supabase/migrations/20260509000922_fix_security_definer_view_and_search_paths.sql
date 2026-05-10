@@ -1,0 +1,2 @@
+-- Migration: fix_security_definer_view_and_search_paths
+-- Applied to production. Stub for local version tracking.
