@@ -1,0 +1,2 @@
+-- Migration: 20250109_add_notes_to_companies
+-- Applied to production. Stub for local version tracking.

@@ -1,0 +1,2 @@
+-- Migration: 20250122090000_cleanup_system_settings_policies
+-- Applied to production. Stub for local version tracking.

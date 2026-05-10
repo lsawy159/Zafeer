@@ -1,0 +1,2 @@
+-- Migration: add_missing_columns_employees_companies
+-- Applied to production. Stub for local version tracking.

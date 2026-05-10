@@ -1,0 +1,2 @@
+-- Migration: create_v_active_expirations
+-- Applied to production. Stub for local version tracking.

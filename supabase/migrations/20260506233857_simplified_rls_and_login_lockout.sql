@@ -1,0 +1,2 @@
+-- Migration: simplified_rls_and_login_lockout
+-- Applied to production. Stub for local version tracking.

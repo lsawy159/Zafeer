@@ -1,0 +1,2 @@
+-- Migration: 20260131100000_add_username_to_users
+-- Applied to production. Stub for local version tracking.

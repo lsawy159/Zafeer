@@ -1,0 +1,2 @@
+-- Migration: fix_remaining_function_search_paths
+-- Applied to production. Stub for local version tracking.

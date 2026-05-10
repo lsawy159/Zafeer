@@ -1,0 +1,2 @@
+-- Migration: 20250108_add_notes_to_employees
+-- Applied to production. Stub for local version tracking.

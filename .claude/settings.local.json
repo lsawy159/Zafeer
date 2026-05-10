@@ -7,7 +7,10 @@
       "mcp__supabase__get_publishable_keys",
       "mcp__supabase__list_migrations",
       "mcp__claude_ai_Supabase__list_tables",
-      "mcp__supabase__get_advisors"
+      "mcp__supabase__get_advisors",
+      "mcp__claude_ai_Vercel__get_deployment_build_logs",
+      "mcp__claude_ai_Vercel__list_deployments",
+      "mcp__supabase__get_project_url"
     ]
   },
   "enableAllProjectMcpServers": true,

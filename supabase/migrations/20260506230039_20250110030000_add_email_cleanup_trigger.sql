@@ -1,0 +1,2 @@
+-- Migration: 20250110030000_add_email_cleanup_trigger
+-- Applied to production. Stub for local version tracking.

@@ -1,0 +1,2 @@
+-- Migration: drop_dead_columns_phase5
+-- Applied to production. Stub for local version tracking.
