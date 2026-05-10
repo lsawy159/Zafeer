@@ -33,12 +33,16 @@ export default function AuthLoading({
 
   useEffect(() => {
     if (!loading || maxWaitTime <= 0) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setShowExtendedState(false)
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setTimeLeft(getSeconds(maxWaitTime))
       return
     }
 
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setShowExtendedState(false)
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setTimeLeft(getSeconds(maxWaitTime))
 
     const extendedDelay = Math.min(EXTENDED_WAIT_THRESHOLD_MS, Math.max(1500, maxWaitTime - 2000))
