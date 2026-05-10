@@ -40,8 +40,8 @@ export function Header({ onMenuClick }: HeaderProps) {
     .slice(0, 2)
 
   return (
-    <header className="sticky top-0 z-40 border-b border-neutral-200 bg-white dark:border-neutral-700 dark:bg-neutral-900">
-      <div className="flex items-center justify-between px-4 py-3 sm:px-6">
+    <header className="sticky top-0 z-40 h-16 border-b border-border bg-[rgba(255,255,255,0.92)] backdrop-blur-[12px] dark:bg-[hsl(222_47%_8%/0.92)]">
+      <div className="flex items-center justify-between h-full px-4 sm:px-6">
         {/* Left: Mobile Menu + Title */}
         <div className="flex items-center gap-4">
           <Button
@@ -55,7 +55,7 @@ export function Header({ onMenuClick }: HeaderProps) {
             <Menu className="h-5 w-5" />
           </Button>
           <h1 className="text-lg font-semibold text-neutral-900 dark:text-neutral-50">
-            SawTracker
+            زفير
           </h1>
         </div>
 
@@ -68,7 +68,7 @@ export function Header({ onMenuClick }: HeaderProps) {
             onClick={handleAdvancedSearch}
             className="w-full justify-start text-neutral-500 dark:text-neutral-400"
           >
-            <Search className="h-4 w-4 mr-2" />
+            <Search className="h-4 w-4 me-2" />
             <span className="text-sm">بحث متقدم...</span>
           </Button>
         </div>
@@ -96,7 +96,7 @@ export function Header({ onMenuClick }: HeaderProps) {
             className="relative"
           >
             <Bell className="h-5 w-5" />
-            <span className="absolute top-1 right-1 h-2 w-2 bg-danger-500 rounded-full" />
+            <span className="absolute top-1 end-1 h-2 w-2 bg-[var(--color-danger-500)] rounded-full" aria-hidden="true" />
           </Button>
 
           {/* Theme Toggle */}
@@ -115,7 +115,7 @@ export function Header({ onMenuClick }: HeaderProps) {
             <DropdownMenuTrigger asChild>
               <Button type="button" variant="ghost" size="icon" className="relative">
                 <Avatar className="h-8 w-8">
-                  <AvatarFallback className="bg-primary-500 text-white text-xs font-semibold">
+                  <AvatarFallback className="bg-[var(--color-primary-800)] text-white text-xs font-semibold">
                     {userInitials}
                   </AvatarFallback>
                 </Avatar>

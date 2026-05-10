@@ -58,21 +58,21 @@ export default function Login() {
       <button
         type="button"
         onClick={toggleTheme}
-        className="absolute right-4 top-4 z-20 inline-flex items-center gap-2 rounded-full border border-border-200 bg-surface/90 px-3 py-2 text-sm font-semibold text-foreground-secondary shadow-lg backdrop-blur-md transition hover:bg-surface dark:border-white/15 dark:bg-surface/10 dark:text-white dark:hover:bg-surface/15"
+        className="absolute inset-inline-end-4 top-4 z-20 inline-flex items-center gap-2 rounded-full border border-border bg-surface/90 px-3 py-2 text-sm font-semibold text-muted-foreground shadow-[var(--shadow-lg)] backdrop-blur-md transition hover:bg-muted focus-visible:outline-none focus-visible:shadow-[var(--shadow-focus)]"
         aria-label={isDark ? 'تفعيل الوضع الفاتح' : 'تفعيل الوضع الداكن'}
       >
         {isDark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
       </button>
 
       <div className="relative z-10 w-full max-w-xl">
-        <div className="mx-auto w-full rounded-[26px] border border-border-200/80 bg-surface/74 p-4 shadow-[0_35px_120px_-50px_rgba(15,23,42,0.42)] backdrop-blur-xl dark:border-white/10 dark:bg-surface-secondary-950/46 sm:p-6">
-          <div className="rounded-[22px] border border-border-200/80 bg-surface/95 p-6 shadow-2xl dark:border-white/10 dark:bg-surface-secondary-950/84 sm:p-7">
+        <div className="mx-auto w-full rounded-[26px] border border-border/80 bg-surface/74 p-4 shadow-[0_35px_120px_-50px_rgba(15,23,42,0.42)] backdrop-blur-xl dark:border-white/10 dark:bg-[var(--color-card)]/60 sm:p-6">
+          <div className="rounded-[22px] border border-border/80 bg-surface/95 p-6 shadow-[var(--shadow-xl)] dark:border-white/10 dark:bg-[var(--color-card)]/90 sm:p-7">
             <div className="mb-6 text-center">
-              <div className="mb-4 inline-flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-primary via-yellow-300 to-amber-400 text-foreground shadow-[0_20px_40px_-20px_rgba(254,206,20,0.8)]">
+              <div className="mb-4 inline-flex h-16 w-16 items-center justify-center rounded-2xl bg-[var(--color-primary-800)] text-white shadow-[var(--shadow-primary)]">
                 <LogIn className="h-8 w-8" />
               </div>
               <h1 className="text-3xl font-black tracking-[0.14em] text-foreground dark:text-white">
-                SawTracker
+                زفير
               </h1>
             </div>
 
@@ -114,7 +114,7 @@ export default function Login() {
                     type={showPassword ? 'text' : 'password'}
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    className="app-input pr-12"
+                    className="app-input pe-12"
                     required
                     dir="ltr"
                     autoComplete="current-password"
@@ -122,7 +122,7 @@ export default function Login() {
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-foreground-tertiary transition-colors hover:text-foreground-secondary dark:hover:text-white"
+                    className="absolute inset-inline-end-3 top-1/2 -translate-y-1/2 text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none"
                     aria-label={showPassword ? 'إخفاء كلمة المرور' : 'إظهار كلمة المرور'}
                   >
                     {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}

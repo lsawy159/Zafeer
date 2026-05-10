@@ -285,7 +285,7 @@ function TransferDetailPanel({ data, onClose }: { data: TransferDetail; onClose:
 
   return (
     <div
-      className="fixed inset-0 z-[200] flex items-center justify-center bg-slate-950/55 backdrop-blur-sm p-4"
+      className="fixed inset-0 z-[200] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4"
       dir="rtl"
       onClick={onClose}
     >
@@ -293,18 +293,18 @@ function TransferDetailPanel({ data, onClose }: { data: TransferDetail; onClose:
         className="app-modal-surface w-full max-w-lg max-h-[90vh] overflow-y-auto"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="flex items-center justify-between border-b border-neutral-200 px-6 py-4 bg-white sticky top-0 z-10">
+        <div className="flex items-center justify-between border-b border-border px-6 py-4 bg-surface sticky top-0 z-10">
           <div className="flex items-center gap-3">
-            <div className="bg-blue-100 p-2 rounded-lg">
-              <Truck className="w-5 h-5 text-blue-600" />
+            <div className="bg-[var(--color-primary-100)] p-2 rounded-[var(--radius-md)]">
+              <Truck className="w-5 h-5 text-[var(--color-primary-800)]" />
             </div>
             <div>
               <h2 className="text-lg font-bold text-neutral-900">إجراء نقل</h2>
               <p className="text-sm text-neutral-500">{data.name}</p>
             </div>
           </div>
-          <button onClick={onClose} className="p-2 hover:bg-neutral-100 rounded-lg transition">
-            <X className="w-5 h-5 text-neutral-500" />
+          <button onClick={onClose} className="p-2 hover:bg-muted rounded-[var(--radius-md)] transition">
+            <X className="w-5 h-5 text-muted-foreground" />
           </button>
         </div>
 
@@ -352,7 +352,7 @@ function PayrollDetailPanel({ data, onClose }: { data: PayrollDetail; onClose: (
 
   return (
     <div
-      className="fixed inset-0 z-[200] flex items-center justify-center bg-slate-950/55 backdrop-blur-sm p-4"
+      className="fixed inset-0 z-[200] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4"
       dir="rtl"
       onClick={onClose}
     >
@@ -360,18 +360,18 @@ function PayrollDetailPanel({ data, onClose }: { data: PayrollDetail; onClose: (
         className="app-modal-surface w-full max-w-lg max-h-[90vh] overflow-y-auto"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="flex items-center justify-between border-b border-neutral-200 px-6 py-4 bg-white sticky top-0 z-10">
+        <div className="flex items-center justify-between border-b border-border px-6 py-4 bg-surface sticky top-0 z-10">
           <div className="flex items-center gap-3">
-            <div className="bg-green-100 p-2 rounded-lg">
-              <Wallet className="w-5 h-5 text-green-600" />
+            <div className="bg-[var(--color-success-subtle)] p-2 rounded-[var(--radius-md)]">
+              <Wallet className="w-5 h-5 text-[var(--color-success-foreground)]" />
             </div>
             <div>
               <h2 className="text-lg font-bold text-neutral-900">إدخال راتب</h2>
               <p className="text-sm text-neutral-500">{data.employee_name_snapshot || '—'}</p>
             </div>
           </div>
-          <button onClick={onClose} className="p-2 hover:bg-neutral-100 rounded-lg transition">
-            <X className="w-5 h-5 text-neutral-500" />
+          <button onClick={onClose} className="p-2 hover:bg-muted rounded-[var(--radius-md)] transition">
+            <X className="w-5 h-5 text-muted-foreground" />
           </button>
         </div>
 
@@ -398,12 +398,12 @@ function PayrollDetailPanel({ data, onClose }: { data: PayrollDetail; onClose: (
 function InfoRow({ icon, label, value }: { icon: React.ReactNode; label: string; value: string }) {
   return (
     <div className="flex items-start gap-3">
-      <div className="flex-shrink-0 w-8 h-8 rounded-lg bg-neutral-100 flex items-center justify-center text-neutral-500 mt-0.5">
+      <div className="flex-shrink-0 w-8 h-8 rounded-[var(--radius-md)] bg-muted flex items-center justify-center text-muted-foreground mt-0.5">
         {icon}
       </div>
       <div className="flex-1 min-w-0">
-        <p className="text-xs text-neutral-400 mb-0.5">{label}</p>
-        <p className="text-sm font-medium text-neutral-800">{value}</p>
+        <p className="text-xs text-muted-foreground/80 mb-0.5">{label}</p>
+        <p className="text-sm font-medium text-foreground">{value}</p>
       </div>
     </div>
   )
@@ -577,42 +577,43 @@ export function GlobalSearchModal({ open, onClose }: GlobalSearchModalProps) {
       onClick={onClose}
     >
       <div
-        className="w-full max-w-2xl rounded-2xl border border-slate-200 bg-white/98 shadow-2xl dark:border-white/10 dark:bg-slate-900/98 overflow-hidden"
+        className="w-full max-w-[640px] rounded-[var(--radius-xl)] border border-border bg-surface/98 shadow-[var(--shadow-xl)] dark:bg-[var(--color-card)]/98 overflow-hidden"
         onClick={(e) => e.stopPropagation()}
         onKeyDown={handleKeyDown}
       >
         {/* Header */}
-        <div className="flex items-center gap-3 px-4 py-3 border-b border-slate-200 dark:border-white/10">
-          <Search className="h-4 w-4 text-slate-400 flex-shrink-0" />
+        <div className="flex items-center gap-3 px-4 py-3 border-b border-border">
+          <Search className="h-4 w-4 text-muted-foreground flex-shrink-0" />
           <input
             ref={inputRef}
             type="text"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder={TABS.find(t => t.id === activeTab)?.placeholder}
-            className="flex-1 bg-transparent text-sm text-slate-800 placeholder:text-slate-400 outline-none dark:text-slate-100"
+            className="flex-1 bg-transparent text-sm text-foreground placeholder:text-muted-foreground outline-none"
           />
-          {loading && <Loader2 className="h-4 w-4 animate-spin text-slate-400 flex-shrink-0" />}
+          {loading && <Loader2 className="h-4 w-4 animate-spin text-muted-foreground flex-shrink-0" />}
           <button
             onClick={onClose}
-            className="p-1 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 dark:hover:bg-slate-800 transition"
+            aria-label="إغلاق البحث"
+            className="p-1 rounded-[var(--radius-md)] text-muted-foreground hover:text-foreground hover:bg-muted transition focus-visible:outline-none focus-visible:shadow-[var(--shadow-focus)]"
           >
             <X className="h-4 w-4" />
           </button>
         </div>
 
         {/* Tabs */}
-        <div className="flex gap-1 px-3 py-2 border-b border-slate-200 dark:border-white/10 overflow-x-auto">
+        <div className="flex gap-1 px-3 py-2 border-b border-border overflow-x-auto">
           {TABS.map((tab) => {
             const Icon = tab.icon
             return (
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium whitespace-nowrap transition ${
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-[var(--radius-md)] text-xs font-medium whitespace-nowrap transition ${
                   activeTab === tab.id
-                    ? 'bg-blue-600 text-white'
-                    : 'text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800'
+                    ? 'bg-[var(--color-primary-800)] text-white'
+                    : 'text-muted-foreground hover:bg-muted'
                 }`}
               >
                 <Icon className="h-3.5 w-3.5" />
@@ -625,42 +626,42 @@ export function GlobalSearchModal({ open, onClose }: GlobalSearchModalProps) {
         {/* Results */}
         <div className="max-h-80 overflow-y-auto">
           {!query.trim() ? (
-            <p className="px-4 py-6 text-sm text-center text-slate-400 dark:text-slate-500">
+            <p className="px-4 py-6 text-sm text-center text-muted-foreground">
               ابدأ الكتابة للبحث...
             </p>
           ) : loading ? (
-            <p className="px-4 py-6 text-sm text-center text-slate-400">جارٍ البحث...</p>
+            <p className="px-4 py-6 text-sm text-center text-muted-foreground">جارٍ البحث...</p>
           ) : results.length === 0 ? (
-            <p className="px-4 py-6 text-sm text-center text-slate-400">لا توجد نتائج</p>
+            <p className="px-4 py-6 text-sm text-center text-muted-foreground">لا توجد نتائج</p>
           ) : (
             <div className="p-2 space-y-0.5">
               {results.map((result, idx) => (
                 <button
                   key={result.id}
                   onClick={() => handleResultClick(result)}
-                  className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-right transition ${
+                  className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-[var(--radius-lg)] text-right transition ${
                     idx === activeIndex
-                      ? 'bg-blue-50 dark:bg-blue-900/30'
-                      : 'hover:bg-slate-50 dark:hover:bg-slate-800'
+                      ? 'bg-[var(--color-primary-100)] dark:bg-[var(--color-primary-800)]/20'
+                      : 'hover:bg-muted'
                   }`}
                 >
                   <div className="flex-1 min-w-0">
-                    <span className="block text-sm font-medium text-slate-900 dark:text-slate-100 truncate">
+                    <span className="block text-sm font-medium text-foreground truncate">
                       {result.primary}
                     </span>
                     {result.secondary && (
-                      <span className="block text-xs text-slate-500 dark:text-slate-400 truncate mt-0.5">
+                      <span className="block text-xs text-muted-foreground truncate mt-0.5">
                         {result.secondary}
                       </span>
                     )}
                     {result.tertiary && (
-                      <span className="block text-xs text-slate-400 dark:text-slate-500 truncate">
+                      <span className="block text-xs text-muted-foreground/70 truncate">
                         {result.tertiary}
                       </span>
                     )}
                   </div>
                   {result.extra && (
-                    <span className="flex-shrink-0 text-[10px] text-slate-400 max-w-[110px] truncate text-right">
+                    <span className="flex-shrink-0 text-[10px] text-muted-foreground max-w-[110px] truncate text-right">
                       {result.extra}
                     </span>
                   )}
@@ -671,7 +672,7 @@ export function GlobalSearchModal({ open, onClose }: GlobalSearchModalProps) {
         </div>
 
         {/* Footer */}
-        <div className="flex items-center justify-between px-4 py-2 border-t border-slate-200 dark:border-white/10 text-[11px] text-slate-400">
+        <div className="flex items-center justify-between px-4 py-2 border-t border-border text-[11px] text-muted-foreground">
           <span>↑↓ تنقل · Enter للفتح · Esc إغلاق</span>
           <span>{results.length > 0 ? `${results.length} نتيجة` : ''}</span>
         </div>
@@ -682,10 +683,10 @@ export function GlobalSearchModal({ open, onClose }: GlobalSearchModalProps) {
 
   // ── Detail loading overlay ─────────────────────────────────────────────────
   const loadingPortal = detailLoading ? createPortal(
-    <div className="fixed inset-0 z-[200] flex items-center justify-center bg-slate-950/40 backdrop-blur-sm" dir="rtl">
-      <div className="bg-white rounded-2xl shadow-2xl px-8 py-6 flex items-center gap-3">
-        <Loader2 className="h-5 w-5 animate-spin text-blue-600 flex-shrink-0" />
-        <span className="text-sm text-neutral-600">جارٍ تحميل التفاصيل...</span>
+    <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/40 backdrop-blur-sm" dir="rtl">
+      <div className="bg-surface rounded-[var(--radius-xl)] shadow-[var(--shadow-xl)] px-8 py-6 flex items-center gap-3">
+        <Loader2 className="h-5 w-5 animate-spin text-[var(--color-primary-800)] flex-shrink-0" />
+        <span className="text-sm text-muted-foreground">جارٍ تحميل التفاصيل...</span>
       </div>
     </div>,
     document.body
