@@ -554,6 +554,7 @@ export function useSessionMonitor(callbacks?: {
     SessionManager.on('session_revoked_immediately', handleRevoked)
 
     // Update state
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setSessionState(SessionManager.getSessionInfo())
 
     return () => {
