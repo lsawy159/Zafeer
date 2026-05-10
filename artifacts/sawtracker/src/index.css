@@ -8,6 +8,7 @@
 @theme inline {
   --font-sans: var(--font-family-body, 'Manrope', 'IBM Plex Sans Arabic', 'IBM Plex Sans', system-ui, sans-serif);
   --font-mono: var(--font-family-mono, ui-monospace, monospace);
+  --font-arabic: var(--font-family-arabic, 'IBM Plex Sans Arabic', 'Cairo', system-ui, sans-serif);
 
   /* Register primary color scale */
   --color-primary: var(--color-primary);
@@ -23,6 +24,15 @@
   --color-primary-900: var(--color-primary-900);
   --color-primary-950: var(--color-primary-950);
 
+  /* Register accent (mint) color scale */
+  --color-accent-50: var(--color-accent-50);
+  --color-accent-100: var(--color-accent-100);
+  --color-accent-300: var(--color-accent-300);
+  --color-accent-500: var(--color-accent-500);
+  --color-accent-600: var(--color-accent-600);
+  --color-accent-700: var(--color-accent-700);
+  --color-mint: var(--color-mint);
+
   /* Register neutral color scale */
   --color-neutral-50: var(--color-neutral-50);
   --color-neutral-100: var(--color-neutral-100);
@@ -37,68 +47,33 @@
   --color-neutral-950: var(--color-neutral-950);
 
   /* Register success color scale */
-  --color-success-50: var(--color-success-50);
-  --color-success-100: var(--color-success-100);
-  --color-success-200: var(--color-success-200);
-  --color-success-300: var(--color-success-300);
-  --color-success-400: var(--color-success-400);
   --color-success-500: var(--color-success-500);
   --color-success-600: var(--color-success-600);
   --color-success-700: var(--color-success-700);
-  --color-success-800: var(--color-success-800);
-  --color-success-900: var(--color-success-900);
-  --color-success-950: var(--color-success-950);
   --color-success-subtle: var(--color-success-subtle);
   --color-success-foreground: var(--color-success-foreground);
-  --color-success: var(--color-success-500);
+  --color-success: var(--color-success);
 
   /* Register warning color scale */
-  --color-warning-50: var(--color-warning-50);
-  --color-warning-100: var(--color-warning-100);
-  --color-warning-200: var(--color-warning-200);
-  --color-warning-300: var(--color-warning-300);
-  --color-warning-400: var(--color-warning-400);
   --color-warning-500: var(--color-warning-500);
   --color-warning-600: var(--color-warning-600);
-  --color-warning-700: var(--color-warning-700);
-  --color-warning-800: var(--color-warning-800);
-  --color-warning-900: var(--color-warning-900);
-  --color-warning-950: var(--color-warning-950);
   --color-warning-subtle: var(--color-warning-subtle);
   --color-warning-foreground: var(--color-warning-foreground);
-  --color-warning: var(--color-warning-500);
+  --color-warning: var(--color-warning);
 
   /* Register danger color scale */
-  --color-danger-50: var(--color-danger-50);
-  --color-danger-100: var(--color-danger-100);
-  --color-danger-200: var(--color-danger-200);
-  --color-danger-300: var(--color-danger-300);
-  --color-danger-400: var(--color-danger-400);
   --color-danger-500: var(--color-danger-500);
   --color-danger-600: var(--color-danger-600);
   --color-danger-700: var(--color-danger-700);
-  --color-danger-800: var(--color-danger-800);
-  --color-danger-900: var(--color-danger-900);
-  --color-danger-950: var(--color-danger-950);
   --color-danger-subtle: var(--color-danger-subtle);
   --color-danger-foreground: var(--color-danger-foreground);
-  --color-danger: var(--color-danger-500);
+  --color-danger: var(--color-danger);
 
   /* Register info color scale */
-  --color-info-50: var(--color-info-50);
-  --color-info-100: var(--color-info-100);
-  --color-info-200: var(--color-info-200);
-  --color-info-300: var(--color-info-300);
-  --color-info-400: var(--color-info-400);
   --color-info-500: var(--color-info-500);
-  --color-info-600: var(--color-info-600);
-  --color-info-700: var(--color-info-700);
-  --color-info-800: var(--color-info-800);
-  --color-info-900: var(--color-info-900);
-  --color-info-950: var(--color-info-950);
   --color-info-subtle: var(--color-info-subtle);
   --color-info-foreground: var(--color-info-foreground);
-  --color-info: var(--color-info-500);
+  --color-info: var(--color-info);
 
   /* Register semantic surface tokens */
   --color-background: var(--color-background);
@@ -115,6 +90,27 @@
   --color-ring: var(--color-ring);
   --color-popover: var(--color-popover);
   --color-popover-foreground: var(--color-popover-foreground);
+
+  /* Brand colors */
+  --color-brand-graphite: var(--color-brand-graphite);
+  --color-brand-mint: var(--color-brand-mint);
+
+  /* Shadows */
+  --shadow-sm: var(--shadow-sm);
+  --shadow-md: var(--shadow-md);
+  --shadow-lg: var(--shadow-lg);
+  --shadow-xl: var(--shadow-xl);
+  --shadow-primary: var(--shadow-primary);
+  --shadow-mint: var(--shadow-mint);
+  --shadow-focus: var(--shadow-focus);
+
+  /* Radius */
+  --radius-sm: var(--radius-sm);
+  --radius-md: var(--radius-md);
+  --radius-lg: var(--radius-lg);
+  --radius-xl: var(--radius-xl);
+  --radius-2xl: var(--radius-2xl);
+  --radius-full: var(--radius-full);
 }
 
 @layer components {
@@ -130,8 +126,8 @@
     pointer-events: none;
     z-index: -1;
     background-image:
-      linear-gradient(rgba(0, 80, 203, 0.06) 1px, transparent 1px),
-      linear-gradient(90deg, rgba(0, 80, 203, 0.06) 1px, transparent 1px);
+      linear-gradient(hsl(217 33% 17% / 0.05) 1px, transparent 1px),
+      linear-gradient(90deg, hsl(217 33% 17% / 0.05) 1px, transparent 1px);
     background-size: 32px 32px;
     mask-image: radial-gradient(circle at center, black 30%, transparent 95%);
   }
@@ -269,7 +265,7 @@
   /* ─── Focus Ring ─────────────────────────────────────── */
   .focus-ring-brand:focus-visible {
     outline: none;
-    box-shadow: 0 0 0 3px rgba(0, 80, 203, 0.30);
+    box-shadow: var(--shadow-focus);
   }
 
   /* ─── Scroll Reveal ──────────────────────────────────── */
@@ -346,9 +342,9 @@
   }
 
   .app-input:focus {
-    border-color: var(--color-primary-600);
+    border-color: var(--color-primary-800);
     outline: none;
-    box-shadow: 0 0 0 3px hsl(219 100% 40% / 0.18);
+    box-shadow: var(--shadow-focus);
   }
 
   .dark .app-input {
@@ -358,22 +354,22 @@
 
   .dark .app-input:focus {
     border-color: var(--color-primary-400);
-    box-shadow: 0 0 0 3px hsl(228 100% 78% / 0.20);
+    box-shadow: var(--shadow-focus);
   }
 
   /* ─── Login Shell ────────────────────────────────────── */
   .app-login-shell {
     background:
-      radial-gradient(circle at top right, rgba(0, 80, 203, 0.18), transparent 22%),
-      radial-gradient(circle at bottom left, rgba(0, 102, 255, 0.12), transparent 24%),
-      linear-gradient(135deg, #f7fafc 0%, #ffffff 45%, hsl(219 100% 97%) 100%);
+      radial-gradient(circle at top right, hsl(217 33% 17% / 0.12), transparent 22%),
+      radial-gradient(circle at bottom left, hsl(215 25% 35% / 0.08), transparent 24%),
+      linear-gradient(135deg, hsl(210 20% 98%) 0%, hsl(0 0% 100%) 45%, hsl(214 32% 95%) 100%);
   }
 
   .dark .app-login-shell {
     background:
-      radial-gradient(circle at top right, rgba(0, 102, 255, 0.12), transparent 28%),
-      radial-gradient(circle at bottom left, rgba(0, 80, 203, 0.08), transparent 30%),
-      linear-gradient(135deg, hsl(228 28% 9%) 0%, hsl(229 17% 14%) 60%, hsl(225 13% 17%) 100%);
+      radial-gradient(circle at top right, hsl(160 84% 39% / 0.08), transparent 28%),
+      radial-gradient(circle at bottom left, hsl(217 33% 17% / 0.15), transparent 30%),
+      linear-gradient(135deg, hsl(224 71% 4%) 0%, hsl(222 47% 8%) 60%, hsl(222 47% 11%) 100%);
   }
 
   /* ─── Login Grid ─────────────────────────────────────── */
@@ -381,8 +377,8 @@
     position: absolute;
     inset: 0;
     background-image:
-      linear-gradient(rgba(0, 80, 203, 0.05) 1px, transparent 1px),
-      linear-gradient(90deg, rgba(0, 80, 203, 0.05) 1px, transparent 1px);
+      linear-gradient(hsl(217 33% 17% / 0.05) 1px, transparent 1px),
+      linear-gradient(90deg, hsl(217 33% 17% / 0.05) 1px, transparent 1px);
     background-size: 34px 34px;
     mask-image: linear-gradient(to bottom, rgba(0, 0, 0, 0.7), transparent 92%);
     pointer-events: none;
@@ -390,8 +386,8 @@
 
   .dark .app-login-grid {
     background-image:
-      linear-gradient(rgba(179, 197, 255, 0.06) 1px, transparent 1px),
-      linear-gradient(90deg, rgba(179, 197, 255, 0.06) 1px, transparent 1px);
+      linear-gradient(hsl(156 72% 67% / 0.06) 1px, transparent 1px),
+      linear-gradient(90deg, hsl(156 72% 67% / 0.06) 1px, transparent 1px);
   }
 
   /* ─── Login Orbs ─────────────────────────────────────── */
@@ -409,7 +405,7 @@
     right: 10%;
     width: 260px;
     height: 260px;
-    background: rgba(0, 80, 203, 0.22);
+    background: hsl(217 33% 17% / 0.18);
   }
 
   .app-login-orb-secondary {
@@ -417,7 +413,7 @@
     left: 6%;
     width: 320px;
     height: 320px;
-    background: rgba(0, 102, 255, 0.14);
+    background: hsl(160 84% 39% / 0.12);
     animation-delay: -3s;
   }
 
@@ -425,13 +421,13 @@
   .app-login-ring {
     position: absolute;
     border-radius: 9999px;
-    border: 1px solid rgba(0, 80, 203, 0.10);
+    border: 1px solid hsl(217 33% 17% / 0.10);
     pointer-events: none;
     animation: app-pulse-ring 6s ease-in-out infinite;
   }
 
   .dark .app-login-ring {
-    border-color: rgba(179, 197, 255, 0.14);
+    border-color: hsl(156 72% 67% / 0.14);
   }
 
   .app-login-ring-1 {
@@ -453,8 +449,8 @@
   .app-login-spark {
     position: absolute;
     border-radius: 9999px;
-    background: rgba(0, 80, 203, 0.9);
-    box-shadow: 0 0 18px rgba(0, 80, 203, 0.45);
+    background: hsl(217 33% 17% / 0.9);
+    box-shadow: var(--shadow-mint);
     pointer-events: none;
     animation: app-spark-move 8s ease-in-out infinite;
   }
@@ -479,9 +475,9 @@
     display: inline-flex;
     align-items: center;
     gap: 0.5rem;
-    border-radius: var(--radius-full);
-    background-color: var(--color-primary-600);
-    padding: 0.5rem 1.25rem;
+    border-radius: var(--radius-lg);
+    background-color: var(--color-primary-800);
+    padding: 0.5rem 1rem;
     font-size: 0.875rem;
     font-weight: 600;
     color: white;
@@ -490,8 +486,13 @@
   }
 
   .app-button-primary:hover {
-    background-color: var(--color-primary-500);
+    background-color: var(--color-primary-700);
     box-shadow: var(--shadow-primary);
+  }
+
+  .app-button-primary:focus-visible {
+    outline: none;
+    box-shadow: var(--shadow-focus);
   }
 
   .app-button-primary:disabled {
@@ -503,14 +504,19 @@
     display: inline-flex;
     align-items: center;
     gap: 0.5rem;
-    border-radius: var(--radius-full);
+    border-radius: var(--radius-lg);
     border: 1px solid var(--color-neutral-300);
     background-color: var(--color-surface);
-    padding: 0.5rem 1.25rem;
+    padding: 0.5rem 1rem;
     font-size: 0.875rem;
     font-weight: 500;
     color: var(--color-neutral-600);
     transition: background-color 150ms, border-color 150ms;
+  }
+
+  .app-button-secondary:focus-visible {
+    outline: none;
+    box-shadow: var(--shadow-focus);
   }
 
   .app-button-secondary:hover {
@@ -537,8 +543,8 @@
   }
 
   .dark .app-icon-chip {
-    background-color: hsl(219 100% 50% / 0.15);
-    color: var(--color-primary-300);
+    background-color: hsl(217 33% 17% / 0.40);
+    color: var(--color-primary-200);
   }
 
   .app-badge-brand {
@@ -551,8 +557,8 @@
   }
 
   .dark .app-badge-brand {
-    color: var(--color-primary-300);
-    background-color: hsl(219 100% 50% / 0.15);
+    color: var(--color-primary-200);
+    background-color: hsl(217 33% 17% / 0.40);
   }
 
   .app-info-block {
@@ -564,9 +570,9 @@
   }
 
   .dark .app-info-block {
-    color: var(--color-primary-300);
-    border-color: hsl(219 100% 50% / 0.25);
-    background-color: hsl(219 100% 50% / 0.12);
+    color: var(--color-primary-200);
+    border-color: hsl(217 33% 17% / 0.50);
+    background-color: hsl(217 33% 17% / 0.25);
   }
 
   .app-button-success {
@@ -635,15 +641,15 @@
   }
 
   .app-tab-button-active {
-    border-bottom: 2px solid var(--color-primary-600);
+    border-bottom: 2px solid var(--color-primary-800);
     background-color: var(--color-primary-50);
-    color: var(--color-primary-700);
+    color: var(--color-primary-800);
   }
 
   .dark .app-tab-button-active {
-    background-color: hsl(219 100% 50% / 0.12);
-    border-bottom-color: var(--color-primary-400);
-    color: var(--color-primary-300);
+    background-color: hsl(217 33% 17% / 0.40);
+    border-bottom-color: var(--color-primary-300);
+    color: var(--color-primary-200);
   }
 
   /* ─── Toggle Shell ───────────────────────────────────── */
@@ -676,13 +682,13 @@
 
   .app-toggle-button-active {
     background-color: var(--color-primary-100);
-    color: var(--color-primary-700);
+    color: var(--color-primary-800);
     box-shadow: var(--shadow-sm);
   }
 
   .dark .app-toggle-button-active {
-    color: var(--color-primary-300);
-    background-color: hsl(219 100% 50% / 0.15);
+    color: var(--color-primary-200);
+    background-color: hsl(217 33% 17% / 0.40);
   }
 
   /* ─── Table Shell ────────────────────────────────────── */
@@ -816,9 +822,9 @@
 
   .app-data-strip:hover {
     transform: scale(1.01);
-    border-left-width: 4px;
-    border-left-color: hsl(219 100% 40% / 0.9);
-    box-shadow: 0 18px 45px -30px rgba(0, 80, 203, 0.55);
+    border-inline-start-width: 4px;
+    border-inline-start-color: var(--color-primary-800);
+    box-shadow: var(--shadow-primary);
   }
 
   /* ─── Select ─────────────────────────────────────────── */
@@ -836,9 +842,9 @@
   }
 
   .app-select:focus {
-    border-color: var(--color-primary-600);
+    border-color: var(--color-primary-800);
     outline: none;
-    box-shadow: 0 0 0 3px hsl(219 100% 40% / 0.18);
+    box-shadow: var(--shadow-focus);
   }
 
   .dark .app-select {
@@ -848,7 +854,7 @@
 
   .dark .app-select:focus {
     border-color: var(--color-primary-400);
-    box-shadow: 0 0 0 3px hsl(228 100% 78% / 0.20);
+    box-shadow: var(--shadow-focus);
   }
 }
 
@@ -860,8 +866,8 @@
   height: 16px;
   border-radius: 9999px;
   pointer-events: none;
-  border: 1px solid rgba(0, 80, 203, 0.75);
-  background: rgba(0, 102, 255, 0.14);
+  border: 1px solid hsl(217 33% 17% / 0.55);
+  background: hsl(217 33% 17% / 0.10);
   transform: translate(-50%, -50%);
   animation: app-water-ripple 700ms var(--easing-standard) forwards;
 }
@@ -1026,15 +1032,13 @@ tbody tr {
 
 /* ── Nav link active indicator glow ── */
 .app-sidebar a[class*="bg-primary"] {
-  box-shadow: 0 0 0 1px hsl(219 100% 40% / 0.25), 0 2px 12px hsl(219 100% 40% / 0.18);
+  box-shadow: 0 0 0 1px hsl(217 33% 17% / 0.20), var(--shadow-sm);
 }
 
 /* ══════════════════════════════════════════════════════════════════
-   DARK MODE GLOBAL TEXT CORRECTIONS
-   Placed OUTSIDE @layer so they cascade over all Tailwind utilities.
-   Unlayered CSS always wins over @layer utilities (CSS Cascade L5).
-   These only affect the `color` property — backgrounds are unaffected,
-   so dark:bg-neutral-900 cards remain dark as intended.
+   DARK MODE GLOBAL CORRECTIONS
+   Tokens handle color switching. These patches fix Tailwind hardcoded
+   utilities that don't use tokens (slate-*, gray-*, neutral-*).
    ══════════════════════════════════════════════════════════════════ */
 
 .dark body {
@@ -1042,122 +1046,38 @@ tbody tr {
   color: var(--color-foreground);
 }
 
-/* neutral-* */
-.dark .text-neutral-950,
-.dark .text-neutral-900,
-.dark .text-neutral-800 {
-  color: var(--color-foreground);
-}
+/* text corrections */
+.dark .text-neutral-950, .dark .text-neutral-900, .dark .text-neutral-800,
+.dark .text-slate-950, .dark .text-slate-900, .dark .text-slate-800,
+.dark .text-gray-950, .dark .text-gray-900, .dark .text-gray-800,
+.dark .text-black { color: var(--color-foreground); }
 
-.dark .text-neutral-700,
-.dark .text-neutral-600 {
-  color: var(--color-muted-foreground);
-}
+.dark .text-neutral-700, .dark .text-neutral-600,
+.dark .text-slate-700, .dark .text-slate-600,
+.dark .text-gray-700, .dark .text-gray-600 { color: var(--color-muted-foreground); }
 
-/* slate-* (used heavily in Layout, MobileBottomNav, etc.) */
-.dark .text-slate-950,
-.dark .text-slate-900,
-.dark .text-slate-800 {
-  color: var(--color-foreground);
-}
+.dark .text-slate-500, .dark .text-slate-400,
+.dark .text-gray-500, .dark .text-gray-400 { color: hsl(216 12% 58%); }
 
-.dark .text-slate-700,
-.dark .text-slate-600 {
-  color: var(--color-muted-foreground);
-}
-
-.dark .text-slate-500,
-.dark .text-slate-400 {
-  color: hsl(232 9% 58%);
-}
-
-/* gray-* (used in dividers, misc text) */
-.dark .text-gray-950,
-.dark .text-gray-900,
-.dark .text-gray-800 {
-  color: var(--color-foreground);
-}
-
-.dark .text-gray-700,
-.dark .text-gray-600 {
-  color: var(--color-muted-foreground);
-}
-
-.dark .text-gray-500,
-.dark .text-gray-400 {
-  color: hsl(232 9% 58%);
-}
-
-/* literal black */
-.dark .text-black {
-  color: var(--color-foreground);
-}
-
-/* bg corrections — white/light elements on dark backgrounds */
-.dark .bg-white {
-  background-color: var(--color-card);
-}
-
-.dark .bg-slate-50,
-.dark .bg-gray-50,
-.dark .bg-neutral-50 {
-  background-color: hsl(225 13% 17%);
-}
-
-.dark .bg-slate-100,
-.dark .bg-gray-100,
-.dark .bg-neutral-100 {
-  background-color: hsl(225 10% 22%);
-}
-
-.dark .bg-slate-200,
-.dark .bg-gray-200,
-.dark .bg-neutral-200 {
-  background-color: hsl(225 10% 26%);
-}
+/* bg corrections */
+.dark .bg-white { background-color: var(--color-card); }
+.dark .bg-slate-50, .dark .bg-gray-50, .dark .bg-neutral-50 { background-color: var(--color-muted); }
+.dark .bg-slate-100, .dark .bg-gray-100, .dark .bg-neutral-100 { background-color: hsl(217 19% 20%); }
+.dark .bg-slate-200, .dark .bg-gray-200, .dark .bg-neutral-200 { background-color: hsl(217 19% 24%); }
 
 /* border corrections */
-.dark .border-slate-200,
-.dark .border-gray-200,
-.dark .border-neutral-200 {
-  border-color: var(--color-border);
-}
+.dark .border-slate-200, .dark .border-gray-200, .dark .border-neutral-200,
+.dark .divide-neutral-200 > * + *, .dark .divide-gray-200 > * + *, .dark .divide-slate-200 > * + * { border-color: var(--color-border); }
+.dark .border-slate-300, .dark .border-gray-300, .dark .border-neutral-300 { border-color: hsl(217 19% 32%); }
+.dark .border-slate-100, .dark .border-gray-100, .dark .border-neutral-100,
+.dark .divide-gray-100 > * + *, .dark .divide-slate-100 > * + *, .dark .divide-neutral-100 > * + * { border-color: hsl(217 19% 22%); }
 
-.dark .border-slate-300,
-.dark .border-gray-300,
-.dark .border-neutral-300 {
-  border-color: hsl(233 15% 35%);
-}
-
-.dark .border-slate-100,
-.dark .border-gray-100,
-.dark .border-neutral-100 {
-  border-color: hsl(233 15% 24%);
-}
-
-/* divide corrections */
-.dark .divide-gray-100 > * + *,
-.dark .divide-slate-100 > * + *,
-.dark .divide-neutral-100 > * + * {
-  border-color: hsl(233 15% 24%);
-}
-
-.dark .divide-neutral-200 > * + *,
-.dark .divide-gray-200 > * + *,
-.dark .divide-slate-200 > * + * {
-  border-color: var(--color-border);
-}
-
-/* Input elements in dark mode — slightly elevated from card bg */
+/* Input elements in dark mode */
 .dark input:not([type='checkbox']):not([type='radio']):not([type='range']),
-.dark textarea,
-.dark select {
-  background-color: hsl(225 13% 17%);
+.dark textarea, .dark select {
+  background-color: var(--color-muted);
   border-color: var(--color-border);
   color: var(--color-foreground);
 }
 
-.dark input::placeholder,
-.dark textarea::placeholder {
-  color: var(--color-muted-foreground);
-}
+.dark input::placeholder, .dark textarea::placeholder { color: var(--color-muted-foreground); }
