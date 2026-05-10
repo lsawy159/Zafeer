@@ -58,7 +58,7 @@ function CompanyCard({
 
   return (
     <div
-      className={`group relative h-full overflow-hidden rounded-2xl border-2 ${getBorderColor()} bg-white/95 p-4 shadow-[0_10px_30px_-24px_rgba(15,23,42,0.8)] transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_20px_40px_-26px_rgba(14,116,144,0.65)] md:p-5`}
+      className={`group relative h-full overflow-hidden rounded-2xl border-2 ${getBorderColor()} bg-surface/95 p-4 shadow-[0_10px_30px_-24px_rgba(15,23,42,0.8)] transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_20px_40px_-26px_rgba(14,116,144,0.65)] md:p-5`}
     >
       <div className="pointer-events-none absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-cyan-400/70 via-sky-300/60 to-emerald-300/70 opacity-70 transition group-hover:opacity-100" />
 
@@ -281,7 +281,7 @@ function CompanyCard({
           <FileText className="w-3.5 h-3.5" />
           الملاحظات
         </div>
-        <div className="min-h-[42px] whitespace-pre-wrap rounded-xl border border-border bg-slate-50 px-3 py-1.5 text-xs text-slate-700">
+        <div className="min-h-[42px] whitespace-pre-wrap rounded-xl border border-border bg-muted/50 px-3 py-1.5 text-xs text-slate-700">
           {company.notes || 'لا توجد ملاحظات'}
         </div>
       </div>
