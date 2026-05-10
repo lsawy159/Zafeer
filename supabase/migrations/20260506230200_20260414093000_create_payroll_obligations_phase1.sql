@@ -1,0 +1,2 @@
+-- Migration: 20260414093000_create_payroll_obligations_phase1
+-- Applied to production. Stub for local version tracking.

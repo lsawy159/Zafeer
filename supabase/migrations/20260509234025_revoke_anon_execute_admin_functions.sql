@@ -1,0 +1,2 @@
+-- Migration: revoke_anon_execute_admin_functions
+-- Applied to production. Stub for local version tracking.

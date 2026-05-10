@@ -1,0 +1,2 @@
+-- Migration: enable_pg_cron_expiry_notifications
+-- Applied to production. Stub for local version tracking.

@@ -1,0 +1,2 @@
+-- Migration: 00000000_create_core_tables
+-- Applied to production. Stub for local version tracking.

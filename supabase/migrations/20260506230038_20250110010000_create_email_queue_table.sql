@@ -1,0 +1,2 @@
+-- Migration: 20250110010000_create_email_queue_table
+-- Applied to production. Stub for local version tracking.

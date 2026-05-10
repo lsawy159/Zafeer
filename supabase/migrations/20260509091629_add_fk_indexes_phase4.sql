@@ -1,0 +1,2 @@
+-- Migration: add_fk_indexes_phase4
+-- Applied to production. Stub for local version tracking.

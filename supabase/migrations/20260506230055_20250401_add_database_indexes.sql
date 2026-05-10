@@ -1,0 +1,2 @@
+-- Migration: 20250401_add_database_indexes
+-- Applied to production. Stub for local version tracking.

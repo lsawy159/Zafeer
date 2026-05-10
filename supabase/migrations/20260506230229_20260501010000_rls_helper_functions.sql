@@ -1,0 +1,2 @@
+-- Migration: 20260501010000_rls_helper_functions
+-- Applied to production. Stub for local version tracking.
