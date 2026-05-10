@@ -1,4 +1,4 @@
-import { type CSSProperties } from 'react'
+import { memo, type CSSProperties } from 'react'
 import { User, Edit2, Trash2, FileText } from 'lucide-react'
 import { type EmployeeWithRelations } from '@/lib/supabase'
 import { getDaysRemaining } from './employeeUtils'
@@ -82,7 +82,7 @@ interface EmployeeGridCardProps {
   onDeleteEmployee: (employee: EmployeeWithRelations) => void
 }
 
-export function EmployeeGridCard({
+export const EmployeeGridCard = memo(function EmployeeGridCard({
   employee,
   index,
   canEditEmployee,
@@ -204,4 +204,4 @@ export function EmployeeGridCard({
       </div>
     </div>
   )
-}
+})
