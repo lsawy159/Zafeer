@@ -1,3 +1,4 @@
+import { createPortal } from 'react-dom'
 import { X } from 'lucide-react'
 
 type CommercialRegStatus = 'all' | 'expired' | 'expiring_soon' | 'valid'
@@ -55,9 +56,9 @@ export function CompaniesFiltersModal({
   clearFilters,
   onClose,
 }: CompaniesFiltersModalProps) {
-  return (
+  return createPortal(
     <div
-      className="fixed inset-0 z-[100] flex items-end justify-center bg-black/50 p-0 md:items-center md:p-4"
+      className="fixed inset-0 z-[9999] flex items-end justify-center bg-black/50 p-0 md:items-center md:p-4"
       onClick={onClose}
     >
       <div
@@ -249,6 +250,7 @@ export function CompaniesFiltersModal({
             </button>
           </div>
         </div>
-    </div>
+    </div>,
+    document.body
   )
 }

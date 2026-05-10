@@ -1,3 +1,4 @@
+import { createPortal } from 'react-dom'
 import { X } from 'lucide-react'
 
 type StatusFilter = '' | 'منتهي' | 'طارئ' | 'عاجل' | 'متوسط' | 'ساري'
@@ -112,9 +113,9 @@ export function EmployeesFiltersModal({
   clearFilters,
   onClose,
 }: EmployeesFiltersModalProps) {
-  return (
+  return createPortal(
     <div
-      className="fixed inset-0 z-[100] flex items-end justify-center bg-black/50 p-0 md:items-center md:p-4"
+      className="fixed inset-0 z-[9999] flex items-end justify-center bg-black/50 p-0 md:items-center md:p-4"
       onClick={onClose}
     >
       <div
@@ -258,6 +259,7 @@ export function EmployeesFiltersModal({
           </button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   )
 }
