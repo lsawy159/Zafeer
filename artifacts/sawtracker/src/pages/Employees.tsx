@@ -72,8 +72,6 @@ export default function Employees() {
   const { data: employeesData = [], isLoading: loading } = useAllEmployeesPage(hasViewPermission)
   const employees = employeesData as (Employee & { company: Company; project?: Project })[]
 
-  const [companySearchQuery, setCompanySearchQuery] = useState('')
-  const [isCompanyDropdownOpen, setCompanyDropdownOpen] = useState(false)
   const [colorThresholds, setColorThresholds] = useState<EmployeeNotificationThresholds | null>(
     null
   )
@@ -160,8 +158,6 @@ export default function Employees() {
     showBulkContractModal ||
     showFiltersModal
   )
-  const companyDropdownRef = useRef<HTMLDivElement>(null)
-
   // Refresh employees: invalidate React Query cache → auto-refetch
   const loadEmployees = useCallback(async () => {
     await queryClient.invalidateQueries({ queryKey: EMPLOYEES_PAGE_QUERY_KEY })
@@ -265,48 +261,6 @@ export default function Employees() {
     showAlertsOnly,
   ]) // تحديث: insuranceFilter → healthInsuranceFilter
 
-  // إغلاق القائمة عند النقر خارجها
-  useEffect(() => {
-    function handleClickOutside(event: MouseEvent) {
-      if (
-        companyDropdownRef.current &&
-        !companyDropdownRef.current.contains(event.target as Node)
-      ) {
-        setCompanyDropdownOpen(false)
-      }
-    }
-    document.addEventListener('mousedown', handleClickOutside)
-    return () => document.removeEventListener('mousedown', handleClickOutside)
-  }, [])
-
-  // تحديث نص البحث عند تغيير الشركة المختارة
-  useEffect(() => {
-    if (companyFilter && companiesWithIds.length > 0) {
-      const selectedCompany = companiesWithIds.find((c) => c.name === companyFilter)
-      if (selectedCompany) {
-        const displayText = selectedCompany.unified_number
-          ? `${selectedCompany.name} (${selectedCompany.unified_number})`
-          : selectedCompany.name
-        if (companySearchQuery !== displayText) {
-          setCompanySearchQuery(displayText)
-        }
-      }
-    } else if (!companyFilter && companySearchQuery) {
-      setCompanySearchQuery('')
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [companyFilter, companiesWithIds])
-
-  // تصفية الشركات: البحث في الاسم أو الرقم الموحد
-  const filteredCompanies = companiesWithIds.filter((company) => {
-    if (companySearchQuery.trim()) {
-      const query = companySearchQuery.toLowerCase().trim()
-      const nameMatch = company.name?.toLowerCase().includes(query)
-      const unifiedNumberMatch = company.unified_number?.toString().includes(query)
-      return nameMatch || unifiedNumberMatch
-    }
-    return true
-  })
 
   const clearFilters = () => {
     clearFilterState()
@@ -1051,28 +1005,18 @@ export default function Employees() {
         {showFiltersModal && (
           <EmployeesFiltersModal
             activeFiltersCount={activeFiltersCount}
-            hasActiveFilters={hasActiveFilters}
-            searchTerm={searchTerm}
-            setSearchTerm={setSearchTerm}
-            residenceNumberSearch={residenceNumberSearch}
-            setResidenceNumberSearch={setResidenceNumberSearch}
+            companies={companiesWithIds}
             companyFilter={companyFilter}
             setCompanyFilter={setCompanyFilter}
-            companySearchQuery={companySearchQuery}
-            setCompanySearchQuery={setCompanySearchQuery}
-            isCompanyDropdownOpen={isCompanyDropdownOpen}
-            setCompanyDropdownOpen={setCompanyDropdownOpen}
-            filteredCompanies={filteredCompanies}
-            companyDropdownRef={companyDropdownRef}
-            nationalityFilter={nationalityFilter}
-            setNationalityFilter={setNationalityFilter}
-            nationalities={nationalities}
-            professionFilter={professionFilter}
-            setProfessionFilter={setProfessionFilter}
-            professions={professions}
+            projects={projects}
             projectFilter={projectFilter}
             setProjectFilter={setProjectFilter}
-            projects={projects}
+            nationalities={nationalities}
+            nationalityFilter={nationalityFilter}
+            setNationalityFilter={setNationalityFilter}
+            professions={professions}
+            professionFilter={professionFilter}
+            setProfessionFilter={setProfessionFilter}
             contractFilter={contractFilter}
             setContractFilter={setContractFilter}
             hiredWorkerContractFilter={hiredWorkerContractFilter}
@@ -1081,8 +1025,6 @@ export default function Employees() {
             setResidenceFilter={setResidenceFilter}
             healthInsuranceFilter={healthInsuranceFilter}
             setHealthInsuranceFilter={setHealthInsuranceFilter}
-            showAlertsOnly={showAlertsOnly}
-            setShowAlertsOnly={setShowAlertsOnly}
             clearFilters={clearFilters}
             onClose={() => setShowFiltersModal(false)}
           />
