@@ -7,6 +7,31 @@ interface PaginationOptions {
   size?: number
 }
 
+/** Fetches all employees with full relations for the employees page (cached 5 min). */
+export const EMPLOYEES_PAGE_QUERY_KEY = ['employees-page-all'] as const
+
+export function useAllEmployeesPage(enabled = true) {
+  return useQuery({
+    queryKey: EMPLOYEES_PAGE_QUERY_KEY,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('employees')
+        .select(
+          'id,company_id,name,profession,nationality,birth_date,phone,passport_number,residence_number,joining_date,contract_expiry,hired_worker_contract_expiry,residence_expiry,project_id,project_name,bank_account,residence_image_url,health_insurance_expiry,salary,notes,additional_fields,is_deleted,deleted_at,created_at,updated_at, company:companies(id,name,unified_number,labor_subscription_number,commercial_registration_expiry,social_insurance_number,commercial_registration_status,additional_fields,ending_subscription_power_date,ending_subscription_moqeem_date,employee_count,max_employees,notes,exemptions,company_type,created_at,updated_at), project:projects(id,name,description,status,created_at,updated_at)'
+        )
+        .order('name')
+      if (error) {
+        logger.error('Error fetching employees page:', error)
+        throw error
+      }
+      return (data ?? []) as unknown as EmployeeWithRelations[]
+    },
+    staleTime: 5 * 60 * 1000,
+    gcTime: 10 * 60 * 1000,
+    enabled,
+  })
+}
+
 /** Fetches every non-deleted active employee (no pagination limit). */
 export function useAllActiveEmployees() {
   return useQuery({
