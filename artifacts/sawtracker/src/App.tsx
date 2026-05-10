@@ -13,7 +13,7 @@ import './App.css'
 
 // Protected route layout with AppShell
 function ProtectedRouteLayout() {
-  const { session } = useAuth()
+  const { session, user } = useAuth()
 
   return (
     <AuthLoading
@@ -26,10 +26,15 @@ function ProtectedRouteLayout() {
         />
       }
     >
-      {session ? (
+      {session && user ? (
         <AppShell>
           <Outlet />
         </AppShell>
+      ) : session ? (
+        <PageLoader
+          title="جاري تحميل بيانات المستخدم"
+          description="نتحقق من صلاحياتك وبياناتك."
+        />
       ) : (
         <Navigate to="/login" replace />
       )}
