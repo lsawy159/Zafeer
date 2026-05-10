@@ -58,7 +58,8 @@ export function CompaniesFiltersModal({
   return (
     <div className="fixed inset-0 z-[100] overflow-y-auto">
       <div
-        className="fixed inset-0 bg-black/50 transition-opacity duration-[var(--motion-base)] ease-[var(--ease-out)]"
+        className="fixed inset-0 bg-black/50"
+        style={{ contain: 'strict', willChange: 'opacity' }}
         onClick={onClose}
       />
 
