@@ -1,4 +1,5 @@
 import { useEffect, useState, useRef, useCallback, useMemo } from 'react'
+import { useWindowVirtualizer } from '@tanstack/react-virtual'
 import { useModalScrollLock } from '@/hooks/useModalScrollLock'
 import { supabase, Employee, Company, Project, EmployeeWithRelations } from '@/lib/supabase'
 import Layout from '@/components/layout/Layout'
@@ -103,6 +104,7 @@ export default function Employees() {
   const [viewMode, setViewMode] = useState<'table' | 'grid'>('grid')
   const isMobileView = useIsMobileView()
   const { gridClass: employeeGridClass } = useCardColumns()
+
 
   // حالة التعديل السريع - تم إزالتها
 
@@ -1068,6 +1070,16 @@ export default function Employees() {
     }
   }), [filteredEmployees, sortField, sortDirection])
 
+  // Virtualizer for list/table view
+  const listContainerRef = useRef<HTMLDivElement>(null)
+  const rowVirtualizer = useWindowVirtualizer({
+    count: viewMode === 'table' ? sortedAndFilteredEmployees.length : 0,
+    estimateSize: () => 72,
+    overscan: 10,
+    scrollMargin: listContainerRef.current?.offsetTop ?? 0,
+  })
+  const virtualItems = rowVirtualizer.getVirtualItems()
+
   // معالجة التنقل بالسهام في الجدول
   useEffect(() => {
     // لا تعمل إذا كان هناك modal مفتوح
@@ -1437,7 +1449,7 @@ export default function Employees() {
             ))}
           </div>
         ) : (
-          <div className="space-y-3">
+          <div ref={listContainerRef} className="space-y-3">
             <div className="app-data-strip flex items-center justify-between">
               <button
                 onClick={toggleSelectAll}
@@ -1461,25 +1473,43 @@ export default function Employees() {
               </span>
             </div>
 
-            {sortedAndFilteredEmployees.map((employee, index) => (
-              <EmployeeListRow
-                key={employee.id}
-                employee={employee}
-                index={index}
-                isSelected={selectedRowIndex === index}
-                isChecked={selectedEmployees.has(employee.id)}
-                setRowRef={(el) => { rowRefs.current[index] = el }}
-                canDeleteEmployee={canDelete('employees')}
-                onEmployeeClick={handleEmployeeClick}
-                onDeleteEmployee={handleDeleteEmployee}
-                onToggleSelection={toggleEmployeeSelection}
-              />
-            ))}
-
-            {sortedAndFilteredEmployees.length === 0 && (
+            {sortedAndFilteredEmployees.length === 0 ? (
               <div className="text-center py-12 text-neutral-500">
                 <AlertCircle className="w-12 h-12 mx-auto mb-4 text-neutral-400" />
                 <p>لا توجد نتائج تطابق الفلاتر المحددة</p>
+              </div>
+            ) : (
+              <div
+                style={{ height: rowVirtualizer.getTotalSize(), position: 'relative' }}
+              >
+                {virtualItems.map((virtualRow) => {
+                  const employee = sortedAndFilteredEmployees[virtualRow.index]
+                  return (
+                    <div
+                      key={employee.id}
+                      style={{
+                        position: 'absolute',
+                        top: 0,
+                        transform: `translateY(${virtualRow.start - rowVirtualizer.options.scrollMargin}px)`,
+                        width: '100%',
+                      }}
+                      ref={rowVirtualizer.measureElement}
+                      data-index={virtualRow.index}
+                    >
+                      <EmployeeListRow
+                        employee={employee}
+                        index={virtualRow.index}
+                        isSelected={selectedRowIndex === virtualRow.index}
+                        isChecked={selectedEmployees.has(employee.id)}
+                        setRowRef={(el) => { rowRefs.current[virtualRow.index] = el }}
+                        canDeleteEmployee={canDelete('employees')}
+                        onEmployeeClick={handleEmployeeClick}
+                        onDeleteEmployee={handleDeleteEmployee}
+                        onToggleSelection={toggleEmployeeSelection}
+                      />
+                    </div>
+                  )
+                })}
               </div>
             )}
           </div>

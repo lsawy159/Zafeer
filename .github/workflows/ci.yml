@@ -129,7 +129,7 @@ jobs:
       - name: Lint sawtracker
         working-directory: artifacts/sawtracker
         # threshold=200 is current baseline; ratchet down as violations are fixed
-        run: pnpm run lint -- --max-warnings 200
+        run: pnpm exec eslint src --max-warnings 200
 
   test-rls:
     name: RLS Tests
@@ -161,7 +161,7 @@ jobs:
   lighthouse:
     name: Lighthouse CI
     runs-on: ubuntu-latest
-    needs: build
+    needs: typecheck
     continue-on-error: true
     steps:
       - uses: actions/checkout@v4
@@ -178,9 +178,14 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Run Lighthouse CI
-        run: npx @lhci/cli@0.14.x autorun
+      - name: Build sawtracker for Lighthouse
+        working-directory: artifacts/sawtracker
+        run: pnpm run build
         env:
           VITE_SUPABASE_URL: https://placeholder.supabase.co
           VITE_SUPABASE_ANON_KEY: placeholder-key-for-tests
+
+      - name: Run Lighthouse CI
+        run: npx @lhci/cli@0.14.x autorun
+        env:
           LHCI_GITHUB_APP_TOKEN: ${{ secrets.LHCI_GITHUB_APP_TOKEN }}
