@@ -1,0 +1,2 @@
+-- Migration: add_missing_columns_to_existing_tables
+-- Applied to production. Stub for local version tracking.

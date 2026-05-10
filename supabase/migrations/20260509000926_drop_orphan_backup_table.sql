@@ -1,0 +1,2 @@
+-- Migration: drop_orphan_backup_table
+-- Applied to production. Stub for local version tracking.

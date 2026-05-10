@@ -1,0 +1,2 @@
+-- Migration: 20260425010000_add_missing_user_rpcs
+-- Applied to production. Stub for local version tracking.

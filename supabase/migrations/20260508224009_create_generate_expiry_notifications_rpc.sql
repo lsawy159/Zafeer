@@ -1,0 +1,2 @@
+-- Migration: create_generate_expiry_notifications_rpc
+-- Applied to production. Stub for local version tracking.

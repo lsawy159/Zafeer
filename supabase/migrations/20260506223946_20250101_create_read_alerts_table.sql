@@ -1,0 +1,2 @@
+-- Migration: 20250101_create_read_alerts_table
+-- Applied to production. Stub for local version tracking.
