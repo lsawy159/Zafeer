@@ -918,6 +918,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           }
 
           if (!activeSessions || activeSessions.length === 0) {
+            // قبل تسجيل الخروج، نتحقق من أن Supabase Auth نفسه يؤكد بطلان الجلسة.
+            // لو user_sessions فارغ بسبب فشل createUserSession (مشكلة شبكة عند الدخول)،
+            // Supabase Auth ستعيد session صالحة → نُعيد إنشاء السجل ونكمل.
+            const { data: { session: authSession } } = await supabase.auth.getSession()
+            if (authSession) {
+              logger.warn('[Auth] user_sessions empty but Supabase Auth session valid - re-creating record')
+              await createUserSession(user.id).catch((err) => {
+                logger.warn('[Auth] Failed to re-create session record:', err)
+              })
+              return true
+            }
+
             logger.warn('[Auth] No active session found - session was terminated remotely')
             await supabase.auth.signOut()
             setUser(null)
@@ -958,7 +970,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     } finally {
       sessionValidationInProgressRef.current = false
     }
-  }, [isSessionSchemaError, isTransientNetworkError, session, user?.id, waitForRetry])
+  }, [createUserSession, isSessionSchemaError, isTransientNetworkError, session, user?.id, waitForRetry])
 
   // --- Session Validation (Remote Termination Detection) ---
   useEffect(() => {
