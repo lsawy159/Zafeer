@@ -1,7 +1,11 @@
 import { useEffect, useState, useRef, useCallback, useMemo } from 'react'
 import { useWindowVirtualizer } from '@tanstack/react-virtual'
+import { useQueryClient } from '@tanstack/react-query'
 import { useModalScrollLock } from '@/hooks/useModalScrollLock'
-import { supabase, Employee, Company, Project, EmployeeWithRelations } from '@/lib/supabase'
+import { supabase, Employee, Company, Project } from '@/lib/supabase'
+import { useAllEmployeesPage, EMPLOYEES_PAGE_QUERY_KEY } from '@/hooks/useEmployees'
+import { useProjects } from '@/hooks/useProjects'
+import { useEmployeeFilters } from '@/hooks/useEmployeeFilters'
 import Layout from '@/components/layout/Layout'
 import EmployeeCard from '@/components/employees/EmployeeCard'
 import AddEmployeeModal from '@/components/employees/AddEmployeeModal'
@@ -32,7 +36,7 @@ import {
   type EmployeeNotificationThresholds,
 } from '@/utils/employeeAlerts'
 import { useIsMobileView } from '@/hooks/useIsMobileView'
-import { useCardColumns } from '@/hooks/useUiPreferences'
+
 import { PageHeader } from '@/components/ui/PageHeader'
 import { FilterBar } from '@/components/ui/FilterBar'
 import { SearchInput } from '@/components/ui/SearchInput'
@@ -61,33 +65,45 @@ export default function Employees() {
   const { canView, canCreate, canEdit, canDelete } = usePermissions()
   const location = useLocation()
   const navigate = useNavigate()
-  const [employees, setEmployees] = useState<
-    (Employee & { company: Company; project?: Project })[]
-  >([])
-  const [loading, setLoading] = useState(true)
-  const [searchTerm, setSearchTerm] = useState('')
-  const [residenceNumberSearch, setResidenceNumberSearch] = useState('')
-  const [companyFilter, setCompanyFilter] = useState<string>('')
-  const [nationalityFilter, setNationalityFilter] = useState<string>('')
-  const [professionFilter, setProfessionFilter] = useState<string>('')
-  const [projectFilter, setProjectFilter] = useState<string>('')
-  const [contractFilter, setContractFilter] = useState<string>('')
-  const [hiredWorkerContractFilter, setHiredWorkerContractFilter] = useState<string>('')
-  const [residenceFilter, setResidenceFilter] = useState<string>('')
-  const [healthInsuranceFilter, setHealthInsuranceFilter] = useState<string>('') // تحديث: insuranceFilter → healthInsuranceFilter
-  const [showAlertsOnly, setShowAlertsOnly] = useState(false)
+  const queryClient = useQueryClient()
 
-  const [companiesWithIds, setCompaniesWithIds] = useState<
-    Array<{ id: string; name: string; unified_number?: number }>
-  >([])
+  // Data from React Query (cached 5 min — subsequent page visits are instant)
+  const hasViewPermission = canView('employees')
+  const { data: employeesData = [], isLoading: loading } = useAllEmployeesPage(hasViewPermission)
+  const employees = employeesData as (Employee & { company: Company; project?: Project })[]
+
   const [companySearchQuery, setCompanySearchQuery] = useState('')
   const [isCompanyDropdownOpen, setCompanyDropdownOpen] = useState(false)
-  const [nationalities, setNationalities] = useState<string[]>([])
-  const [professions, setProfessions] = useState<string[]>([])
-  const [projects, setProjects] = useState<string[]>([])
   const [colorThresholds, setColorThresholds] = useState<EmployeeNotificationThresholds | null>(
     null
   )
+
+  // Derived lists from employees (no setState — auto-updated when React Query refreshes)
+  const companiesWithIds = useMemo(() => {
+    const map = new Map<string, { name: string; unified_number?: number }>()
+    employees.forEach((emp) => {
+      if (emp.company?.id && emp.company?.name && !map.has(emp.company.id)) {
+        map.set(emp.company.id, { name: emp.company.name, unified_number: emp.company.unified_number })
+      }
+    })
+    return Array.from(map.entries())
+      .map(([id, d]) => ({ id, name: d.name, unified_number: d.unified_number }))
+      .sort((a, b) => a.name.localeCompare(b.name))
+  }, [employees])
+
+  const nationalities = useMemo(
+    () => [...new Set(employees.map((e) => e.nationality).filter(Boolean))].sort() as string[],
+    [employees]
+  )
+
+  const professions = useMemo(
+    () => [...new Set(employees.map((e) => e.profession).filter(Boolean))].sort() as string[],
+    [employees]
+  )
+
+  // Projects from React Query
+  const { data: projectsData = [] } = useProjects()
+  const projects = useMemo(() => projectsData.map((p) => p.name).filter(Boolean), [projectsData])
 
   // حالة المودال
   const [selectedEmployee, setSelectedEmployee] = useState<
@@ -103,8 +119,6 @@ export default function Employees() {
   // حالة نوع العرض
   const [viewMode, setViewMode] = useState<'table' | 'grid'>('grid')
   const isMobileView = useIsMobileView()
-  const { gridClass: employeeGridClass } = useCardColumns()
-
 
   // حالة التعديل السريع - تم إزالتها
 
@@ -147,103 +161,34 @@ export default function Employees() {
     showFiltersModal
   )
   const companyDropdownRef = useRef<HTMLDivElement>(null)
-  const loadEmployeesRef = useRef<(() => Promise<void>) | undefined>(undefined)
 
-  // التحقق من صلاحية العرض
-  const hasViewPermission = canView('employees')
-
-  // Sort states
-  const [sortField, setSortField] = useState<
-    | 'name'
-    | 'profession'
-    | 'nationality'
-    | 'company'
-    | 'project'
-    | 'contract_expiry'
-    | 'hired_worker_contract_expiry'
-    | 'residence_expiry'
-    | 'health_insurance_expiry'
-  >('name') // تحديث: إضافة عقد أجير + المشروع + ending_subscription_insurance_date → health_insurance_expiry
-  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc')
-
+  // Refresh employees: invalidate React Query cache → auto-refetch
   const loadEmployees = useCallback(async () => {
-    try {
-      setLoading(true)
-      const { data, error } = await supabase
-        .from('employees')
-        .select(
-          'id,company_id,name,profession,nationality,birth_date,phone,passport_number,residence_number,joining_date,contract_expiry,hired_worker_contract_expiry,residence_expiry,project_id,project_name,bank_account,residence_image_url,health_insurance_expiry,salary,notes,additional_fields,is_deleted,deleted_at,created_at,updated_at, company:companies(id,name,unified_number,labor_subscription_number,commercial_registration_expiry,social_insurance_number,commercial_registration_status,additional_fields,ending_subscription_power_date,ending_subscription_moqeem_date,employee_count,max_employees,notes,exemptions,company_type,created_at,updated_at), project:projects(id,name,description,status,created_at,updated_at)'
-        )
-        .order('name')
+    await queryClient.invalidateQueries({ queryKey: EMPLOYEES_PAGE_QUERY_KEY })
+  }, [queryClient])
 
-      if (error) throw error
-
-      const employeesData = (data || []) as unknown as EmployeeWithRelations[]
-      setEmployees(employeesData as unknown as (Employee & { company: Company; project?: Project })[])
-
-      // استخراج القوائم الفريدة للفلاتر
-      // Reserved for future use: uniqueCompanies
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars
-      const uniqueCompanies = [
-        ...new Set(employeesData.map((e) => e.company?.name).filter(Boolean)),
-      ] as string[]
-      const uniqueNationalities = [
-        ...new Set(employeesData.map((e) => e.nationality).filter(Boolean)),
-      ] as string[]
-      const uniqueProfessions = [
-        ...new Set(employeesData.map((e) => e.profession).filter(Boolean)),
-      ] as string[]
-
-      // بناء قائمة المؤسسات مع IDs و unified_number
-      const companiesMap = new Map<string, { name: string; unified_number?: number }>()
-      employeesData.forEach((emp) => {
-        if (emp.company?.id && emp.company?.name) {
-          if (!companiesMap.has(emp.company.id)) {
-            companiesMap.set(emp.company.id, {
-              name: emp.company.name,
-              unified_number: emp.company.unified_number,
-            })
-          }
-        }
-      })
-      const companiesWithIdsList = Array.from(companiesMap.entries()).map(([id, data]) => ({
-        id,
-        name: data.name,
-        unified_number: data.unified_number,
-      }))
-      setCompaniesWithIds(companiesWithIdsList.sort((a, b) => a.name.localeCompare(b.name)))
-
-      // تحميل المشاريع من جدول projects
-      const { data: projectsData, error: projectsError } = await supabase
-        .from('projects')
-        .select('id, name')
-        .order('name')
-
-      if (!projectsError && projectsData) {
-        const projectNames = projectsData.map((p) => p.name).filter(Boolean)
-        setProjects(projectNames.sort())
-      } else {
-        // Fallback: استخراج من project_name القديم إذا فشل تحميل المشاريع
-        const uniqueProjects = [
-          ...new Set(employeesData.map((e) => e.project?.name || e.project_name).filter(Boolean)),
-        ] as string[]
-        setProjects(uniqueProjects.sort())
-      }
-
-      // Companies list is no longer stored in state, only used for filtering
-      setNationalities(uniqueNationalities.sort())
-      setProfessions(uniqueProfessions.sort())
-    } catch (error) {
-      logger.error('Error loading employees:', error)
-    } finally {
-      setLoading(false)
-    }
-  }, [])
-
-  // حفظ loadEmployees في ref
-  useEffect(() => {
-    loadEmployeesRef.current = loadEmployees
-  }, [loadEmployees])
+  // Filter + sort state (extracted from component for clean separation)
+  const {
+    searchTerm, setSearchTerm,
+    residenceNumberSearch, setResidenceNumberSearch,
+    companyFilter, setCompanyFilter,
+    nationalityFilter, setNationalityFilter,
+    professionFilter, setProfessionFilter,
+    projectFilter, setProjectFilter,
+    contractFilter, setContractFilter,
+    hiredWorkerContractFilter, setHiredWorkerContractFilter,
+    residenceFilter, setResidenceFilter,
+    healthInsuranceFilter, setHealthInsuranceFilter,
+    showAlertsOnly, setShowAlertsOnly,
+    sortField, setSortField,
+    sortDirection, setSortDirection,
+    filteredEmployees,
+    sortedAndFilteredEmployees,
+    activeFiltersCount,
+    hasActiveFilters,
+    clearFilters: clearFilterState,
+    applyUrlFilter,
+  } = useEmployeeFilters({ employees, colorThresholds })
 
   // تحميل إعدادات الألوان مع الاستماع لتحديثات الإعدادات
   useEffect(() => {
@@ -267,13 +212,13 @@ export default function Employees() {
     }
   }, [])
 
+  // Apply URL filter params once on mount (after permissions are ready)
   useEffect(() => {
-    if (hasViewPermission) {
-      loadEmployees()
-      handleUrlParams()
-    }
+    if (!hasViewPermission) return
+    const filter = new URLSearchParams(location.search).get('filter')
+    applyUrlFilter(filter)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [loadEmployees, hasViewPermission])
+  }, [hasViewPermission])
 
 
   // Handle company filter from URL after companies are loaded
@@ -363,67 +308,8 @@ export default function Employees() {
     return true
   })
 
-  const handleUrlParams = () => {
-    const params = new URLSearchParams(location.search)
-    const filter = params.get('filter')
-    const companyId = params.get('company')
-
-    // Handle company filter from URL
-    if (companyId) {
-      // سنقوم بتعيين companyFilter بعد تحميل الموظفين والمؤسسات
-      // سنستخدم useEffect للتعامل مع ذلك
-    }
-
-    switch (filter) {
-      case 'alerts':
-        // فلترة الموظفين الذين لديهم تنبيهات (عقود أو إقامات أو تأمين منتهية أو قريبة من الانتهاء)
-        setContractFilter('لديه تنبيه')
-        setHiredWorkerContractFilter('لديه تنبيه')
-        setResidenceFilter('لديه تنبيه')
-        setHealthInsuranceFilter('لديه تنبيه')
-        break
-      case 'expired-contracts':
-        setContractFilter('منتهي')
-        break
-      case 'expired-residences':
-        setResidenceFilter('منتهي')
-        break
-      case 'expired-insurance':
-        setHealthInsuranceFilter('منتهي') // تحديث: setInsuranceFilter → setHealthInsuranceFilter
-        break
-      case 'urgent-contracts':
-        setContractFilter('طارئ')
-        break
-      case 'urgent-residences':
-        setResidenceFilter('طارئ')
-        break
-      case 'expiring-insurance-30':
-        setHealthInsuranceFilter('طارئ') // تحديث: setInsuranceFilter → setHealthInsuranceFilter
-        break
-      case 'expiring-insurance-60':
-        setHealthInsuranceFilter('متوسط') // تحديث: setInsuranceFilter → setHealthInsuranceFilter
-        break
-      case 'expiring-insurance-90':
-        setHealthInsuranceFilter('ساري') // تحديث: setInsuranceFilter → setHealthInsuranceFilter
-        break
-      case 'active-insurance':
-        setHealthInsuranceFilter('ساري') // تحديث: setInsuranceFilter → setHealthInsuranceFilter
-        break
-    }
-  }
-
   const clearFilters = () => {
-    setSearchTerm('')
-    setResidenceNumberSearch('')
-    setCompanyFilter('')
-    setNationalityFilter('')
-    setProfessionFilter('')
-    setProjectFilter('')
-    setContractFilter('')
-    setHiredWorkerContractFilter('')
-    setResidenceFilter('')
-    setHealthInsuranceFilter('') // تحديث: setInsuranceFilter → setHealthInsuranceFilter
-    setShowAlertsOnly(false)
+    clearFilterState()
     navigate('/employees')
   }
 
@@ -847,151 +733,11 @@ export default function Employees() {
     }
   }
 
-  const alertsCount = employees.reduce((count, emp) => {
-    return (
-      count +
-      (hasAlert(
-        emp.contract_expiry,
-        emp.hired_worker_contract_expiry,
-        emp.residence_expiry,
-        emp.health_insurance_expiry,
-        colorThresholds ?? COLOR_THRESHOLD_FALLBACK
-      )
-        ? 1
-        : 0)
-    )
-  }, 0)
-
-  const filteredEmployees = useMemo(() => employees.filter((emp) => {
-    const contractStatus = getStatusForField(emp.contract_expiry, 'contract', colorThresholds ?? COLOR_THRESHOLD_FALLBACK)
-    const hiredWorkerStatus = getStatusForField(
-      emp.hired_worker_contract_expiry,
-      'hired_worker_contract',
-      colorThresholds ?? COLOR_THRESHOLD_FALLBACK
-    )
-    const residenceStatus = getStatusForField(emp.residence_expiry, 'residence', colorThresholds ?? COLOR_THRESHOLD_FALLBACK)
-    const insuranceStatus = getStatusForField(emp.health_insurance_expiry, 'health_insurance', colorThresholds ?? COLOR_THRESHOLD_FALLBACK)
-
-    // البحث الشامل في الاسم، رقم الإقامة، رقم الجواز، المهنة، والجنسية
-    const searchLower = searchTerm.toLowerCase()
-    const matchesSearch =
-      !searchTerm ||
-      emp.name.toLowerCase().includes(searchLower) ||
-      emp.residence_number.toString().toLowerCase().includes(searchLower) ||
-      (emp.passport_number && emp.passport_number.toLowerCase().includes(searchLower)) ||
-      (emp.profession && emp.profession.toLowerCase().includes(searchLower)) ||
-      (emp.nationality && emp.nationality.toLowerCase().includes(searchLower))
-    const matchesResidenceNumber =
-      !residenceNumberSearch ||
-      emp.residence_number.toString().toLowerCase().includes(residenceNumberSearch.toLowerCase())
-    const matchesCompany = !companyFilter || emp.company?.name === companyFilter
-    const matchesNationality = !nationalityFilter || emp.nationality === nationalityFilter
-    const matchesProfession = !professionFilter || emp.profession === professionFilter
-    const matchesProject =
-      !projectFilter ||
-      emp.project?.name === projectFilter ||
-      (emp.project_name === projectFilter && !emp.project)
-
-    // فلترة خاصة لـ "لديه تنبيه"
-    const matchesContract =
-      !contractFilter ||
-      (contractFilter === 'لديه تنبيه'
-        ? hasAlert(
-            emp.contract_expiry,
-            emp.hired_worker_contract_expiry,
-            emp.residence_expiry,
-            emp.health_insurance_expiry,
-            colorThresholds ?? COLOR_THRESHOLD_FALLBACK
-          )
-        : contractStatus === contractFilter)
-    const matchesHiredWorkerContract =
-      !hiredWorkerContractFilter ||
-      (hiredWorkerContractFilter === 'لديه تنبيه'
-        ? hasAlert(
-            emp.contract_expiry,
-            emp.hired_worker_contract_expiry,
-            emp.residence_expiry,
-            emp.health_insurance_expiry,
-            colorThresholds ?? COLOR_THRESHOLD_FALLBACK
-          )
-        : hiredWorkerStatus === hiredWorkerContractFilter)
-    const matchesResidence =
-      !residenceFilter ||
-      (residenceFilter === 'لديه تنبيه'
-        ? hasAlert(
-            emp.contract_expiry,
-            emp.hired_worker_contract_expiry,
-            emp.residence_expiry,
-            emp.health_insurance_expiry,
-            colorThresholds ?? COLOR_THRESHOLD_FALLBACK
-          )
-        : residenceStatus === residenceFilter)
-    const matchesInsurance =
-      !healthInsuranceFilter ||
-      (healthInsuranceFilter === 'لديه تنبيه'
-        ? hasAlert(
-            emp.contract_expiry,
-            emp.hired_worker_contract_expiry,
-            emp.residence_expiry,
-            emp.health_insurance_expiry,
-            colorThresholds ?? COLOR_THRESHOLD_FALLBACK
-          )
-        : insuranceStatus === healthInsuranceFilter)
-
-    const matchesAlertsToggle =
-      !showAlertsOnly ||
-      hasAlert(
-        emp.contract_expiry,
-        emp.hired_worker_contract_expiry,
-        emp.residence_expiry,
-        emp.health_insurance_expiry,
-        colorThresholds ?? COLOR_THRESHOLD_FALLBACK
-      )
-
-    return (
-      matchesSearch &&
-      matchesResidenceNumber &&
-      matchesCompany &&
-      matchesNationality &&
-      matchesProfession &&
-      matchesProject &&
-      matchesContract &&
-      matchesHiredWorkerContract &&
-      matchesResidence &&
-      matchesInsurance &&
-      matchesAlertsToggle
-    )
-  }), [employees, searchTerm, residenceNumberSearch, companyFilter, nationalityFilter,
-    professionFilter, projectFilter, contractFilter, hiredWorkerContractFilter,
-    residenceFilter, healthInsuranceFilter, showAlertsOnly, colorThresholds])
-
-  const hasActiveFilters =
-    searchTerm ||
-    residenceNumberSearch ||
-    companyFilter ||
-    nationalityFilter ||
-    professionFilter ||
-    projectFilter ||
-    contractFilter ||
-    hiredWorkerContractFilter ||
-    residenceFilter ||
-    healthInsuranceFilter ||
-    showAlertsOnly // تحديث: insuranceFilter → healthInsuranceFilter
-
-  // Calculate active filters count
-  const activeFiltersCount = [
-    searchTerm !== '',
-    residenceNumberSearch !== '',
-    companyFilter !== '',
-    nationalityFilter !== '',
-    professionFilter !== '',
-    projectFilter !== '',
-    contractFilter !== '',
-    hiredWorkerContractFilter !== '',
-    residenceFilter !== '',
-    healthInsuranceFilter !== '', // تحديث: insuranceFilter → healthInsuranceFilter
-    showAlertsOnly,
-  ].filter(Boolean).length
+  const alertsCount = useMemo(() =>
+    employees.reduce((count, emp) =>
+      count + (hasAlert(emp.contract_expiry, emp.hired_worker_contract_expiry, emp.residence_expiry, emp.health_insurance_expiry, colorThresholds ?? COLOR_THRESHOLD_FALLBACK) ? 1 : 0),
+      0
+    ), [employees, colorThresholds])
 
   // Sort handling functions
   const handleSort = (field: typeof sortField) => {
@@ -1012,64 +758,6 @@ export default function Employees() {
     )
   }
 
-  // Apply sorting to filtered employees
-  const sortedAndFilteredEmployees = useMemo(() => [...filteredEmployees].sort((a, b) => {
-    let aValue: string | number
-    let bValue: string | number
-
-    switch (sortField) {
-      case 'name':
-        aValue = a.name.toLowerCase()
-        bValue = b.name.toLowerCase()
-        break
-      case 'profession':
-        aValue = (a.profession || '').toLowerCase()
-        bValue = (b.profession || '').toLowerCase()
-        break
-      case 'nationality':
-        aValue = (a.nationality || '').toLowerCase()
-        bValue = (b.nationality || '').toLowerCase()
-        break
-      case 'company':
-        aValue = (a.company?.name || '').toLowerCase()
-        bValue = (b.company?.name || '').toLowerCase()
-        break
-      case 'project':
-        aValue = (a.project?.name || a.project_name || '').toLowerCase()
-        bValue = (b.project?.name || b.project_name || '').toLowerCase()
-        break
-      case 'contract_expiry':
-        aValue = a.contract_expiry ? new Date(a.contract_expiry).getTime() : 0
-        bValue = b.contract_expiry ? new Date(b.contract_expiry).getTime() : 0
-        break
-      case 'hired_worker_contract_expiry':
-        aValue = a.hired_worker_contract_expiry
-          ? new Date(a.hired_worker_contract_expiry).getTime()
-          : 0
-        bValue = b.hired_worker_contract_expiry
-          ? new Date(b.hired_worker_contract_expiry).getTime()
-          : 0
-        break
-      case 'residence_expiry':
-        aValue = a.residence_expiry ? new Date(a.residence_expiry).getTime() : 0
-        bValue = b.residence_expiry ? new Date(b.residence_expiry).getTime() : 0
-        break
-      case 'health_insurance_expiry': // تحديث: ending_subscription_insurance_date → health_insurance_expiry
-        aValue = a.health_insurance_expiry ? new Date(a.health_insurance_expiry).getTime() : 0
-        bValue = b.health_insurance_expiry ? new Date(b.health_insurance_expiry).getTime() : 0
-        break
-      default:
-        aValue = a.name.toLowerCase()
-        bValue = b.name.toLowerCase()
-    }
-
-    if (sortDirection === 'asc') {
-      return aValue > bValue ? 1 : aValue < bValue ? -1 : 0
-    } else {
-      return aValue < bValue ? 1 : aValue > bValue ? -1 : 0
-    }
-  }), [filteredEmployees, sortField, sortDirection])
-
   // Virtualizer for list/table view
   const listContainerRef = useRef<HTMLDivElement>(null)
   const rowVirtualizer = useWindowVirtualizer({
@@ -1079,6 +767,31 @@ export default function Employees() {
     scrollMargin: listContainerRef.current?.offsetTop ?? 0,
   })
   const virtualItems = rowVirtualizer.getVirtualItems()
+
+  // Virtual grid: tracks container width to calculate columns, renders only visible rows
+  const gridContainerRef = useRef<HTMLDivElement>(null)
+  const [gridColumnsCount, setGridColumnsCount] = useState(3)
+
+  useEffect(() => {
+    const el = gridContainerRef.current
+    if (!el) return
+    const observer = new ResizeObserver(([entry]) => {
+      const width = entry.contentRect.width
+      // 260px min card + 14px gap
+      setGridColumnsCount(Math.max(1, Math.floor((width + 14) / 274)))
+    })
+    observer.observe(el)
+    return () => observer.disconnect()
+  }, [])
+
+  const gridRowCount = Math.ceil(sortedAndFilteredEmployees.length / gridColumnsCount)
+
+  const gridVirtualizer = useWindowVirtualizer({
+    count: viewMode === 'grid' ? gridRowCount : 0,
+    estimateSize: () => 220,
+    overscan: 2,
+    scrollMargin: gridContainerRef.current?.offsetTop ?? 0,
+  })
 
   // معالجة التنقل بالسهام في الجدول
   useEffect(() => {
@@ -1434,19 +1147,44 @@ export default function Employees() {
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
           </div>
         ) : viewMode === 'grid' ? (
-          // Grid View
-          <div className={employeeGridClass}>
-            {sortedAndFilteredEmployees.map((employee, index) => (
-              <EmployeeGridCard
-                key={employee.id}
-                employee={employee}
-                index={index}
-                canEditEmployee={canEdit('employees')}
-                canDeleteEmployee={canDelete('employees')}
-                onEmployeeClick={handleEmployeeClick}
-                onDeleteEmployee={handleDeleteEmployee}
-              />
-            ))}
+          // Virtual Grid — renders only visible rows (~15-20 cards instead of 700+)
+          <div
+            ref={gridContainerRef}
+            style={{ position: 'relative', height: gridVirtualizer.getTotalSize() }}
+          >
+            {gridVirtualizer.getVirtualItems().map((virtualRow) => {
+              const startIdx = virtualRow.index * gridColumnsCount
+              const rowEmployees = sortedAndFilteredEmployees.slice(startIdx, startIdx + gridColumnsCount)
+              return (
+                <div
+                  key={virtualRow.key}
+                  ref={gridVirtualizer.measureElement}
+                  data-index={virtualRow.index}
+                  style={{
+                    position: 'absolute',
+                    top: 0,
+                    transform: `translateY(${virtualRow.start - gridVirtualizer.options.scrollMargin}px)`,
+                    width: '100%',
+                    display: 'grid',
+                    gridTemplateColumns: `repeat(${gridColumnsCount}, minmax(0, 1fr))`,
+                    gap: '14px',
+                    paddingBottom: '4px',
+                  }}
+                >
+                  {rowEmployees.map((employee, i) => (
+                    <EmployeeGridCard
+                      key={employee.id}
+                      employee={employee}
+                      index={startIdx + i}
+                      canEditEmployee={canEdit('employees')}
+                      canDeleteEmployee={canDelete('employees')}
+                      onEmployeeClick={handleEmployeeClick}
+                      onDeleteEmployee={handleDeleteEmployee}
+                    />
+                  ))}
+                </div>
+              )
+            })}
           </div>
         ) : (
           <div ref={listContainerRef} className="space-y-3">
