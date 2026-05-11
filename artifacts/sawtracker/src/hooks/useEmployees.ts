@@ -79,6 +79,7 @@ export function useEmployees(options?: PaginationOptions) {
       }
       return data as unknown as EmployeeWithRelations[]
     },
+    staleTime: 60 * 1000,
   })
 }
 

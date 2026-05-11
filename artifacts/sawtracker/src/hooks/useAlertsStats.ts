@@ -100,9 +100,9 @@ async function fetchAlertsStatsQuery(): Promise<AlertsStats> {
         companyThresholds.moqeem_subscription_high_days
       )
 
-      if (crAlert) { companyUrgent++; commercialRegAlerts++ }
-      if (pwAlert) companyUrgent++
-      if (mqAlert) companyUrgent++
+      if (crAlert) commercialRegAlerts++
+      // count the company once even if multiple docs are urgent
+      if (crAlert || pwAlert || mqAlert) companyUrgent++
     })
 
     let employeeUrgent = 0
@@ -140,10 +140,10 @@ async function fetchAlertsStatsQuery(): Promise<AlertsStats> {
         hwHighDays
       )
 
-      if (ctAlert) { employeeUrgent++; contractAlerts++ }
-      if (rsAlert) { employeeUrgent++; residenceAlerts++ }
-      if (hiAlert) employeeUrgent++
-      if (hwAlert) employeeUrgent++
+      if (ctAlert) contractAlerts++
+      if (rsAlert) residenceAlerts++
+      // count the employee once even if multiple docs are urgent
+      if (ctAlert || rsAlert || hiAlert || hwAlert) employeeUrgent++
     })
 
     const total = companyUrgent + employeeUrgent
