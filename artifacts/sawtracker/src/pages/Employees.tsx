@@ -875,9 +875,11 @@ export default function Employees() {
       <div className="app-page app-tech-grid">
         <PageHeader
           title="الموظفين"
-          description={`عرض ${sortedAndFilteredEmployees.length} من ${employees.length} موظف${
-            activeFiltersCount > 0 ? ` (${activeFiltersCount} فلتر نشط)` : ''
-          }`}
+          description={
+            loading
+              ? 'جاري تحميل بيانات الموظفين...'
+              : `عرض ${sortedAndFilteredEmployees.length} من ${employees.length} موظف${activeFiltersCount > 0 ? ` (${activeFiltersCount} فلتر نشط)` : ''}`
+          }
           breadcrumbs={[{ label: 'الرئيسية', href: '/dashboard' }, { label: 'الموظفين' }]}
           className="mb-4"
           actions={

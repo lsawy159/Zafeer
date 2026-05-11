@@ -1,5 +1,5 @@
 import { ReactNode, Suspense, lazy } from 'react'
-import { BrowserRouter, Routes, Route, Navigate, useLocation, Outlet } from 'react-router-dom'
+import { BrowserRouter, Routes, Route, Navigate, Outlet } from 'react-router-dom'
 import NotFound from './pages/not-found'
 import { QueryClientProvider } from '@tanstack/react-query'
 import { AuthProvider, useAuth } from './contexts/AuthContext'
@@ -105,9 +105,8 @@ function PublicRoute({ children }: { children: ReactNode }) {
 }
 
 function AppRoutes() {
-  const location = useLocation()
   return (
-    <div key={location.pathname} className="page-enter">
+    <div>
       <Routes>
         {/* Public routes */}
         <Route
