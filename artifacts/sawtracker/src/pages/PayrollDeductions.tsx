@@ -416,13 +416,13 @@ export default function PayrollDeductions() {
   // Employee list for the add-obligation dialog (search by name or residence_number)
   const dialogEmployeeOptions = useMemo(() => {
     const q = addObligationEmployeeSearch.trim().toLowerCase()
-    if (!q) return allEmployees.slice(0, 30)
-    return allEmployees.filter(
+    if (!q) return allActiveEmployees.slice(0, 30)
+    return allActiveEmployees.filter(
       (emp) =>
         emp.name.toLowerCase().includes(q) ||
         String(emp.residence_number || '').includes(addObligationEmployeeSearch.trim())
     )
-  }, [allEmployees, addObligationEmployeeSearch])
+  }, [allActiveEmployees, addObligationEmployeeSearch])
 
   // Check if selected start_month has a finalized payroll run for the selected employee
   useEffect(() => {
