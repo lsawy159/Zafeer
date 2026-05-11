@@ -1,0 +1,45 @@
+<!doctype html><html><head><meta charset="utf-8"><title>Inputs</title>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@500;600;700&family=IBM+Plex+Sans+Arabic:wght@500;600;700&display=swap" rel="stylesheet">
+<style>body{margin:0;padding:18px;background:#fff;font-family:Manrope,'IBM Plex Sans Arabic',system-ui;direction:rtl}
+.grid{display:grid;grid-template-columns:repeat(2,1fr);gap:12px 18px}
+.fld{display:flex;flex-direction:column;gap:6px}
+.lab{font:600 11px Manrope;color:#334155}
+.inp{height:40px;border:1px solid #cbd5e1;border-radius:12px;background:#fff;padding:0 14px;display:flex;align-items:center;gap:8px;font-size:13px;color:#0f172a;transition:all 120ms}
+.inp.placeholder{color:#94a3b8}
+.inp.focus{border-color:#0f172a;box-shadow:0 0 0 3px hsl(217 33% 17%/.18)}
+.inp.error{border-color:hsl(0 72% 51%);box-shadow:0 0 0 3px hsl(0 72% 51%/.18)}
+.inp.success{border-color:#10b981;box-shadow:0 0 0 3px hsl(160 84% 39%/.18)}
+.inp.disabled{background:#f1f5f9;color:#94a3b8}
+.help{font:500 10px ui-monospace,monospace;color:#64748b}
+.help.err{color:hsl(0 70% 35%)}
+.help.ok{color:#047857}
+.chip{display:inline-flex;align-items:center;gap:5px;padding:3px 8px;border-radius:9999px;background:#f1f5f9;font:600 11px Manrope;color:#0f172a}
+.chip svg{width:11px;height:11px}
+svg.left{width:14px;height:14px;color:#475569;flex-shrink:0}
+</style></head><body>
+<div class="grid">
+<div class="fld"><span class="lab">الاسم الكامل</span>
+  <div class="inp"><svg class="left" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>أحمد علي محمد</div>
+  <span class="help">الاسم كما في الهوية</span></div>
+
+<div class="fld"><span class="lab">رقم الهوية · مركّز</span>
+  <div class="inp focus">2980123456789</div>
+  <span class="help">14 رقم</span></div>
+
+<div class="fld"><span class="lab">تاريخ انتهاء الإقامة · صحيح</span>
+  <div class="inp success"><svg class="left" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>1447/06/15 هـ</div>
+  <span class="help ok">✓ سارية لمدة 8 أشهر</span></div>
+
+<div class="fld"><span class="lab">البريد الإلكتروني · خطأ</span>
+  <div class="inp error">name@@</div>
+  <span class="help err">صيغة البريد غير صحيحة</span></div>
+
+<div class="fld"><span class="lab">رقم الجوال</span>
+  <div class="inp placeholder">05X XXX XXXX</div>
+  <span class="help">سعودي · يبدأ بـ 05</span></div>
+
+<div class="fld"><span class="lab">قسم العمل · معطّل</span>
+  <div class="inp disabled">المشاريع الكبرى</div>
+  <span class="help">غير قابل للتعديل</span></div>
+</div>
+</body></html>

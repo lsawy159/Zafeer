@@ -1,0 +1,118 @@
+<!doctype html><html lang="ar" dir="rtl"><head><meta charset="utf-8"><title>Sidebar — الشريط الجانبي</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&family=Manrope:wght@500;700;800&display=swap" rel="stylesheet">
+<script src="https://unpkg.com/lucide-static@0.469.0/font/lucide.css" rel="stylesheet"></script>
+<link href="https://unpkg.com/lucide-static@0.469.0/font/lucide.css" rel="stylesheet">
+<style>
+:root{--ink:#181c1e;--ink2:#363943;--mute:#5b6076;--line:#ebeef0;--bg:#f7fafc;--brand:#0050cb;--brand-50:hsl(219 100% 95%);--brand-900:#001849}
+*{box-sizing:border-box}
+body{margin:0;padding:24px;background:var(--bg);font-family:'IBM Plex Sans Arabic','Manrope',system-ui;color:var(--ink);direction:rtl;display:flex;gap:24px;align-items:flex-start}
+
+.aside{width:268px;background:#fff;border:1px solid var(--line);border-radius:18px;display:flex;flex-direction:column;height:720px;box-shadow:0 4px 16px rgba(15,23,42,.04);overflow:hidden}
+.brand{display:flex;align-items:center;gap:10px;padding:16px 18px;border-bottom:1px solid var(--line)}
+.brand .glyph{width:32px;height:32px;border-radius:9px;background:linear-gradient(135deg,#0050cb,#003fa4);color:#fff;display:grid;place-items:center;font:800 14px Manrope;letter-spacing:-0.02em}
+.brand .word{font:800 17px Manrope;letter-spacing:-0.025em;color:var(--ink)}
+.brand .word .a{color:#10b981}
+.brand .tag{font-size:10px;color:var(--mute);font-family:'IBM Plex Sans Arabic';margin-top:1px}
+
+.scroll{flex:1;overflow-y:auto;padding:14px 0}
+.group{margin-bottom:14px}
+.group h3{margin:0;padding:6px 20px 8px;font-size:10px;font-weight:700;color:#9aa0b1;letter-spacing:0.10em;font-family:'Manrope'}
+.items{display:flex;flex-direction:column;gap:2px;padding:0 10px}
+.item{display:flex;align-items:center;gap:12px;padding:9px 12px;border-radius:12px;font-size:13px;font-weight:500;border:none;cursor:pointer;background:transparent;color:var(--ink2);text-align:start;transition:background 120ms;font-family:'IBM Plex Sans Arabic'}
+.item:hover{background:var(--bg)}
+.item.active{background:var(--brand-50);color:var(--brand-900);font-weight:600;position:relative}
+.item.active::before{content:'';position:absolute;inset-inline-start:6px;top:50%;transform:translateY(-50%);width:3px;height:18px;border-radius:9999px;background:var(--brand)}
+.item i{width:18px;height:18px;display:inline-block}
+.item .lbl{flex:1}
+.item .pill{font-size:10px;font-weight:700;background:hsl(0 86% 94%);color:hsl(0 70% 28%);padding:2px 7px;border-radius:9999px;font-family:'Manrope';font-variant-numeric:tabular-nums}
+.item .pill.amb{background:hsl(48 96% 89%);color:hsl(26 83% 24%)}
+
+.foot{border-top:1px solid var(--line);padding:14px;display:flex;align-items:center;gap:10px}
+.avatar{width:36px;height:36px;border-radius:9999px;background:linear-gradient(135deg,#0050cb,#003fa4);color:#fff;display:grid;place-items:center;font:700 13px 'IBM Plex Sans Arabic';flex-shrink:0}
+.uinfo{flex:1;min-width:0}
+.uname{font-size:13px;font-weight:600;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.urole{font-size:11px;color:var(--mute)}
+.lo{width:32px;height:32px;border-radius:9px;border:1px solid var(--line);background:#fff;display:grid;place-items:center;cursor:pointer;color:var(--mute)}
+
+/* Annotations panel */
+.notes{flex:1;padding:8px 4px;font-family:'Manrope',system-ui;color:var(--mute);font-size:12px;max-width:340px}
+.notes h2{font:800 16px 'IBM Plex Sans Arabic';color:var(--ink);margin:0 0 6px;letter-spacing:-0.01em}
+.notes .lead{font-family:'IBM Plex Sans Arabic';color:var(--ink2);margin:0 0 18px;font-size:13px;line-height:1.55}
+.notes ul{padding:0;margin:0;list-style:none;display:flex;flex-direction:column;gap:10px}
+.notes li{display:flex;gap:8px;align-items:flex-start;font-family:'IBM Plex Sans Arabic';font-size:12px;line-height:1.55;color:var(--ink2)}
+.notes li::before{content:'';flex-shrink:0;margin-top:7px;width:5px;height:5px;border-radius:9999px;background:var(--brand)}
+.spec{margin-top:18px;padding:14px;background:#fff;border:1px solid var(--line);border-radius:14px}
+.spec dt{font:700 10px Manrope;letter-spacing:0.08em;color:var(--mute);text-transform:uppercase;margin-bottom:3px}
+.spec dd{margin:0 0 10px;font:600 13px 'IBM Plex Sans Arabic';color:var(--ink);font-variant-numeric:tabular-nums}
+.spec dd:last-child{margin-bottom:0}
+.kv{font-family:ui-monospace,'JetBrains Mono',monospace;font-size:11.5px;color:var(--ink2)}
+</style></head><body>
+
+<aside class="aside" data-comment-anchor="sidebar">
+  <div class="brand">
+    <div class="glyph">Z</div>
+    <div>
+      <div class="word">Z<span class="a">a</span>Feer</div>
+      <div class="tag">إدارة الموارد البشرية</div>
+    </div>
+  </div>
+
+  <div class="scroll">
+    <div class="group">
+      <h3>العمليات</h3>
+      <div class="items">
+        <button class="item active"><i class="lucide lucide-home"></i><span class="lbl">لوحة التحكم</span></button>
+        <button class="item"><i class="lucide lucide-users"></i><span class="lbl">الموظفون</span><span class="pill">1,248</span></button>
+        <button class="item"><i class="lucide lucide-building-2"></i><span class="lbl">الشركات</span></button>
+        <button class="item"><i class="lucide lucide-briefcase"></i><span class="lbl">المشاريع</span></button>
+        <button class="item"><i class="lucide lucide-truck"></i><span class="lbl">إجراءات النقل</span></button>
+        <button class="item"><i class="lucide lucide-search"></i><span class="lbl">بحث متقدم</span></button>
+        <button class="item"><i class="lucide lucide-alert-circle"></i><span class="lbl">التنبيهات</span><span class="pill">17</span></button>
+        <button class="item"><i class="lucide lucide-bar-chart-3"></i><span class="lbl">التقارير</span></button>
+        <button class="item"><i class="lucide lucide-dollar-sign"></i><span class="lbl">الرواتب والاستقطاعات</span></button>
+        <button class="item"><i class="lucide lucide-upload"></i><span class="lbl">استيراد / تصدير</span></button>
+        <button class="item"><i class="lucide lucide-bell"></i><span class="lbl">الإشعارات</span><span class="pill amb">3</span></button>
+      </div>
+    </div>
+    <div class="group">
+      <h3>الإدارة</h3>
+      <div class="items">
+        <button class="item"><i class="lucide lucide-settings"></i><span class="lbl">الإعدادات</span></button>
+        <button class="item"><i class="lucide lucide-sliders"></i><span class="lbl">الإعدادات العامة</span></button>
+        <button class="item"><i class="lucide lucide-shield"></i><span class="lbl">إدارة الأمان</span></button>
+      </div>
+    </div>
+  </div>
+
+  <div class="foot">
+    <div class="avatar">أص</div>
+    <div class="uinfo">
+      <div class="uname">أحمد الصاوي</div>
+      <div class="urole">مدير النظام</div>
+    </div>
+    <button class="lo" title="تسجيل الخروج"><i class="lucide lucide-log-out" style="width:14px;height:14px"></i></button>
+  </div>
+</aside>
+
+<div class="notes">
+  <h2>الشريط الجانبي</h2>
+  <p class="lead">شريط ثابت بمحاذاة اليمين (RTL)، يقسم التنقل إلى مجموعتين: <b>العمليات</b> و<b>الإدارة</b>. حالة العنصر النشط تستخدم <code>brand-50</code> كخلفية مع شريط ضوئي بطول <code>18px</code> وعرض <code>3px</code> يبدأ من حافة اليمين الداخلية.</p>
+  <ul>
+    <li>عرض ثابت <code>268px</code>، حافة سفلى وعلى الحواف الداخلية بـ <code>1px</code> من <code>--color-border</code></li>
+    <li>عناوين المجموعات بحجم <code>10px</code> Manrope بوزن <code>700</code> وتباعد حروف <code>0.10em</code> — لاتيني فقط</li>
+    <li>عناصر النص بـ IBM Plex Sans Arabic <code>13px / 500</code>؛ النشط يرفع الوزن إلى <code>600</code></li>
+    <li>أيقونات Lucide بحجم <code>18px</code> دائمًا، اللون يرث من العنصر</li>
+    <li>شارات العدّ بأرقام Manrope tabular؛ الأحمر للعاجل، الكهرماني للإشعارات</li>
+    <li>تذييل ثابت يحوي بطاقة المستخدم وزر الخروج — لا يتمرر مع القائمة</li>
+  </ul>
+
+  <dl class="spec">
+    <dt>WIDTH</dt><dd class="kv">268px</dd>
+    <dt>ITEM PADDING</dt><dd class="kv">9px 12px</dd>
+    <dt>ITEM RADIUS</dt><dd class="kv">12px</dd>
+    <dt>ACTIVE</dt><dd class="kv">bg: hsl(219 100% 95%) · accent: 3×18px @ #0050cb</dd>
+    <dt>HOVER</dt><dd class="kv">bg: #f7fafc · 120ms ease</dd>
+  </dl>
+</div>
+
+</body></html>

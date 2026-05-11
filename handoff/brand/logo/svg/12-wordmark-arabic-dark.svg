@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 200" width="3072" height="1024">
+  <defs>
+    
+  </defs>
+  <rect width="600" height="200" fill="#0a0f1a"></rect>
+  <text x="300" y="100" text-anchor="middle" dominant-baseline="middle" direction="rtl" font-family="&#39;IBM Plex Sans Arabic&#39;, system-ui, sans-serif" font-weight="700" font-size="130" letter-spacing="-2" fill="#ffffff">زفير</text>
+  <circle cx="395" cy="48" r="13" fill="#10b981"></circle>
+</svg>
