@@ -450,12 +450,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             return
           }
 
-          setError(userError.message)
-          // إذا فشل جلب بيانات المستخدم، قم بتسجيل الخروج
-          // هذا يمنع بقاء المستخدم مسجلاً بجلسة auth ولكن بدون بيانات user
-          await supabase.auth.signOut()
+          // خطأ غير شبكي: أظهر الخطأ لكن لا تسجّل خروج — المستخدم يختار
+          setError('فشل تحميل بيانات حسابك. حاول إعادة تحميل الصفحة.')
           setUser(null)
-          setSession(null)
+          // لا نستدعي signOut() هنا — الجلسة في Supabase لا تزال صالحة
         } else if (userData) {
           logger.debug(
             '[Auth] User data fetched successfully:',
@@ -464,13 +462,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             userData.role
           )
           setUser(userData)
-          setError(null) // مسح أي أخطاء سابقة
+          setError(null)
         } else {
           logger.warn('[Auth] User session exists but no user data found in "users" table.')
-          setError('User profile not found. Contacting support.')
-          await supabase.auth.signOut()
+          // قد يكون تأخر شبكي — لا نسجّل خروج فوراً، نعرض خطأ
+          setError('لم يتم العثور على بيانات حسابك. تواصل مع المسؤول.')
           setUser(null)
-          setSession(null)
         }
       } catch (err: unknown) {
         if (mountedRef.current) {
@@ -697,14 +694,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             })
         }
 
-        // ضبط الجلسة مباشرة كـ fallback في حالة تأخر onAuthStateChange
-        // (يحدث أحياناً على Vercel preview أو شبكات بطيئة)
-        // fetchingRef guard في fetchUserData يمنع التكرار لو onAuthStateChange جاء بعدها
-        if (signInData?.session) {
-          setSession(signInData.session)
-        }
-
-        logger.debug('[Auth] Sign in successful, session set explicitly as fallback.')
+        // onAuthStateChange سيتولى setSession — لا نكررها هنا لتجنب re-trigger لـ fetchUserData
+        logger.debug('[Auth] Sign in successful.')
       } catch (err: unknown) {
         let errorMessage = 'An error occurred during sign in.'
 
