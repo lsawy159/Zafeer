@@ -41,7 +41,7 @@ export default function Layout({ children }: { children: ReactNode }) {
     if (refreshState === 'loading') return
     setRefreshState('loading')
     try {
-      await queryClient.invalidateQueries()
+      await queryClient.invalidateQueries({ refetchType: 'all' })
       window.dispatchEvent(new CustomEvent('app:refresh-current-page'))
       setRefreshState('success')
       window.setTimeout(() => setRefreshState('idle'), 1200)

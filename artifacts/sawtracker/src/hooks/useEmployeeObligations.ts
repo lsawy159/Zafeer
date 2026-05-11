@@ -143,6 +143,7 @@ export function useCreateEmployeeObligationPlan() {
       queryClient.invalidateQueries({
         queryKey: ['employee-obligations', variables.employee_id],
       })
+      queryClient.invalidateQueries({ queryKey: ['all-obligations-summary'] })
     },
   })
 }
