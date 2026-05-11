@@ -32,6 +32,7 @@ export function useCompanies(options?: PaginationOptions) {
       }
       return data as Company[]
     },
+    staleTime: 60 * 1000,
   })
 }
 
