@@ -1,0 +1,90 @@
+<!doctype html><html lang="ar" dir="rtl"><head><meta charset="utf-8"><title>ZaFeer — Logo System</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@500;700&family=Manrope:wght@500;700;800&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box}
+body{margin:0;padding:48px;background:#f8fafc;font-family:'IBM Plex Sans Arabic','Manrope',system-ui;color:#0f172a;direction:rtl}
+.head{max-width:1280px;margin:0 auto 32px;display:flex;align-items:flex-end;justify-content:space-between;gap:24px;border-bottom:1px solid #e2e8f0;padding-bottom:18px}
+.head h1{font:800 30px Manrope;letter-spacing:-0.02em;margin:0 0 4px}
+.head .sub{color:#64748b;font:500 14px 'IBM Plex Sans Arabic'}
+.head .meta{font:600 11px Manrope;letter-spacing:0.10em;color:#94a3b8;text-transform:uppercase}
+.grid{max-width:1280px;margin:0 auto;display:grid;grid-template-columns:repeat(3,1fr);gap:18px}
+.card{background:#fff;border:1px solid #e2e8f0;border-radius:18px;overflow:hidden;display:flex;flex-direction:column}
+.card .stage{flex:1;display:grid;place-items:center;padding:36px;min-height:200px;background:#fff}
+.card.dark .stage{background:#0a0f1a}
+.card.tinted .stage{background:#f1f5f9}
+.card .stage img{max-width:80%;max-height:140px;display:block}
+.card .meta{padding:14px 18px;border-top:1px solid #e2e8f0;display:flex;justify-content:space-between;align-items:center;gap:10px;background:#f8fafc}
+.card .name{font:700 13px 'IBM Plex Sans Arabic';color:#0f172a}
+.card .file{font:500 11px ui-monospace,monospace;color:#64748b}
+
+.section{max-width:1280px;margin:48px auto 0;display:flex;align-items:center;gap:14px;font:700 11px Manrope;letter-spacing:0.10em;color:#64748b;text-transform:uppercase}
+.section::after{content:'';flex:1;height:1px;background:#e2e8f0}
+
+.colors{max-width:1280px;margin:18px auto 0;display:grid;grid-template-columns:repeat(4,1fr);gap:14px}
+.swatch{background:#fff;border:1px solid #e2e8f0;border-radius:14px;overflow:hidden}
+.swatch .chip{height:88px}
+.swatch .lab{padding:10px 14px;font:600 13px 'IBM Plex Sans Arabic'}
+.swatch .hex{padding:0 14px 12px;font:500 11px ui-monospace,monospace;color:#64748b}
+
+.rules{max-width:1280px;margin:18px auto 0;background:#fff;border:1px solid #e2e8f0;border-radius:14px;padding:22px 26px}
+.rules ul{margin:0;padding:0;list-style:none;display:grid;grid-template-columns:1fr 1fr;gap:10px 32px}
+.rules li{display:flex;gap:10px;align-items:flex-start;font:500 13px 'IBM Plex Sans Arabic';color:#334155;line-height:1.55}
+.rules li::before{content:'';flex-shrink:0;margin-top:7px;width:5px;height:5px;border-radius:9999px;background:#10b981}
+</style></head><body>
+
+<header class="head">
+  <div>
+    <h1>زفير — نظام الشعار</h1>
+    <div class="sub">14 صيغة من الشعار للاستخدام في كل السياقات — إنجليزي، عربي، فاتح، داكن.</div>
+  </div>
+  <div class="meta">v1.0 · MAY 2026</div>
+</header>
+
+<div class="grid">
+  <div class="card"><div class="stage"><img src="svg/01-glyph-primary.svg" alt=""></div><div class="meta"><span class="name">Glyph — أساسي</span><span class="file">01-glyph-primary</span></div></div>
+  <div class="card"><div class="stage"><img src="svg/02-glyph-light.svg" alt=""></div><div class="meta"><span class="name">Glyph — فاتح</span><span class="file">02-glyph-light</span></div></div>
+  <div class="card dark"><div class="stage"><img src="svg/03-glyph-dark.svg" alt=""></div><div class="meta"><span class="name">Glyph — داكن</span><span class="file">03-glyph-dark</span></div></div>
+  <div class="card tinted"><div class="stage"><img src="svg/04-glyph-naked-graphite.svg" alt=""></div><div class="meta"><span class="name">Z مجرد — رمادي</span><span class="file">04-glyph-naked-graphite</span></div></div>
+  <div class="card dark"><div class="stage"><img src="svg/05-glyph-naked-white.svg" alt=""></div><div class="meta"><span class="name">Z مجرد — أبيض</span><span class="file">05-glyph-naked-white</span></div></div>
+  <div class="card"><div class="stage"><img src="svg/14-app-icon.svg" alt=""></div><div class="meta"><span class="name">App icon</span><span class="file">14-app-icon</span></div></div>
+</div>
+
+<div class="section">Wordmark — كلمة فقط</div>
+<div class="grid">
+  <div class="card" style="grid-column:span 2"><div class="stage"><img src="svg/06-wordmark-light.svg" alt=""></div><div class="meta"><span class="name">Wordmark — فاتح</span><span class="file">06-wordmark-light</span></div></div>
+  <div class="card dark"><div class="stage"><img src="svg/07-wordmark-dark.svg" alt=""></div><div class="meta"><span class="name">Wordmark — داكن</span><span class="file">07-wordmark-dark</span></div></div>
+  <div class="card" style="grid-column:span 2"><div class="stage"><img src="svg/11-wordmark-arabic-light.svg" alt=""></div><div class="meta"><span class="name">زفير — فاتح</span><span class="file">11-wordmark-arabic-light</span></div></div>
+  <div class="card dark"><div class="stage"><img src="svg/12-wordmark-arabic-dark.svg" alt=""></div><div class="meta"><span class="name">زفير — داكن</span><span class="file">12-wordmark-arabic-dark</span></div></div>
+</div>
+
+<div class="section">Lockups — رمز + كلمة</div>
+<div class="grid">
+  <div class="card" style="grid-column:span 2"><div class="stage"><img src="svg/08-lockup-horizontal-light.svg" alt=""></div><div class="meta"><span class="name">Horizontal — فاتح</span><span class="file">08-lockup-horizontal-light</span></div></div>
+  <div class="card dark" style="grid-column:span 2"><div class="stage"><img src="svg/09-lockup-horizontal-dark.svg" alt=""></div><div class="meta"><span class="name">Horizontal — داكن</span><span class="file">09-lockup-horizontal-dark</span></div></div>
+  <div class="card"><div class="stage"><img src="svg/10-lockup-stacked-light.svg" alt=""></div><div class="meta"><span class="name">Stacked — فاتح</span><span class="file">10-lockup-stacked-light</span></div></div>
+  <div class="card" style="grid-column:span 3"><div class="stage"><img src="svg/13-lockup-arabic-light.svg" alt=""></div><div class="meta"><span class="name">Arabic Lockup — فاتح</span><span class="file">13-lockup-arabic-light</span></div></div>
+</div>
+
+<div class="section">ألوان العلامة</div>
+<div class="colors">
+  <div class="swatch"><div class="chip" style="background:#0f172a"></div><div class="lab">Graphite — أساسي</div><div class="hex">#0F172A · primary-900</div></div>
+  <div class="swatch"><div class="chip" style="background:#1f2937"></div><div class="lab">Graphite — أفتح</div><div class="hex">#1F2937 · primary-800</div></div>
+  <div class="swatch"><div class="chip" style="background:#10b981"></div><div class="lab">Mint — accent</div><div class="hex">#10B981 · accent-500</div></div>
+  <div class="swatch"><div class="chip" style="background:#ffffff;border-bottom:1px solid #e2e8f0"></div><div class="lab">White</div><div class="hex">#FFFFFF · surface</div></div>
+</div>
+
+<div class="section">قواعد الاستخدام</div>
+<div class="rules">
+  <ul>
+    <li>استخدم النسخة الأساسية (Primary) في معظم السياقات على خلفية فاتحة.</li>
+    <li>استخدم النسخة الداكنة عند وجود خلفية بـ <code>#0a0f1a</code> أو أي رمادي داكن مماثل.</li>
+    <li>النقطة الخضراء (Mint) جزء من الهوية — لا تحذفها ولا تغيّر لونها.</li>
+    <li>الحد الأدنى للارتفاع: <code>24px</code> على الشاشة، <code>18mm</code> في الطباعة.</li>
+    <li>اترك مساحة آمنة حول الشعار = نصف ارتفاع المربع.</li>
+    <li>لا تحرّف، لا تدوّر، لا تستبدل الخط، لا تضف ظلًا أو حدودًا.</li>
+    <li>للنسخة العربية استخدم خط IBM Plex Sans Arabic بوزن 700 فقط.</li>
+    <li>الرمز المجرد (04 أو 05) يستخدم في الأماكن الضيقة جدًا.</li>
+  </ul>
+</div>
+
+</body></html>

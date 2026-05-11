@@ -23,5 +23,22 @@
     "prettier": "^3.8.1",
     "tsx": "catalog:",
     "typescript": "~5.9.2"
-  }
+  },
+  "description": "نظام إدارة متكامل للأعمال — مبني على pnpm workspace monorepo.",
+  "main": ".lighthouserc.js",
+  "directories": {
+    "lib": "lib",
+    "test": "tests"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/lsawy159/Zafeer.git"
+  },
+  "keywords": [],
+  "author": "",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/lsawy159/Zafeer/issues"
+  },
+  "homepage": "https://github.com/lsawy159/Zafeer#readme"
 }

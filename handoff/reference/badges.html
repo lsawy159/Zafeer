@@ -1,0 +1,45 @@
+<!doctype html><html><head><meta charset="utf-8"><title>Badges</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@500;600;700&family=Manrope:wght@500;600;700&display=swap" rel="stylesheet">
+<style>body{margin:0;padding:18px;background:#fff;font-family:'IBM Plex Sans Arabic',Manrope,system-ui;direction:rtl}
+.row{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:10px}
+.lab{font:600 10px ui-monospace,monospace;color:#475569;width:74px}
+.b{font-size:11px;font-weight:600;padding:4px 10px;border-radius:9999px;display:inline-flex;align-items:center;gap:6px;line-height:1}
+.b .dot{width:6px;height:6px;border-radius:9999px;background:currentColor;flex-shrink:0}
+.b .pulse{position:relative}.b .pulse::after{content:'';position:absolute;inset:0;border-radius:9999px;background:currentColor;animation:p 1.4s ease-in-out infinite;opacity:.5}
+@keyframes p{0%,100%{transform:scale(1);opacity:.5}50%{transform:scale(2.2);opacity:0}}
+.success{background:hsl(150 80% 94%);color:hsl(163 94% 18%)}
+.warning{background:hsl(48 96% 89%);color:hsl(26 83% 24%)}
+.danger{background:hsl(0 86% 94%);color:hsl(0 70% 28%)}
+.info{background:hsl(214 95% 93%);color:hsl(217 91% 28%)}
+.muted{background:#f1f5f9;color:#334155}
+.outline{background:transparent;border:1px solid #cbd5e1;color:#334155}
+.solid{background:#0f172a;color:#fff}
+.mint-solid{background:#10b981;color:#022c22}
+</style></head><body>
+<div class="row"><span class="lab">status</span>
+<span class="b success"><span class="dot pulse"></span>ساري</span>
+<span class="b warning"><span class="dot"></span>عاجل</span>
+<span class="b danger"><span class="dot pulse"></span>طارئة</span>
+<span class="b warning"><span class="dot"></span>متوسط</span>
+<span class="b muted"><span class="dot"></span>منتهية</span>
+</div>
+<div class="row"><span class="lab">role</span>
+<span class="b solid">مدير عام</span>
+<span class="b mint-solid">معتمد</span>
+<span class="b info">مراجِع</span>
+<span class="b muted">موظف</span>
+</div>
+<div class="row"><span class="lab">count</span>
+<span class="b danger">12</span>
+<span class="b warning">5</span>
+<span class="b muted">— لا يوجد</span>
+<span class="b solid">+24 جديد</span>
+</div>
+<div class="row"><span class="lab">tag</span>
+<span class="b outline">إقامة</span>
+<span class="b outline">عقد عمل</span>
+<span class="b outline">تأمين صحي</span>
+<span class="b outline">قوى</span>
+<span class="b outline">ساعد</span>
+</div>
+</body></html>

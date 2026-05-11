@@ -1,5 +1,5 @@
 <!-- SPECKIT START -->
 For additional context about technologies to be used, project structure,
 shell commands, and other important information, read the current plan:
-specs/001-fix-auth-roles-security/plan.md
+specs/002-zafeer-design-migration/plan.md
 <!-- SPECKIT END -->
