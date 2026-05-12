@@ -1,5 +1,7 @@
 import { createPortal } from 'react-dom'
 import { X } from 'lucide-react'
+import { type EmployeeNotificationThresholds } from '@/utils/employeeAlerts'
+import { COLOR_THRESHOLD_FALLBACK } from './employeeUtils'
 
 type StatusFilter = '' | 'منتهي' | 'طارئ' | 'عاجل' | 'متوسط' | 'ساري'
 
@@ -9,8 +11,15 @@ interface CompanyOption {
   unified_number?: number
 }
 
+interface FieldThresholds {
+  urgent: number
+  high: number
+  medium: number
+}
+
 interface EmployeesFiltersModalProps {
   activeFiltersCount: number
+  colorThresholds: EmployeeNotificationThresholds | null
   // تصنيف
   companies: CompanyOption[]
   companyFilter: string
@@ -37,29 +46,33 @@ interface EmployeesFiltersModalProps {
   onClose: () => void
 }
 
-const STATUS_OPTIONS: { value: StatusFilter; label: string }[] = [
-  { value: '', label: 'الكل' },
-  { value: 'منتهي', label: 'منتهي' },
-  { value: 'طارئ', label: 'طارئ (30 يوم)' },
-  { value: 'عاجل', label: 'عاجل (60 يوم)' },
-  { value: 'متوسط', label: 'متوسط (90 يوم)' },
-  { value: 'ساري', label: 'ساري' },
-]
+function getStatusOptions(t: FieldThresholds): { value: StatusFilter; label: string }[] {
+  return [
+    { value: '', label: 'الكل' },
+    { value: 'منتهي', label: 'منتهي' },
+    { value: 'طارئ', label: `طارئ (≤${t.urgent}ي)` },
+    { value: 'عاجل', label: `عاجل (≤${t.high}ي)` },
+    { value: 'متوسط', label: `متوسط (≤${t.medium}ي)` },
+    { value: 'ساري', label: 'ساري' },
+  ]
+}
 
 function StatusButtonGroup({
   label,
   value,
   onChange,
+  options,
 }: {
   label: string
   value: string
   onChange: (v: string) => void
+  options: { value: StatusFilter; label: string }[]
 }) {
   return (
     <div>
       <label className="block text-sm font-medium text-neutral-700 mb-2">{label}</label>
       <div className="flex flex-wrap gap-1.5">
-        {STATUS_OPTIONS.map((opt) => (
+        {options.map((opt) => (
           <button
             key={opt.value}
             type="button"
@@ -90,6 +103,7 @@ function StatusButtonGroup({
 
 export function EmployeesFiltersModal({
   activeFiltersCount,
+  colorThresholds,
   companies,
   companyFilter,
   setCompanyFilter,
@@ -113,6 +127,29 @@ export function EmployeesFiltersModal({
   clearFilters,
   onClose,
 }: EmployeesFiltersModalProps) {
+  const t = colorThresholds ?? COLOR_THRESHOLD_FALLBACK
+
+  const contractOpts = getStatusOptions({
+    urgent: t.contract_urgent_days,
+    high: t.contract_high_days,
+    medium: t.contract_medium_days,
+  })
+  const hiredWorkerOpts = getStatusOptions({
+    urgent: t.hired_worker_contract_urgent_days,
+    high: t.hired_worker_contract_high_days,
+    medium: t.hired_worker_contract_medium_days,
+  })
+  const residenceOpts = getStatusOptions({
+    urgent: t.residence_urgent_days,
+    high: t.residence_high_days,
+    medium: t.residence_medium_days,
+  })
+  const insuranceOpts = getStatusOptions({
+    urgent: t.health_insurance_urgent_days,
+    high: t.health_insurance_high_days,
+    medium: t.health_insurance_medium_days,
+  })
+
   return createPortal(
     <div
       className="fixed inset-0 z-[9999] flex items-end justify-center bg-black/50 p-0 md:items-center md:p-4"
@@ -221,21 +258,25 @@ export function EmployeesFiltersModal({
                 label="الإقامة"
                 value={residenceFilter}
                 onChange={setResidenceFilter}
+                options={residenceOpts}
               />
               <StatusButtonGroup
                 label="التأمين الطبي"
                 value={healthInsuranceFilter}
                 onChange={setHealthInsuranceFilter}
+                options={insuranceOpts}
               />
               <StatusButtonGroup
                 label="عقد العمل"
                 value={contractFilter}
                 onChange={setContractFilter}
+                options={contractOpts}
               />
               <StatusButtonGroup
                 label="عقد الأجير"
                 value={hiredWorkerContractFilter}
                 onChange={setHiredWorkerContractFilter}
+                options={hiredWorkerOpts}
               />
             </div>
           </div>
