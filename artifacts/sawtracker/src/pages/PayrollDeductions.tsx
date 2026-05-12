@@ -1348,7 +1348,9 @@ export default function PayrollDeductions() {
 
   useEffect(() => {
     void loadPayrollInsights()
-  }, [payrollRunList.length])
+  // allObligationsSummary: re-fetch search stats when obligations change (React Query updates reference)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [payrollRunList.length, allObligationsSummary])
 
   const filteredPayrollSearchRows = useMemo(() => {
     const normalizedQuery = payrollSearchQuery.trim().toLowerCase()
