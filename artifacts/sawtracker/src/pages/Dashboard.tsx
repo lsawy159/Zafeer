@@ -26,7 +26,7 @@ import { alertCache } from '@/utils/alertCache'
 import type { Alert } from '@/components/alerts/AlertCard'
 import { getStatusThresholds, DEFAULT_STATUS_THRESHOLDS } from '@/utils/autoCompanyStatus'
 import { usePermissions } from '@/utils/permissions'
-import { useEmployees } from '@/hooks/useEmployees'
+import { useAllEmployeesPage } from '@/hooks/useEmployees'
 import { useCompanies } from '@/hooks/useCompanies'
 import { useAlertsStats } from '@/hooks/useAlertsStats'
 import { DashboardCompaniesTab } from './dashboard/DashboardCompaniesTab'
@@ -39,7 +39,7 @@ export default function Dashboard() {
   const navigate = useNavigate()
 
   // React Query hooks for data
-  const { data: employees = [], isLoading: isLoadingEmployees } = useEmployees()
+  const { data: employees = [], isLoading: isLoadingEmployees } = useAllEmployeesPage()
   const { data: companies = [], isLoading: isLoadingCompanies } = useCompanies()
   const { alertsStats } = useAlertsStats()
 
