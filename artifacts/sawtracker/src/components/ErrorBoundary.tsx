@@ -21,16 +21,29 @@ export class ErrorBoundary extends React.Component<
   }
 
   componentDidCatch(error: Error, errorInfo: ErrorInfo) {
-    // Log error to console for debugging
     console.error('ErrorBoundary caught an error:', error)
     console.error('Error Info:', errorInfo)
     console.error('Component Stack:', errorInfo.componentStack)
 
-    // Update state with error info
-    this.setState({
-      error,
-      errorInfo,
-    })
+    // Chunk load failures happen when a new Vercel deploy invalidates old JS chunks.
+    // Auto-reload once to pick up the new index.html and fresh chunk URLs.
+    const isChunkError =
+      error.message?.includes('Failed to fetch dynamically imported module') ||
+      error.message?.includes('Importing a module script failed') ||
+      error.name === 'ChunkLoadError'
+
+    if (isChunkError) {
+      const reloadKey = 'chunk_error_reload'
+      if (!sessionStorage.getItem(reloadKey)) {
+        sessionStorage.setItem(reloadKey, '1')
+        window.location.reload()
+        return
+      }
+      // Second time → show error UI (avoid infinite loop)
+      sessionStorage.removeItem(reloadKey)
+    }
+
+    this.setState({ error, errorInfo })
   }
 
   handleRetry = () => {
