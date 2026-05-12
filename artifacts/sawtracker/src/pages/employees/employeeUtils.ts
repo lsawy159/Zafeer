@@ -70,15 +70,19 @@ export const hasAlert = (
 }
 
 export const getCellBackgroundColor = (days: number | null): string => {
-  if (days === null) return ''
-  if (days < 0) return 'bg-red-50'
-  return ''
+  if (days === null) return 'bg-neutral-50 border-neutral-200'
+  if (days < 0) return 'bg-red-50 border-red-300'
+  if (days <= 15) return 'bg-orange-50 border-orange-300'
+  if (days <= 30) return 'bg-yellow-50 border-yellow-300'
+  return 'bg-green-50 border-green-200'
 }
 
 export const getTextColor = (days: number | null): string => {
-  if (days === null) return 'text-neutral-700'
-  if (days < 0) return 'text-red-600'
-  return 'text-neutral-700'
+  if (days === null) return 'text-neutral-500'
+  if (days < 0) return 'text-red-700 font-semibold'
+  if (days <= 15) return 'text-orange-700 font-semibold'
+  if (days <= 30) return 'text-yellow-700 font-semibold'
+  return 'text-green-700'
 }
 
 export const truncateText = (text: string | number | null | undefined, maxLength: number): string => {
