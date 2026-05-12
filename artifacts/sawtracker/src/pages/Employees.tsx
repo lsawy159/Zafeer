@@ -1011,6 +1011,7 @@ export default function Employees() {
         {showFiltersModal && (
           <EmployeesFiltersModal
             activeFiltersCount={activeFiltersCount}
+            colorThresholds={colorThresholds}
             companies={companiesWithIds}
             companyFilter={companyFilter}
             setCompanyFilter={setCompanyFilter}
