@@ -93,7 +93,7 @@ fly releases -a zafeer-api
 fly deploy -a zafeer-api --image <previous-image-id>
 ```
 
-### sawtracker (Vercel)
+### zafeer (Vercel)
 
 ```
 Vercel Dashboard → Deployments → اختر الـ deployment السابق → "Promote to Production"

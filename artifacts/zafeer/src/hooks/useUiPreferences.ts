@@ -3,11 +3,33 @@ import { useEffect, useState } from 'react'
 export type ThemeMode = 'light' | 'dark'
 export type FontMode = 'ibm-plex' | 'tajawal' | 'cairo'
 
-const THEME_STORAGE_KEY = 'sawtracker-theme-mode'
-const FONT_STORAGE_KEY = 'sawtracker-font-mode'
+// Legacy keys (sawtracker era) — kept for migration only, remove after 30 days from Phase A deploy
+const LEGACY_THEME = 'sawtracker-theme-mode'
+const LEGACY_FONT  = 'sawtracker-font-mode'
+
+const THEME_STORAGE_KEY = 'zafeer-theme-mode'
+const FONT_STORAGE_KEY  = 'zafeer-font-mode'
 
 const UNIFIED_CARD_GRID_CLASS =
   'grid grid-cols-[repeat(auto-fill,minmax(260px,1fr))] gap-3.5 md:gap-4'
+
+// Migrate a localStorage key from legacy name to new name (idempotent, one-shot on module load)
+function migrateLegacyKey(legacy: string, current: string) {
+  if (typeof window === 'undefined') return
+  try {
+    const v = window.localStorage.getItem(legacy)
+    if (v !== null) {
+      if (window.localStorage.getItem(current) === null) {
+        window.localStorage.setItem(current, v)
+      }
+      window.localStorage.removeItem(legacy)
+    }
+  } catch { /* private mode or SecurityError */ }
+}
+
+// Run migration eagerly before any read
+migrateLegacyKey(LEGACY_THEME, THEME_STORAGE_KEY)
+migrateLegacyKey(LEGACY_FONT, FONT_STORAGE_KEY)
 
 function readStoredTheme(): ThemeMode {
   if (typeof window === 'undefined') {

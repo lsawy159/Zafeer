@@ -30,23 +30,23 @@ Step "TypeScript (libs)" {
   pnpm run typecheck:libs
 }
 
-Step "TypeScript (sawtracker)" {
-  Set-Location "$root/artifacts/sawtracker"
+Step "TypeScript (zafeer)" {
+  Set-Location "$root/artifacts/zafeer"
   pnpm run typecheck
   Set-Location $root
 }
 
 if (-not $SkipTests) {
   Step "Tests (vitest)" {
-    Set-Location "$root/artifacts/sawtracker"
+    Set-Location "$root/artifacts/zafeer"
     pnpm exec vitest run --reporter=verbose
     Set-Location $root
   }
 }
 
 if (-not $SkipBuild) {
-  Step "Build (sawtracker)" {
-    Set-Location "$root/artifacts/sawtracker"
+  Step "Build (zafeer)" {
+    Set-Location "$root/artifacts/zafeer"
     $env:VITE_SUPABASE_URL = "https://placeholder.supabase.co"
     $env:VITE_SUPABASE_ANON_KEY = "placeholder-key"
     pnpm run build
