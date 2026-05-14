@@ -11,7 +11,8 @@
       "mcp__claude_ai_Vercel__get_deployment_build_logs",
       "mcp__claude_ai_Vercel__list_deployments",
       "mcp__supabase__get_project_url",
-      "mcp__github__create_issue"
+      "mcp__github__create_issue",
+      "mcp__github__create_pull_request"
     ]
   },
   "enableAllProjectMcpServers": true,
