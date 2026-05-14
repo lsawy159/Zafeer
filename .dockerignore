@@ -4,7 +4,7 @@ node_modules
 .local
 specs
 artifacts/mockup-sandbox
-artifacts/sawtracker
+artifacts/zafeer
 artifacts/api-server/dist
 *.md
 .env
