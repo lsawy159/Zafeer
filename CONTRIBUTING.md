@@ -4,7 +4,7 @@
 
 ```bash
 pnpm install
-cp artifacts/sawtracker/.env.example artifacts/sawtracker/.env
+cp artifacts/zafeer/.env.example artifacts/zafeer/.env
 # أضف VITE_SUPABASE_URL + VITE_SUPABASE_ANON_KEY من لوحة Supabase
 ```
 
@@ -16,7 +16,7 @@ git checkout -b <NNN>-<short-desc>
 
 # أثناء التطوير
 pnpm run typecheck        # لازم يعدي قبل commit
-pnpm --filter @workspace/sawtracker run lint  # ESLint
+pnpm --filter @workspace/zafeer run lint  # ESLint
 
 # قبل الـ PR
 pnpm run build            # تأكد البيلد يشتغل
