@@ -6,6 +6,8 @@
   "scripts": {
     "preinstall": "npx only-allow pnpm",
     "build": "pnpm --filter @workspace/zafeer run build",
+    "docker:up": "docker compose --env-file artifacts/zafeer/.env up --build",
+    "docker:down": "docker compose down",
     "typecheck:libs": "tsc --build",
     "typecheck": "pnpm run typecheck:libs && pnpm -r --filter \"./artifacts/**\" --filter \"./scripts\" --if-present run typecheck",
     "test:rls": "pnpm --filter @workspace/tests-rls run test"
