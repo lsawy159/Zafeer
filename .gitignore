@@ -3,6 +3,10 @@
 # ===== Local AI context (لا يُرفع) =====
 CONTEXT.md
 
+# ===== Local memory system for AI assistants (لا يُرفع) =====
+/memory/
+CLAUDE.local.md
+
 # ===== الفولدر اللي فيه الملفات غير الضرورية =====
 ملفات غير ضرورية/
 ملفات-غير-ضرورية/
