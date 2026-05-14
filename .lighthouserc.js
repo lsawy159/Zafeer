@@ -1,7 +1,7 @@
 module.exports = {
   ci: {
     collect: {
-      staticDistDir: 'artifacts/sawtracker/dist',
+      staticDistDir: 'artifacts/zafeer/dist',
       url: ['/login', '/'],
       numberOfRuns: 1,
     },
