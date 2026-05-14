@@ -4,8 +4,10 @@ node_modules
 .local
 specs
 artifacts/mockup-sandbox
-artifacts/zafeer
+artifacts/*/node_modules
+artifacts/*/dist
 artifacts/api-server/dist
+lib/*/dist
 *.md
 .env
 .env.*
