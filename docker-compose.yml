@@ -1,0 +1,38 @@
+name: zafeer
+
+services:
+  api:
+    build:
+      context: .
+      dockerfile: artifacts/api-server/Dockerfile
+    env_file:
+      - artifacts/api-server/.env
+    environment:
+      NODE_ENV: development
+      PORT: "3000"
+    ports:
+      - "3000:3000"
+    healthcheck:
+      test: ["CMD", "node", "--input-type=module", "-e", "const r = await fetch('http://localhost:3000/api/healthz'); process.exit(r.ok ? 0 : 1);"]
+      interval: 30s
+      timeout: 10s
+      start_period: 15s
+      retries: 3
+
+  web:
+    build:
+      context: .
+      dockerfile: artifacts/zafeer/Dockerfile
+      args:
+        BASE_PATH: ${BASE_PATH:-/}
+        VITE_SUPABASE_URL: ${VITE_SUPABASE_URL:?Set VITE_SUPABASE_URL in artifacts/zafeer/.env}
+        VITE_SUPABASE_ANON_KEY: ${VITE_SUPABASE_ANON_KEY:?Set VITE_SUPABASE_ANON_KEY in artifacts/zafeer/.env}
+        VITE_SENTRY_DSN: ${VITE_SENTRY_DSN:-}
+        VITE_USE_NEW_PAYROLL_RPC: ${VITE_USE_NEW_PAYROLL_RPC:-false}
+        VITE_EMAIL_QUEUE_MODE: ${VITE_EMAIL_QUEUE_MODE:-normal}
+        VITE_DEBUG_LOGS: ${VITE_DEBUG_LOGS:-false}
+    depends_on:
+      api:
+        condition: service_healthy
+    ports:
+      - "5173:80"

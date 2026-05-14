@@ -8,7 +8,7 @@ FROM base AS builder
 WORKDIR /workspace
 
 # Copy workspace manifests first (layer cache)
-COPY pnpm-workspace.yaml pnpm-lock.yaml package.json ./
+COPY pnpm-workspace.yaml pnpm-lock.yaml package.json tsconfig.base.json ./
 COPY lib/db/package.json ./lib/db/
 COPY lib/api-zod/package.json ./lib/api-zod/
 COPY lib/api-spec/package.json ./lib/api-spec/
@@ -26,11 +26,11 @@ COPY artifacts/api-server/ ./artifacts/api-server/
 RUN pnpm --filter @workspace/api-server run build
 
 # Create flat node_modules for production (pino workers need runtime node_modules)
-RUN pnpm --filter @workspace/api-server deploy --prod /prod/deploy
+RUN pnpm --filter @workspace/api-server deploy --prod --legacy /prod/deploy
 
 # Stage 2: Run
 FROM node:22-slim AS runner
-WORKDIR /app
+WORKDIR /workspace/artifacts/api-server
 ENV NODE_ENV=production
 
 # Flat node_modules from pnpm deploy (pino workers need these at runtime)
@@ -39,7 +39,7 @@ COPY --from=builder /prod/deploy/node_modules ./node_modules
 # Bundled server
 COPY --from=builder /workspace/artifacts/api-server/dist ./dist
 
-RUN chown -R node:node /app
+RUN chown -R node:node /workspace
 USER node
 
 EXPOSE 3000
