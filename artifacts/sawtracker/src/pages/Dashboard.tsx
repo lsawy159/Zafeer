@@ -27,7 +27,7 @@ import type { Alert } from '@/components/alerts/AlertCard'
 import { getStatusThresholds, DEFAULT_STATUS_THRESHOLDS } from '@/utils/autoCompanyStatus'
 import { usePermissions } from '@/utils/permissions'
 import { useAllEmployeesPage } from '@/hooks/useEmployees'
-import { useCompanies } from '@/hooks/useCompanies'
+import { useAllCompanies } from '@/hooks/useCompanies'
 import { useAlertsStats } from '@/hooks/useAlertsStats'
 import { DashboardCompaniesTab } from './dashboard/DashboardCompaniesTab'
 import { DashboardEmployeesTab } from './dashboard/DashboardEmployeesTab'
@@ -40,7 +40,7 @@ export default function Dashboard() {
 
   // React Query hooks for data
   const { data: employees = [], isLoading: isLoadingEmployees } = useAllEmployeesPage()
-  const { data: companies = [], isLoading: isLoadingCompanies } = useCompanies()
+  const { data: companies = [], isLoading: isLoadingCompanies } = useAllCompanies()
   const { alertsStats } = useAlertsStats()
 
   // Fetch real total counts (bypasses pagination)
