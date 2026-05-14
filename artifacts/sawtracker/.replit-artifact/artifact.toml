@@ -1,6 +1,6 @@
 kind = "web"
 previewPath = "/"
-title = "MinMax SawTracker"
+title = "ZaFeer"
 version = "1.0.0"
 id = "artifacts/sawtracker"
 router = "path"

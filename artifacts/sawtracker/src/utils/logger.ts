@@ -16,7 +16,7 @@ function isVerboseLoggingEnabled(): boolean {
   }
 
   try {
-    const localFlag = window.localStorage.getItem('sawtracker:debug-logs')
+    const localFlag = window.localStorage.getItem('zafeer:debug-logs')
     if (localFlag === 'true') {
       return true
     }
