@@ -7,7 +7,7 @@
 ```
 artifacts/
   ├── api-server/         # خادم API (Express + Drizzle + Supabase Auth)
-  └── sawtracker/         # تطبيق الويب (React + Vite + Tailwind)
+  └── zafeer/             # تطبيق الويب (React + Vite + Tailwind)
 
 lib/
   ├── api-client-react/   # React hooks مولّدة من OpenAPI
@@ -40,11 +40,11 @@ cd zafeer
 pnpm install
 
 # 3. انسخ ملف البيئة وأضف المفاتيح
-cp artifacts/sawtracker/.env.example artifacts/sawtracker/.env
+cp artifacts/zafeer/.env.example artifacts/zafeer/.env
 # أضف: VITE_SUPABASE_URL, VITE_SUPABASE_ANON_KEY
 
 # 4. شغّل بيئة التطوير
-pnpm run dev           # يشغّل sawtracker على http://localhost:5173
+pnpm run dev           # يشغّل zafeer على http://localhost:5173
 pnpm run dev:api       # يشغّل api-server على http://localhost:3000
 ```
 
@@ -56,8 +56,8 @@ pnpm run dev:api       # يشغّل api-server على http://localhost:3000
 | `pnpm run typecheck` | TypeScript check لكل الـ workspace |
 | `pnpm run test` | unit tests (vitest) |
 | `pnpm run test:rls` | RLS role-switching tests |
-| `pnpm --filter @workspace/sawtracker run lint` | ESLint للـ frontend |
-| `pnpm --filter @workspace/sawtracker run dev` | frontend فقط |
+| `pnpm --filter @workspace/zafeer run lint` | ESLint للـ frontend |
+| `pnpm --filter @workspace/zafeer run dev` | frontend فقط |
 | `pnpm --filter @workspace/api-server run dev` | backend فقط |
 
 ## Architecture Decisions
