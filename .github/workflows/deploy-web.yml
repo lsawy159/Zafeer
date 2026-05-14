@@ -1,10 +1,10 @@
-name: Deploy Web (sawtracker)
+name: Deploy Web (zafeer)
 
 on:
   push:
     branches: [main]
     paths:
-      - "artifacts/sawtracker/**"
+      - "artifacts/zafeer/**"
       - "lib/api-client-react/**"
       - ".github/workflows/deploy-web.yml"
 
@@ -32,8 +32,8 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Build sawtracker
-        working-directory: artifacts/sawtracker
+      - name: Build zafeer
+        working-directory: artifacts/zafeer
         run: pnpm run build
         env:
           VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
