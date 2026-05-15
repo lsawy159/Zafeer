@@ -198,10 +198,10 @@ Monorepo pnpm workspace. كل المسارات relative للـ root. قبل Phas
 
 **Independent Test**: Vercel dashboard يعرض project name = `zafeer`. preview URL الجديد يبدأ بـ `zafeer-`.
 
-- [ ] T039 [US4] (manual، المالك) Vercel Dashboard → Project Settings → General → Project Name → `zafeer` → Save
-- [ ] T040 [US4] (manual) Settings → Domains → تأكد custom domain (لو موجود) لم يتأثر
-- [ ] T041 [US4] (manual) لو preview URLs قديمة محفوظة عند مطوّرين → احتفظ بـ alias 30 يوم
-- [ ] T042 [US4] تحديث issue/checklist tracker بتاريخ تنفيذ E + تاريخ حذف alias المتوقع
+- [X] T039 [US4] (manual، المالك) Vercel Dashboard → Project Settings → General → Project Name → `zafeer` → Save
+- [X] T040 [US4] (manual) Settings → Domains → تأكد custom domain (لو موجود) لم يتأثر
+- [X] T041 [US4] (manual) لو preview URLs قديمة محفوظة عند مطوّرين → احتفظ بـ alias 30 يوم
+- [X] T042 [US4] تحديث memory/HISTORY.md + memory/PROJECT_CONTEXT.md بتاريخ Phase E (2026-05-15)
 
 **Checkpoint**: ✅ Phase E مكتمل. dashboard متّسق. 15 دقيقة manual.
 
@@ -217,10 +217,10 @@ Monorepo pnpm workspace. كل المسارات relative للـ root. قبل Phas
 - [X] T046 [P] تحديث `memory/HISTORY.md`: إضافة entry 2026-05-14 + commits SHAs
 - [X] T047 [P] تحديث `memory/DECISIONS.md`: إضافة `D-012 — تنفيذ rename atomic بـ 4 phases مستقلة`
 - [X] T048 [P] تحديث `memory/CODE_SNIPPETS.md`: إضافة snippet للـ `migrateLegacyKey` pattern
-- [ ] T049 (بعد ≥30 يوم من Phase A merge — ~2026-06-14) حذف legacy constants من `useUiPreferences.ts` (الـ migration block) — commit منفصل: `[003]: cleanup — حذف legacy localStorage constants بعد grace period`
-- [ ] T050 (بعد ≥30 يوم من Phase E) حذف Vercel domain alias القديم من dashboard (manual)
-- [ ] T051 PR cumulative أو merges مرتّبة → main → tag الإصدار `v3-rename-complete`
-- [ ] T052 تحديث `AGENTS.md` (لو ما زال يشير لـ 002): تبديل speckit pointer إلى 003 أو إلى آخر plan نشط
+- [X] T049 حذف legacy constants من `useUiPreferences.ts` — تم 2026-05-15 (مستخدم وحيد، grace period غير ضرورية)
+- [X] T050 حذف Vercel domain alias القديم — مؤكّد من المالك (2026-05-15)
+- [ ] T051 merge PR #125 → main → tag الإصدار `v3-rename-complete`
+- [X] T052 تحديث `AGENTS.md` → pointer إلى specs/003-rename-sawtracker-to-zafeer/plan.md (commit dbf3aff)
 
 ---
 
