@@ -93,3 +93,6 @@ desktop.ini
 
 # ===== Claude Code worktrees (temporary agent workspaces) =====
 .claude/worktrees/
+
+# ===== Brand handoff assets (local-only — brand guidelines, design tokens, reference HTML) =====
+/handoff/
