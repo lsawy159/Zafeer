@@ -1,34 +1,33 @@
 <!--
 SYNC IMPACT REPORT
 ==================
-Version change: 1.0.0 → 1.1.0
-Bump rationale: MINOR — أُضيف Principle VI جديد (Brand Identity / ZaFeer)؛ Principle II صُحِّح
-ليعكس الواقع الفعلي للسوق (الخليج/SAR بدلاً من EGP الذي كان خطأً موثَّقاً في الكود).
-التصحيح factual، ليس redefinition، لكن إضافة المبدأ السادس = MINOR bump.
+Version change: 1.1.0 → 1.2.0
+Bump rationale: MINOR — أُضيف Principle VII جديد (Internal System Architecture — Users vs Employees).
+المبدأ يُقنّن قاعدة معمارية صارمة: employees = data records فقط، لا login، لا RLS بناءً على auth.uid()
+مقابل employees. صادر من توضيح مالك المشروع 2026-05-15.
 
-Modified principles:
-  - II. Arabic UX — RTL First → currency تصحيح: EGP ❌ → SAR ✅، locale ar-SA،
-    أضيف ذكر السوق المستهدف (Gulf / KSA primary).
+Modified principles: لا شيء — إضافة فقط.
 
 Added sections:
-  - Principle VI: Brand Identity & Naming Discipline (NON-NEGOTIABLE) — حظر استخدام
-    "sawtracker" / "SawTracker" / "MinMax" في كل الكود الجديد + مسار rename للمواضع
-    المتبقية + قواعد storage migration للـ localStorage keys.
+  - Principle VII: Internal System Architecture — Users vs Employees (NON-NEGOTIABLE)
+    يحظر أي employee-scoping في RLS + يحدد أن RLS يُبنى على users.role + users.permissions فقط.
 
 Removed sections: لا شيء.
 
+Resolved TODOs (من v1.1.0):
+  ✅ RENAME_EXECUTION: Spec 003 مكتمل (PR #125 merged + tag v3-rename-complete).
+  ✅ VERCEL_PROJECT_NAME: domain alias محدّث (أنجزه المالك).
+
 Templates requiring updates:
-  ✅ plan-template.md — Constitution Check block generic، يقرأ المبادئ من هنا، لا تعديل لازم.
+  ✅ plan-template.md — generic، لا تعديل.
   ✅ spec-template.md — generic، لا تعديل.
   ✅ tasks-template.md — generic، لا تعديل.
-  ✅ commands/*.md — لا references مباشرة لمبدأ بعينه.
 
 Follow-up TODOs:
-  - TODO(RENAME_EXECUTION): الـ rename الفعلي لـ folder + workspace package
-    (`artifacts/sawtracker` → `artifacts/zafeer`، `@workspace/sawtracker` →
-    `@workspace/zafeer`) يُنفَّذ في spec منفصل (مقترح: `003-rename-sawtracker-to-zafeer`).
-    هذا الدستور يلزم بالقاعدة، لكن لا ينفّذ rename بنفسه.
-  - TODO(VERCEL_PROJECT_NAME): تأكيد اسم Vercel Project + domain alias بعد rename.
+  - TODO(RLS_PERMISSION_BUG): user_has_permission() تقرأ permissions كـ object لكن DB يخزّنها
+    كـ flat array — يُصلح في Spec 004 Phase B.
+  - TODO(GET_ALL_USERS_RPC): get_all_users_for_admin RPC يُستدعى من Permissions.tsx —
+    وجوده في DB يحتاج تحقق + إنشاء إن لزم — ضمن Spec 004 audit task.
 -->
 
 # Zafeer Constitution
@@ -102,6 +101,31 @@ Existing legacy references MUST be eliminated according to the following rules:
 
 Rationale: a single canonical brand name protects users (no confusion in UI), developers (no ambiguity in imports/configs), and operations (no broken deploys from inconsistent identifiers). Allowing legacy names to linger creates compounding tech debt and accidental re-introduction risk.
 
+### VII. Internal System Architecture — Users vs Employees (NON-NEGOTIABLE)
+
+ZaFeer is a **strictly internal management dashboard**. Access is granted only to authorized internal team members (Admin and Team Users). It is NOT a self-service portal for the workforce it manages.
+
+The two primary people-related tables serve fundamentally different purposes and MUST NEVER be conflated:
+
+- **`public.users`** — internal team members who authenticate and operate the system. Every row has a corresponding `auth.users` entry. RLS, permissions, and role checks MUST be based solely on this table.
+- **`public.employees`** — HR data records (data subjects managed by the system). Employees DO NOT have login accounts, passwords, sessions, or any system access. There is no `auth.uid()` relationship for employees.
+
+The following patterns are FORBIDDEN in all new code and migrations:
+
+1. Any RLS policy that uses `employees.id = auth.uid()` or any equivalent employee-to-session binding.
+2. Any feature that allows an employee (data record) to authenticate, view, or modify their own data.
+3. Any UI route, API endpoint, or DB function designed for "employee self-service."
+4. Any foreign key from `employees` to `auth.users` (unless explicitly for audit tracking of which *team member* modified the record, NOT the employee themselves).
+
+RLS policies MUST be designed exclusively around:
+- `users.role` (`admin` | `manager` | `user`)
+- `users.permissions` JSONB (flat array of `"section.action"` strings, e.g. `"employees.view"`)
+- The `user_has_permission(section, action)` SECURITY DEFINER function
+
+Admin (`role = 'admin'`) MUST retain unrestricted access to all tables at all times. No migration or policy change may lock out the admin role.
+
+Rationale: conflating the two tables leads to incorrect RLS designs that either expose all employee data or attempt to scope data to "the employee themselves" — both are architectural errors in a centralized management system.
+
 ## Security Requirements
 
 - The Express API MUST validate all inputs with Zod schemas before processing.
@@ -128,4 +152,4 @@ All spec/plan/task documents MUST reference constitution principles by name when
 Complexity deviations from any MUST rule MUST be documented in `plan.md` under "Complexity Tracking" with justification.
 Principle VI (Brand Identity) violations in any new code or new commit MUST block merge regardless of CI status.
 
-**Version**: 1.1.0 | **Ratified**: 2026-05-07 | **Last Amended**: 2026-05-14
+**Version**: 1.2.0 | **Ratified**: 2026-05-07 | **Last Amended**: 2026-05-15
