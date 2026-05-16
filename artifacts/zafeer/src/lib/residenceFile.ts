@@ -43,3 +43,8 @@ export function buildResidencePath(employeeId: string, file: File): string {
   const ext = file.name.split('.').pop()?.toLowerCase() ?? 'bin'
   return `residence/${employeeId}/${Date.now()}.${ext}`
 }
+
+export function buildResidenceThumbnailPath(employeeId: string, file: File): string {
+  const ext = file.name.split('.').pop()?.toLowerCase() ?? 'jpg'
+  return `residence/${employeeId}/${Date.now()}_thumb.${ext}`
+}
