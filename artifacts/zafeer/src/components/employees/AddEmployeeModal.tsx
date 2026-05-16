@@ -13,7 +13,11 @@ import {
   FolderKanban,
   Plus,
   Loader2,
+  Upload,
+  FileText,
 } from 'lucide-react'
+import { validateResidenceFile } from '@/lib/residenceFile'
+import { useUploadResidenceFile } from '@/hooks/useResidenceFile'
 import { toast } from 'sonner'
 import { parseDate, normalizeDate } from '@/utils/dateParser'
 import {
@@ -119,6 +123,10 @@ export default function AddEmployeeModal({
   const [creatingProject, setCreatingProject] = useState(false)
   const [formData, setFormData] = useState(buildInitialFormData(initialData))
   const [isDirty, setIsDirty] = useState(false)
+  const [pendingFile, setPendingFile] = useState<File | null>(null)
+  const [pendingFileError, setPendingFileError] = useState<string | null>(null)
+  const residenceFileInputRef = useRef<HTMLInputElement>(null)
+  const uploadResidenceFile = useUploadResidenceFile()
 
   const loadCompanies = async () => {
     try {
@@ -529,7 +537,7 @@ export default function AddEmployeeModal({
         bank_account: formData.bank_account.trim() || undefined,
         salary: Number(formData.salary) || 0,
         health_insurance_expiry: normalizeDate(formData.health_insurance_expiry) ?? undefined, // تحديث: ending_subscription_insurance_date → health_insurance_expiry
-        residence_image_url: formData.residence_image_url.trim() || undefined,
+        // residence_image_url يُحدَّث عبر useUploadResidenceFile بعد إنشاء الموظف
         notes: formData.notes.trim() || undefined,
         company_id: formData.company_id,
         additional_fields: buildEmployeeBusinessAdditionalFields(undefined, {
@@ -592,10 +600,24 @@ export default function AddEmployeeModal({
         throw error
       }
 
+      // رفع ملف الإقامة بعد إنشاء الموظف (للحصول على employeeId)
+      if (pendingFile && insertedEmployee?.id) {
+        try {
+          await uploadResidenceFile.mutateAsync({
+            employeeId: insertedEmployee.id,
+            file: pendingFile,
+          })
+        } catch {
+          // خطأ الرفع يُعرض عبر toast في الـ hook — لا نوقف العملية
+        }
+      }
+
       toast.success('تم إضافة الموظف بنجاح')
 
       // إعادة تعيين النموذج
       setFormData(createDefaultFormData())
+      setPendingFile(null)
+      setPendingFileError(null)
       setProjectSearchQuery('')
       setIsProjectDropdownOpen(false)
 
@@ -1214,20 +1236,48 @@ export default function AddEmployeeModal({
             </div>
           </div>
 
-          {/* 17. رابط صورة الإقامة */}
+          {/* 17. ملف الإقامة */}
           <div className="mt-6">
-            <label className="block text-sm font-medium text-neutral-700 mb-2">
-              رابط صورة الإقامة
+            <label className="block text-sm font-medium text-neutral-700 mb-2 flex items-center gap-2">
+              <FileText className="w-4 h-4" />
+              ملف الإقامة (اختياري — يُرفع بعد حفظ الموظف)
             </label>
             <input
-              type="text"
-              name="residence_image_url"
-              value={formData.residence_image_url || ''}
-              onChange={handleChange}
-              className="app-input py-2.5"
-              placeholder="أدخل رابط صورة الإقامة"
+              ref={residenceFileInputRef}
+              type="file"
+              accept="image/jpeg,image/png,image/webp,application/pdf"
+              className="hidden"
               disabled={loading}
+              onChange={(e) => {
+                const file = e.target.files?.[0] ?? null
+                setPendingFileError(null)
+                if (!file) { setPendingFile(null); return }
+                const result = validateResidenceFile(file)
+                if (!result.ok) {
+                  setPendingFileError(result.messageAr)
+                  e.target.value = ''
+                  return
+                }
+                setPendingFile(file)
+              }}
             />
+            <button
+              type="button"
+              onClick={() => residenceFileInputRef.current?.click()}
+              disabled={loading}
+              className="flex items-center gap-2 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700 hover:bg-slate-50 disabled:opacity-50 transition-colors"
+            >
+              <Upload className="w-4 h-4" />
+              {pendingFile ? pendingFile.name : 'اختر ملف الإقامة'}
+            </button>
+            {pendingFileError && (
+              <p className="mt-1.5 text-xs text-red-600">{pendingFileError}</p>
+            )}
+            {pendingFile && (
+              <p className="mt-1 text-xs text-slate-500">
+                سيُرفع الملف تلقائياً بعد إنشاء الموظف
+              </p>
+            )}
           </div>
 
           {/* 18. الملاحظات */}
