@@ -7,118 +7,44 @@ import {
   SelectItem,
   SelectValue,
 } from '@/components/ui/Select'
-import type {
-  TabType,
-  ResidenceStatus,
-  ContractStatus,
-  CommercialRegStatus,
-  SavedSearch,
-} from '@/hooks/advancedSearchTypes'
+import type { useAdvancedSearchFilters } from '@/hooks/useAdvancedSearchFilters'
+import type { ResidenceStatus, ContractStatus, CommercialRegStatus } from '@/hooks/advancedSearchTypes'
 
 interface AdvancedSearchFiltersModalProps {
-  activeTab: TabType
+  search: ReturnType<typeof useAdvancedSearchFilters>
   activeFiltersCount: number
-  // Employee filter state
-  selectedNationality: string
-  setSelectedNationality: (v: string) => void
-  selectedCompanyFilter: string
-  setSelectedCompanyFilter: (v: string) => void
-  selectedProfession: string
-  setSelectedProfession: (v: string) => void
-  selectedProject: string
-  setSelectedProject: (v: string) => void
-  residenceStatus: ResidenceStatus
-  setResidenceStatus: (v: ResidenceStatus) => void
-  contractStatus: ContractStatus
-  setContractStatus: (v: ContractStatus) => void
-  healthInsuranceExpiryStatus: string
-  setHealthInsuranceExpiryStatus: (v: string) => void
-  passportNumberSearch: string
-  setPassportNumberSearch: (v: string) => void
-  residenceNumberSearch: string
-  setResidenceNumberSearch: (v: string) => void
-  // Company filter state
-  commercialRegStatus: CommercialRegStatus
-  setCommercialRegStatus: (v: CommercialRegStatus) => void
-  exemptionsFilter: string
-  setExemptionsFilter: (v: string) => void
-  powerSubscriptionStatus: string
-  setPowerSubscriptionStatus: (v: string) => void
-  moqeemSubscriptionStatus: string
-  setMoqeemSubscriptionStatus: (v: string) => void
-  unifiedNumberSearch: string
-  setUnifiedNumberSearch: (v: string) => void
-  taxNumberSearch: string
-  setTaxNumberSearch: (v: string) => void
-  laborSubscriptionNumberSearch: string
-  setLaborSubscriptionNumberSearch: (v: string) => void
-  notesSearch: string
-  setNotesSearch: (v: string) => void
-  notesFilter: 'all' | 'has_notes' | 'no_notes'
-  setNotesFilter: (v: 'all' | 'has_notes' | 'no_notes') => void
-  // Filter lists
-  nationalities: string[]
-  companyList: { id: string; name: string }[]
-  professions: string[]
-  projects: string[]
-  // Saved searches
-  savedSearches: SavedSearch[]
-  loadSavedSearch: (saved: SavedSearch) => void
-  deleteSavedSearch: (id: string) => void
-  // Actions
-  clearFilters: () => void
   onClose: () => void
 }
 
 export default function AdvancedSearchFiltersModal({
-  activeTab,
+  search,
   activeFiltersCount,
-  selectedNationality,
-  setSelectedNationality,
-  selectedCompanyFilter,
-  setSelectedCompanyFilter,
-  selectedProfession,
-  setSelectedProfession,
-  selectedProject,
-  setSelectedProject,
-  residenceStatus,
-  setResidenceStatus,
-  contractStatus,
-  setContractStatus,
-  healthInsuranceExpiryStatus,
-  setHealthInsuranceExpiryStatus,
-  passportNumberSearch,
-  setPassportNumberSearch,
-  residenceNumberSearch,
-  setResidenceNumberSearch,
-  commercialRegStatus,
-  setCommercialRegStatus,
-  exemptionsFilter,
-  setExemptionsFilter,
-  powerSubscriptionStatus,
-  setPowerSubscriptionStatus,
-  moqeemSubscriptionStatus,
-  setMoqeemSubscriptionStatus,
-  unifiedNumberSearch,
-  setUnifiedNumberSearch,
-  taxNumberSearch,
-  setTaxNumberSearch,
-  laborSubscriptionNumberSearch,
-  setLaborSubscriptionNumberSearch,
-  notesSearch,
-  setNotesSearch,
-  notesFilter,
-  setNotesFilter,
-  nationalities,
-  companyList,
-  professions,
-  projects,
-  savedSearches,
-  loadSavedSearch,
-  deleteSavedSearch,
-  clearFilters,
   onClose,
 }: AdvancedSearchFiltersModalProps) {
+  const {
+    activeTab,
+    selectedNationality, setSelectedNationality,
+    selectedCompanyFilter, setSelectedCompanyFilter,
+    selectedProfession, setSelectedProfession,
+    selectedProject, setSelectedProject,
+    residenceStatus, setResidenceStatus,
+    contractStatus, setContractStatus,
+    healthInsuranceExpiryStatus, setHealthInsuranceExpiryStatus,
+    passportNumberSearch, setPassportNumberSearch,
+    residenceNumberSearch, setResidenceNumberSearch,
+    commercialRegStatus, setCommercialRegStatus,
+    exemptionsFilter, setExemptionsFilter,
+    powerSubscriptionStatus, setPowerSubscriptionStatus,
+    moqeemSubscriptionStatus, setMoqeemSubscriptionStatus,
+    unifiedNumberSearch, setUnifiedNumberSearch,
+    taxNumberSearch, setTaxNumberSearch,
+    laborSubscriptionNumberSearch, setLaborSubscriptionNumberSearch,
+    notesSearch, setNotesSearch,
+    notesFilter, setNotesFilter,
+    nationalities, companyList, professions, projects,
+    savedSearches, loadSavedSearch, deleteSavedSearch,
+    clearFilters,
+  } = search
   return (
     <div className="fixed inset-0 z-[100] overflow-y-auto">
       {/* Backdrop */}
