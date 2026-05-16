@@ -3,6 +3,8 @@ import { createPortal } from 'react-dom'
 import { Employee, Company, Project, ObligationType, supabase } from '@/lib/supabase'
 import { useEmployeeCardData } from '@/hooks/useEmployeeCardData'
 import { EmployeeExpirySection } from './EmployeeExpirySection'
+import { ResidenceFileField } from './ResidenceFileField'
+import { ResidenceFileViewer } from './ResidenceFileViewer'
 import {
   X,
   AlertTriangle,
@@ -1534,31 +1536,30 @@ export default function EmployeeCard({
                   />
                 </div>
 
-                {/* 17. رابط صورة الإقامة */}
+                {/* 17. ملف الإقامة */}
                 <div>
-                  <label className="block text-sm font-medium text-neutral-700 mb-2 flex items-center gap-2">
-                    <FileText className="w-4 h-4" />
-                    رابط صورة الإقامة
-                  </label>
-                  <input
-                    type="text"
-                    value={formData.residence_image_url || ''}
-                    onChange={(e) =>
-                      setFormData({ ...formData, residence_image_url: e.target.value })
-                    }
-                    disabled={!isEditMode}
-                    className={`app-input py-2 ${!isEditMode ? 'border-slate-200 bg-slate-50 text-slate-600 cursor-not-allowed' : ''}`}
-                    placeholder="أدخل رابط صورة الإقامة"
-                  />
-                  {formData.residence_image_url && !isEditMode && (
-                    <a
-                      href={formData.residence_image_url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="mt-2 text-sm text-blue-600 hover:text-blue-800 underline"
-                    >
-                      عرض الصورة
-                    </a>
+                  {isEditMode ? (
+                    <ResidenceFileField
+                      employeeId={employee.id}
+                      currentPath={formData.residence_image_url || null}
+                      disabled={false}
+                      isDeleted={employee.is_deleted ?? false}
+                      onPathChange={(newPath) =>
+                        setFormData({ ...formData, residence_image_url: newPath ?? '' })
+                      }
+                    />
+                  ) : (
+                    <>
+                      <label className="block text-sm font-medium text-neutral-700 mb-2 flex items-center gap-2">
+                        <FileText className="w-4 h-4" />
+                        ملف الإقامة
+                      </label>
+                      {formData.residence_image_url ? (
+                        <ResidenceFileViewer path={formData.residence_image_url} />
+                      ) : (
+                        <p className="text-sm text-slate-400">لا يوجد ملف إقامة</p>
+                      )}
+                    </>
                   )}
                 </div>
 
