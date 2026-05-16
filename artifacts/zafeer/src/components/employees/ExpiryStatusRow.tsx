@@ -20,22 +20,22 @@ export function ExpiryStatusRow({ label, date, daysRemaining }: ExpiryStatusRowP
 
   return (
     <div
-      className={`flex items-center gap-3 p-4 rounded-lg border-2 ${getStatusColor(daysRemaining)}`}
+      className={`flex items-center gap-2 px-2.5 py-1.5 rounded-md border ${getStatusColor(daysRemaining)}`}
     >
-      <AlertTriangle className="w-5 h-5" />
-      <div className="flex-1">
-        <div className="font-medium">{label}</div>
-        <div className="text-sm">
+      <AlertTriangle className="w-3.5 h-3.5 flex-shrink-0" />
+      <div className="flex-1 min-w-0">
+        <span className="text-xs font-medium">{label}: </span>
+        <span className="text-xs">
           {date ? (
             <>
               <HijriDateDisplay date={date}>{formatDateShortWithHijri(date)}</HijriDateDisplay>
               {daysRemaining !== null &&
-                (daysRemaining < 0 ? ' (منتهية)' : ` (بعد ${daysRemaining} يوم)`)}
+                (daysRemaining < 0 ? ' (منتهية)' : ` (${daysRemaining} يوم)`)}
             </>
           ) : (
             'غير محدد'
           )}
-        </div>
+        </span>
       </div>
     </div>
   )

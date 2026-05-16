@@ -87,6 +87,7 @@ export interface Employee {
   project?: Project // Relation إلى جدول المشاريع
   bank_account?: string
   residence_image_url?: string
+  residence_thumbnail_url?: string
   // التأمين الصحي للموظف
   health_insurance_expiry?: string // بدلاً من ending_subscription_insurance_date
   salary?: number
