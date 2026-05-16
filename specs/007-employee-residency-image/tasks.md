@@ -28,7 +28,7 @@ description: "Task list — ملف الإقامة للموظف (صورة أو PD
 
 **Purpose**: التحقق من جاهزية البيئة
 
-- [ ] T001 التحقق من توفّر `@supabase/supabase-js`, `@tanstack/react-query`, `sonner`, `lucide-react` في `artifacts/zafeer/package.json`، وأن `VITE_SUPABASE_URL`/`VITE_SUPABASE_ANON_KEY` مضبوطة في `.env`
+- [x] T001 التحقق من توفّر `@supabase/supabase-js`, `@tanstack/react-query`, `sonner`, `lucide-react` في `artifacts/zafeer/package.json`، وأن `VITE_SUPABASE_URL`/`VITE_SUPABASE_ANON_KEY` مضبوطة في `.env`
 
 ---
 
@@ -38,10 +38,10 @@ description: "Task list — ملف الإقامة للموظف (صورة أو PD
 
 **⚠️ CRITICAL**: لا يبدأ أي user story قبل اكتمال هذه المرحلة
 
-- [ ] T002 إنشاء migration `supabase/migrations/20260516XXXXXX_create_employee_documents_bucket.sql`: إنشاء bucket خاص `employee-documents` (`public=false`, `file_size_limit=512000`, `allowed_mime_types` = image/jpeg,image/png,image/webp,application/pdf) + سياسات RLS على `storage.objects` لـ SELECT (`user_has_permission('employees','view')` OR `role='admin'`) و INSERT/UPDATE/DELETE (`user_has_permission('employees','edit')` OR `role='admin'`)، كلها مقيّدة بـ `bucket_id='employee-documents'`
-- [ ] T003 التحقق من الصيغة الفعلية لمفاتيح صلاحيات قسم الموظفين (`employees.view`/`employees.edit`) من `users.permissions` ودالة `user_has_permission`، وتطبيق migration T002 على مشروع Supabase
-- [ ] T004 [P] إنشاء `artifacts/zafeer/src/lib/residenceFile.ts`: الثوابت (`RESIDENCE_MAX_BYTES=512000`، `RESIDENCE_ALLOWED_MIME`، `RESIDENCE_BUCKET`)، النوع `ResidenceFileKind`، والدوال `validateResidenceFile`، `residenceKindFromPath`، `isLegacyExternalUrl`، `buildResidencePath` حسب عقد B.1
-- [ ] T005 إنشاء `artifacts/zafeer/src/hooks/useResidenceFile.ts`: `useUploadResidenceFile` (تحقق → رفع object → UPDATE `residence_image_url` → حذف القديم؛ لا UPDATE عند فشل الرفع)، `useDeleteResidenceFile`، `useResidenceSignedUrl`؛ إبطال `['employees']` بعد النجاح، توست عربي عبر `sonner` (يعتمد T004)
+- [x] T002 إنشاء migration `supabase/migrations/20260516XXXXXX_create_employee_documents_bucket.sql`: إنشاء bucket خاص `employee-documents` (`public=false`, `file_size_limit=512000`, `allowed_mime_types` = image/jpeg,image/png,image/webp,application/pdf) + سياسات RLS على `storage.objects` لـ SELECT (`user_has_permission('employees','view')` OR `role='admin'`) و INSERT/UPDATE/DELETE (`user_has_permission('employees','edit')` OR `role='admin'`)، كلها مقيّدة بـ `bucket_id='employee-documents'`
+- [x] T003 التحقق من الصيغة الفعلية لمفاتيح صلاحيات قسم الموظفين (`employees.view`/`employees.edit`) من `users.permissions` ودالة `user_has_permission`، وتطبيق migration T002 على مشروع Supabase
+- [x] T004 [P] إنشاء `artifacts/zafeer/src/lib/residenceFile.ts`: الثوابت (`RESIDENCE_MAX_BYTES=512000`، `RESIDENCE_ALLOWED_MIME`، `RESIDENCE_BUCKET`)، النوع `ResidenceFileKind`، والدوال `validateResidenceFile`، `residenceKindFromPath`، `isLegacyExternalUrl`، `buildResidencePath` حسب عقد B.1
+- [x] T005 إنشاء `artifacts/zafeer/src/hooks/useResidenceFile.ts`: `useUploadResidenceFile` (تحقق → رفع object → UPDATE `residence_image_url` → حذف القديم؛ لا UPDATE عند فشل الرفع)، `useDeleteResidenceFile`، `useResidenceSignedUrl`؛ إبطال `['employees']` بعد النجاح، توست عربي عبر `sonner` (يعتمد T004)
 
 **Checkpoint**: الأساس جاهز — يمكن بدء user stories
 
@@ -53,10 +53,10 @@ description: "Task list — ملف الإقامة للموظف (صورة أو PD
 
 **Independent Test**: فتح موظف بدون ملف، رفع صورة JPG صالحة ثم PDF صالح، التأكد من الحفظ والربط بالموظف الصحيح
 
-- [ ] T006 [US1] إنشاء `artifacts/zafeer/src/components/employees/ResidenceFileField.tsx`: زر "إضافة ملف الإقامة"، `<input type="file" accept="image/jpeg,image/png,image/webp,application/pdf">`، استدعاء `validateResidenceFile`، مؤشر تقدّم أثناء الرفع، تعطيل الإجراء أثناء `isPending` (FR-001, FR-002, FR-010)
-- [ ] T007 [US1] دمج رفع الملف في `artifacts/zafeer/src/components/employees/AddEmployeeModal.tsx` (~سطر 1217–1231): استبدال حقل النص `residence_image_url` بزر رفع — الرفع يتم بعد إنشاء الموظف للحصول على `employeeId`
-- [ ] T008 [US1] دمج `ResidenceFileField` في `artifacts/zafeer/src/components/employees/EmployeeCard.tsx` (~سطر 1537–1563): استبدال حقل النص بالمكوّن، تمرير `employeeId` و `currentPath`
-- [ ] T009 [P] [US1] اختبار وحدة لـ `useUploadResidenceFile` في `artifacts/zafeer/src/hooks/useResidenceFile.test.ts` (mock لـ supabase): نجاح الرفع يكتب المسار؛ فشل الرفع لا يكتب `residence_image_url`
+- [x] T006 [US1] إنشاء `artifacts/zafeer/src/components/employees/ResidenceFileField.tsx`: زر "إضافة ملف الإقامة"، `<input type="file" accept="image/jpeg,image/png,image/webp,application/pdf">`، استدعاء `validateResidenceFile`، مؤشر تقدّم أثناء الرفع، تعطيل الإجراء أثناء `isPending` (FR-001, FR-002, FR-010)
+- [x] T007 [US1] دمج رفع الملف في `artifacts/zafeer/src/components/employees/AddEmployeeModal.tsx` (~سطر 1217–1231): استبدال حقل النص `residence_image_url` بزر رفع — الرفع يتم بعد إنشاء الموظف للحصول على `employeeId`
+- [x] T008 [US1] دمج `ResidenceFileField` في `artifacts/zafeer/src/components/employees/EmployeeCard.tsx` (~سطر 1537–1563): استبدال حقل النص بالمكوّن، تمرير `employeeId` و `currentPath`
+- [x] T009 [P] [US1] اختبار وحدة لـ `useUploadResidenceFile` في `artifacts/zafeer/src/hooks/useResidenceFile.test.ts` (mock لـ supabase): نجاح الرفع يكتب المسار؛ فشل الرفع لا يكتب `residence_image_url`
 
 **Checkpoint**: US1 تعمل ومختبَرة مستقلاً — رفع وحفظ ملف الإقامة
 
@@ -68,8 +68,8 @@ description: "Task list — ملف الإقامة للموظف (صورة أو PD
 
 **Independent Test**: موظف لديه صورة محفوظة → ظهور المصغّرة وتكبيرها؛ موظف لديه PDF → فتح الاستعراض دون تنزيل
 
-- [ ] T010 [US2] إنشاء `artifacts/zafeer/src/components/employees/ResidenceFileViewer.tsx`: `path` فارغ → لا عرض؛ `kind='image'` → `<img>` مصغّرة + lightbox عند النقر؛ `kind='pdf'` → أيقونة + زر "عرض الملف" يفتح `<iframe>`/تبويب جديد؛ رابط خارجي قديم → رابط "عرض" في تبويب جديد (FR-006, FR-007)
-- [ ] T011 [US2] دمج `ResidenceFileViewer` في `artifacts/zafeer/src/components/employees/EmployeeCard.tsx` بجانب `ResidenceFileField`، باستخدام `useResidenceSignedUrl` لتوليد رابط العرض
+- [x] T010 [US2] إنشاء `artifacts/zafeer/src/components/employees/ResidenceFileViewer.tsx`: `path` فارغ → لا عرض؛ `kind='image'` → `<img>` مصغّرة + lightbox عند النقر؛ `kind='pdf'` → أيقونة + زر "عرض الملف" يفتح `<iframe>`/تبويب جديد؛ رابط خارجي قديم → رابط "عرض" في تبويب جديد (FR-006, FR-007)
+- [x] T011 [US2] دمج `ResidenceFileViewer` في `artifacts/zafeer/src/components/employees/EmployeeCard.tsx` بجانب `ResidenceFileField`، باستخدام `useResidenceSignedUrl` لتوليد رابط العرض
 
 **Checkpoint**: US1 + US2 تعملان مستقلاً — رفع وعرض الملف من الكارت
 
@@ -81,8 +81,8 @@ description: "Task list — ملف الإقامة للموظف (صورة أو PD
 
 **Independent Test**: محاولة رفع ملف 600 KB وملف Word — رفض كليهما برسالة مناسبة دون أي طلب شبكة
 
-- [ ] T012 [P] [US3] اختبار وحدة لـ `validateResidenceFile` في `artifacts/zafeer/src/lib/residenceFile.test.ts`: 600 KB يُرفض، 0 بايت يُرفض، Word/txt يُرفض، 500 KB بالضبط وJPEG/PNG/WebP/PDF صالحة تُقبل
-- [ ] T013 [US3] في `ResidenceFileField.tsx`: عرض رسالة خطأ `validateResidenceFile` العربية عند الرفض ومنع أي رفع، التعامل مع ملف 0 بايت (FR-003, FR-004)
+- [x] T012 [P] [US3] اختبار وحدة لـ `validateResidenceFile` في `artifacts/zafeer/src/lib/residenceFile.test.ts`: 600 KB يُرفض، 0 بايت يُرفض، Word/txt يُرفض، 500 KB بالضبط وJPEG/PNG/WebP/PDF صالحة تُقبل
+- [x] T013 [US3] في `ResidenceFileField.tsx`: عرض رسالة خطأ `validateResidenceFile` العربية عند الرفض ومنع أي رفع، التعامل مع ملف 0 بايت (FR-003, FR-004)
 
 **Checkpoint**: US1 + US2 + US3 — الرفع المؤمَّن بالتحقق يعمل
 
@@ -94,8 +94,8 @@ description: "Task list — ملف الإقامة للموظف (صورة أو PD
 
 **Independent Test**: موظف لديه ملف → رفع بديل يظهر الجديد ويختفي القديم؛ ثم حذف + تأكيد → عودة لحالة "لا يوجد ملف"
 
-- [ ] T014 [US4] في `ResidenceFileField.tsx`: عند وجود ملف، عرض زر "استبدال الملف" (يمرّر `oldPath` لـ `useUploadResidenceFile` لحذف القديم) وزر "حذف الملف" يفتح نافذة تأكيد عربية تستدعي `useDeleteResidenceFile` (FR-008, FR-009)
-- [ ] T015 [P] [US4] اختبار وحدة لـ `useDeleteResidenceFile` في `artifacts/zafeer/src/hooks/useResidenceFile.test.ts`: الحذف يزيل object ويصفّر `residence_image_url`
+- [x] T014 [US4] في `ResidenceFileField.tsx`: عند وجود ملف، عرض زر "استبدال الملف" (يمرّر `oldPath` لـ `useUploadResidenceFile` لحذف القديم) وزر "حذف الملف" يفتح نافذة تأكيد عربية تستدعي `useDeleteResidenceFile` (FR-008, FR-009)
+- [x] T015 [P] [US4] اختبار وحدة لـ `useDeleteResidenceFile` في `artifacts/zafeer/src/hooks/useResidenceFile.test.ts`: الحذف يزيل object ويصفّر `residence_image_url`
 
 **Checkpoint**: كل user stories تعمل مستقلاً
 
@@ -105,8 +105,8 @@ description: "Task list — ملف الإقامة للموظف (صورة أو PD
 
 **Purpose**: تحسينات شاملة والتحقق النهائي
 
-- [ ] T016 منع رفع ملف لموظف `is_deleted=true` في `ResidenceFileField.tsx` (تعطيل الزر) — Edge Case
-- [ ] T017 تشغيل `pnpm run typecheck` في `artifacts/zafeer` — صفر أخطاء، لا `any` بدون تبرير
+- [x] T016 منع رفع ملف لموظف `is_deleted=true` في `ResidenceFileField.tsx` (تعطيل الزر) — Edge Case
+- [x] T017 تشغيل `pnpm run typecheck` في `artifacts/zafeer` — صفر أخطاء، لا `any` بدون تبرير
 - [ ] T018 تنفيذ Smoke Test (9 حالات) من [quickstart.md](./quickstart.md) في المتصفح والتأكد من نجاحها
 - [ ] T019 حذف أي بيانات/ملفات اختبار أُنشئت في الـ bucket أو DB أثناء التحقق اليدوي
 
