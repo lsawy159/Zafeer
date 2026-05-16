@@ -1,17 +1,33 @@
 import React, { useState } from 'react'
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { supabase, User } from '@/lib/supabase'
 import { PermissionDrawer } from './PermissionDrawer'
+import { PasswordResetDialog } from './PasswordResetDialog'
+import { CreateUserDialog } from './CreateUserDialog'
+import { EditUserDialog } from './EditUserDialog'
 import { RolesManagementSheet } from './RolesManagementSheet'
 import { Button } from '@/components/ui/Button'
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { logger } from '@/utils/logger'
-import { Shield, Settings, Users as UsersIcon, Clock } from 'lucide-react'
+import { Shield, Settings, Users as UsersIcon, Clock, KeyRound, UserPlus, Pencil } from 'lucide-react'
+import { useAuth } from '@/contexts/AuthContext'
+import { useUpdateUserProfile } from '@/hooks/useUpdateUserProfile'
+import { toast } from 'sonner'
 
 export function UsersPermissionsTab(): React.JSX.Element {
+  const { user: currentUser } = useAuth()
+  const queryClient = useQueryClient()
+  const updateProfile = useUpdateUserProfile()
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null)
   const [showRolesSheet, setShowRolesSheet] = useState(false)
+  const [showCreateDialog, setShowCreateDialog] = useState(false)
+  const [resetUserId, setResetUserId] = useState<string | null>(null)
+  const [resetUserName, setResetUserName] = useState<string>('')
+  const [editUserId, setEditUserId] = useState<string | null>(null)
+  const [editUserName, setEditUserName] = useState<string>('')
+  const [editUserFullName, setEditUserFullName] = useState<string>('')
+  const [editUserRole, setEditUserRole] = useState<string>('')
 
   const {
     data: users = [],
@@ -71,17 +87,30 @@ export function UsersPermissionsTab(): React.JSX.Element {
             إدارة صلاحيات المستخدمين والأدوار
           </p>
         </div>
-        <Button
-          type="button"
-          variant="secondary"
-          size="sm"
-          onClick={() => setShowRolesSheet(true)}
-          className="flex items-center gap-2"
-          aria-label="فتح إدارة الأدوار"
-        >
-          <Settings className="h-4 w-4" />
-          إدارة الأدوار
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button
+            type="button"
+            variant="secondary"
+            size="sm"
+            onClick={() => setShowCreateDialog(true)}
+            className="flex items-center gap-2"
+            aria-label="إضافة مستخدم جديد"
+          >
+            <UserPlus className="h-4 w-4" />
+            إضافة مستخدم
+          </Button>
+          <Button
+            type="button"
+            variant="secondary"
+            size="sm"
+            onClick={() => setShowRolesSheet(true)}
+            className="flex items-center gap-2"
+            aria-label="فتح إدارة الأدوار"
+          >
+            <Settings className="h-4 w-4" />
+            إدارة الأدوار
+          </Button>
+        </div>
       </div>
 
       {/* Users Table */}
@@ -155,7 +184,7 @@ export function UsersPermissionsTab(): React.JSX.Element {
                   )}
                 </td>
                 <td className="px-6 py-4 text-sm">
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 flex-wrap">
                     <Button
                       type="button"
                       variant="secondary"
@@ -167,6 +196,63 @@ export function UsersPermissionsTab(): React.JSX.Element {
                       <Settings className="h-4 w-4" />
                       صلاحيات
                     </Button>
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      size="sm"
+                      onClick={() => {
+                        setEditUserId(user.id)
+                        setEditUserName(user.full_name || user.username || user.email)
+                        setEditUserFullName(user.full_name || '')
+                        setEditUserRole(user.role || 'user')
+                      }}
+                      className="flex items-center gap-2"
+                      disabled={user.id === currentUser?.id}
+                      aria-label={`تعديل بيانات ${user.full_name || user.username}`}
+                    >
+                      <Pencil className="h-4 w-4" />
+                      تعديل
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      size="sm"
+                      onClick={() => {
+                        updateProfile.mutate(
+                          { id: user.id, data: { is_active: !user.is_active } },
+                          {
+                            onSuccess: () => {
+                              queryClient.invalidateQueries({ queryKey: ['users'] })
+                              toast.success(user.is_active ? 'تم تعطيل الحساب' : 'تم تفعيل الحساب')
+                            },
+                            onError: (error) => {
+                              logger.error('Toggle user active failed:', error)
+                              toast.error('فشل تغيير حالة الحساب')
+                            },
+                          }
+                        )
+                      }}
+                      className="flex items-center gap-2"
+                      disabled={user.id === currentUser?.id || updateProfile.isPending}
+                      aria-label={user.is_active ? `تعطيل حساب ${user.full_name || user.username}` : `تفعيل حساب ${user.full_name || user.username}`}
+                    >
+                      {user.is_active ? 'تعطيل' : 'تفعيل'}
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      size="sm"
+                      onClick={() => {
+                        setResetUserId(user.id)
+                        setResetUserName(user.full_name || user.username || user.email)
+                      }}
+                      className="flex items-center gap-2"
+                      disabled={user.id === currentUser?.id}
+                      aria-label={`إعادة تعيين كلمة مرور ${user.full_name || user.username}`}
+                    >
+                      <KeyRound className="h-4 w-4" />
+                      إعادة تعيين
+                    </Button>
                   </div>
                 </td>
               </tr>
@@ -174,6 +260,28 @@ export function UsersPermissionsTab(): React.JSX.Element {
           </tbody>
         </table>
       </div>
+
+      {/* Create User Dialog */}
+      <CreateUserDialog
+        open={showCreateDialog}
+        onClose={() => setShowCreateDialog(false)}
+      />
+
+      {/* Edit User Dialog */}
+      <EditUserDialog
+        userId={editUserId}
+        userName={editUserName}
+        currentFullName={editUserFullName}
+        currentRole={editUserRole}
+        onClose={() => setEditUserId(null)}
+      />
+
+      {/* Password Reset Dialog */}
+      <PasswordResetDialog
+        userId={resetUserId}
+        userName={resetUserName}
+        onClose={() => setResetUserId(null)}
+      />
 
       {/* Permission Drawer */}
       <PermissionDrawer
