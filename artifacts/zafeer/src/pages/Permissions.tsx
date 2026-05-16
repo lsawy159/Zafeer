@@ -1,12 +1,16 @@
 import { useMemo, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { z } from 'zod'
-import { CheckSquare, Edit2, Save, Shield, X } from 'lucide-react'
+import { CheckSquare, Edit2, Pencil, Save, Shield, UserPlus, X } from 'lucide-react'
 import { toast } from 'sonner'
 
 import Layout from '@/components/layout/Layout'
 import PermissionGuard from '@/components/PermissionGuard'
 import { RoleBadge } from '@/components/ui/StatusBadge'
+import { CreateUserDialog } from '@/components/settings/tabs/CreateUserDialog'
+import { EditUserDialog } from '@/components/settings/tabs/EditUserDialog'
+import { useAuth } from '@/contexts/AuthContext'
+import { useUpdateUserProfile } from '@/hooks/useUpdateUserProfile'
 import { supabase, type User } from '@/lib/supabase'
 import { normalizePermissionsFlat } from '@/utils/permissions'
 import {
@@ -59,11 +63,18 @@ interface PermissionsPanelProps {
 
 export function PermissionsPanel({ embedded = true }: PermissionsPanelProps) {
   const queryClient = useQueryClient()
+  const { user: currentUser } = useAuth()
+  const updateProfile = useUpdateUserProfile()
   const [editingUser, setEditingUser] = useState<PermissionRowUser | null>(null)
   const [selectedPermissions, setSelectedPermissions] = useState<string[]>([])
+  const [showCreateDialog, setShowCreateDialog] = useState(false)
+  const [editUserId, setEditUserId] = useState<string | null>(null)
+  const [editUserName, setEditUserName] = useState('')
+  const [editUserFullName, setEditUserFullName] = useState('')
+  const [editUserRole, setEditUserRole] = useState('')
 
   const usersQuery = useQuery({
-    queryKey: ['permissions-users'],
+    queryKey: ['users', 'permissions'],
     queryFn: fetchUsersForPermissions,
   })
 
@@ -85,7 +96,7 @@ export function PermissionsPanel({ embedded = true }: PermissionsPanelProps) {
     },
     onSuccess: () => {
       toast.success('تم تحديث الصلاحيات بنجاح')
-      queryClient.invalidateQueries({ queryKey: ['permissions-users'] })
+      queryClient.invalidateQueries({ queryKey: ['users'] })
       setEditingUser(null)
       setSelectedPermissions([])
     },
@@ -137,6 +148,14 @@ export function PermissionsPanel({ embedded = true }: PermissionsPanelProps) {
               عدّل صلاحيات كل مستخدم حسب الأقسام المطلوبة له فقط.
             </p>
           </div>
+          <button
+            type="button"
+            onClick={() => setShowCreateDialog(true)}
+            className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-foreground transition hover:opacity-90"
+          >
+            <UserPlus className="h-4 w-4" />
+            إضافة مستخدم
+          </button>
         </div>
 
         {usersQuery.isLoading ? (
@@ -177,14 +196,53 @@ export function PermissionsPanel({ embedded = true }: PermissionsPanelProps) {
                       </td>
                       <td className="px-4 py-3">{flatPermissions.length}</td>
                       <td className="px-4 py-3">
-                        <button
-                          type="button"
-                          onClick={() => openEditDialog(user)}
-                          className="inline-flex items-center gap-2 rounded-lg border border-primary/40 bg-primary/10 px-3 py-1.5 text-xs font-semibold text-foreground transition hover:bg-primary/20"
-                        >
-                          <Edit2 className="h-3.5 w-3.5" />
-                          تعديل الصلاحيات
-                        </button>
+                        <div className="flex flex-wrap items-center gap-2">
+                          <button
+                            type="button"
+                            onClick={() => openEditDialog(user)}
+                            className="inline-flex items-center gap-2 rounded-lg border border-primary/40 bg-primary/10 px-3 py-1.5 text-xs font-semibold text-foreground transition hover:bg-primary/20"
+                          >
+                            <Edit2 className="h-3.5 w-3.5" />
+                            الصلاحيات
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setEditUserId(user.id)
+                              setEditUserName(user.full_name || user.username || '')
+                              setEditUserFullName(user.full_name || '')
+                              setEditUserRole(user.role || 'user')
+                            }}
+                            disabled={user.id === currentUser?.id}
+                            className="inline-flex items-center gap-2 rounded-lg border border-border-200 px-3 py-1.5 text-xs font-semibold text-foreground transition hover:bg-surface-secondary-50 disabled:cursor-not-allowed disabled:opacity-40"
+                          >
+                            <Pencil className="h-3.5 w-3.5" />
+                            تعديل
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              updateProfile.mutate(
+                                { id: user.id, data: { is_active: !user.is_active } },
+                                {
+                                  onSuccess: () => {
+                                    queryClient.invalidateQueries({ queryKey: ['users'] })
+                                    toast.success(user.is_active ? 'تم تعطيل الحساب' : 'تم تفعيل الحساب')
+                                  },
+                                  onError: () => toast.error('فشل تغيير حالة الحساب'),
+                                }
+                              )
+                            }}
+                            disabled={user.id === currentUser?.id || updateProfile.isPending}
+                            className={`inline-flex items-center rounded-lg border px-3 py-1.5 text-xs font-semibold transition disabled:cursor-not-allowed disabled:opacity-40 ${
+                              user.is_active
+                                ? 'border-red-200 bg-red-50 text-red-700 hover:bg-red-100'
+                                : 'border-green-200 bg-green-50 text-green-700 hover:bg-green-100'
+                            }`}
+                          >
+                            {user.is_active ? 'تعطيل' : 'تفعيل'}
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   )
@@ -288,6 +346,19 @@ export function PermissionsPanel({ embedded = true }: PermissionsPanelProps) {
           </div>
         )}
       </div>
+
+      <CreateUserDialog
+        open={showCreateDialog}
+        onClose={() => setShowCreateDialog(false)}
+      />
+
+      <EditUserDialog
+        userId={editUserId}
+        userName={editUserName}
+        currentFullName={editUserFullName}
+        currentRole={editUserRole}
+        onClose={() => setEditUserId(null)}
+      />
     </PermissionGuard>
   )
 

@@ -148,18 +148,17 @@ export default function AuditDashboard() {
       try {
         const { data: loginAttempts } = await supabase
           .from('login_attempts')
-          .select('id, email, ip_address, created_at')
+          .select('id, email, created_at')
           .eq('attempt_type', 'failed')
           .order('created_at', { ascending: false })
           .limit(5)
 
         if (loginAttempts) {
           loginAttempts.forEach((attempt) => {
-            const ipInfo = attempt.ip_address ? `من IP: ${attempt.ip_address}` : ''
             events.push({
               id: `login-${attempt.id}`,
               type: 'login_attempt',
-              title: `محاولة دخول فاشلة ${ipInfo}`.trim(),
+              title: `محاولة دخول فاشلة${attempt.email ? ` — ${attempt.email}` : ''}`,
               timestamp: attempt.created_at,
               icon: Activity,
               bgColor: 'bg-yellow-50',
