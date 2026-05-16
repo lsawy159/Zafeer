@@ -1,6 +1,12 @@
 import { useState, useEffect, useRef } from 'react'
 import { createPortal } from 'react-dom'
 import { Employee, Company, Project, ObligationType, supabase } from '@/lib/supabase'
+import {
+  RESIDENCE_BUCKET,
+  buildResidencePath,
+  buildResidenceThumbnailPath,
+  isLegacyExternalUrl,
+} from '@/lib/residenceFile'
 import { useEmployeeCardData } from '@/hooks/useEmployeeCardData'
 import { EmployeeExpirySection } from './EmployeeExpirySection'
 import { ResidenceFileField } from './ResidenceFileField'
@@ -117,6 +123,7 @@ export default function EmployeeCard({
     project?: Project
     bank_account?: string
     residence_image_url: string
+    residence_thumbnail_url: string
     health_insurance_expiry: string
     salary: number
     notes: string
@@ -140,6 +147,7 @@ export default function EmployeeCard({
     salary: employee?.salary ?? 0,
     notes: employee?.notes ?? '',
     residence_image_url: employee?.residence_image_url ?? '',
+    residence_thumbnail_url: employee?.residence_thumbnail_url ?? '',
     birth_date: employee?.birth_date ?? '',
     joining_date: employee?.joining_date ?? '',
     residence_expiry: employee?.residence_expiry ?? '',
@@ -150,6 +158,11 @@ export default function EmployeeCard({
   // حفظ البيانات الأصلية من employee مباشرة (بدون معالجة) لاستخدامها في المقارنة
   const [originalData] = useState(employee)
   const [saving, setSaving] = useState(false)
+
+  // ملفات الإقامة المنتظرة الرفع (deferred upload حتى حفظ التعديلات)
+  const pendingFilesRef = useRef<{ original: File; thumbnail: File | null } | null>(null)
+  const [thumbnailPreviewUrl, setThumbnailPreviewUrl] = useState<string | null>(null)
+  const [hasPendingResidenceFile, setHasPendingResidenceFile] = useState(false)
   const [isEditMode, setIsEditMode] = useState(false)
   const [showUnsavedConfirm, setShowUnsavedConfirm] = useState(false)
   const [companySearchQuery, setCompanySearchQuery] = useState('')
@@ -444,13 +457,22 @@ export default function EmployeeCard({
           changes: detailedChanges,
           changes_simple: translatedChanges,
           timestamp: new Date().toISOString(),
+          old_data: oldDataFull,
+          new_data: newDataFull,
         },
-        old_data: oldDataFull,
-        new_data: newDataFull,
       })
     } catch (error) {
       logger.error('Error logging activity:', error)
     }
+  }
+
+  // استقبال ملفات الإقامة من ResidenceFileField في وضع التعديل (deferred)
+  function handleFilesReady(original: File, thumbnail: File | null) {
+    if (thumbnailPreviewUrl) URL.revokeObjectURL(thumbnailPreviewUrl)
+    pendingFilesRef.current = { original, thumbnail }
+    const thumbUrl = thumbnail ? URL.createObjectURL(thumbnail) : null
+    setThumbnailPreviewUrl(thumbUrl)
+    setHasPendingResidenceFile(true)
   }
 
   const handleSave = async () => {
@@ -480,7 +502,7 @@ export default function EmployeeCard({
       const { data: existingEmployee, error: fetchError } = await supabase
         .from('employees')
         .select(
-          'id,company_id,name,profession,nationality,birth_date,phone,passport_number,residence_number,joining_date,contract_expiry,residence_expiry,project_name,bank_account,residence_image_url,salary,health_insurance_expiry,additional_fields,created_at,updated_at,notes,hired_worker_contract_expiry,project_id,is_deleted,deleted_at'
+          'id,company_id,name,profession,nationality,birth_date,phone,passport_number,residence_number,joining_date,contract_expiry,residence_expiry,project_name,bank_account,residence_image_url,residence_thumbnail_url,salary,health_insurance_expiry,additional_fields,created_at,updated_at,notes,hired_worker_contract_expiry,project_id,is_deleted,deleted_at'
         )
         .eq('id', employee.id)
         .single()
@@ -514,6 +536,55 @@ export default function EmployeeCard({
 
       const actualUpdateData: Record<string, unknown> = {}
       const changes: Record<string, { old_value: unknown; new_value: unknown }> = {}
+
+      // رفع ملفات الإقامة المؤجّلة (الأصلي + الـ thumbnail) ضمن عملية الحفظ
+      if (pendingFilesRef.current) {
+        const { original, thumbnail } = pendingFilesRef.current
+
+        const newPath = buildResidencePath(employee.id, original)
+        const { error: uploadErr } = await supabase.storage
+          .from(RESIDENCE_BUCKET)
+          .upload(newPath, original, { upsert: false })
+
+        if (uploadErr) {
+          logger.error('فشل رفع الملف الأصلي:', uploadErr)
+          toast.error('فشل رفع ملف الإقامة')
+          setSaving(false)
+          return
+        }
+
+        let newThumbnailPath: string | null = null
+        if (thumbnail) {
+          newThumbnailPath = buildResidenceThumbnailPath(employee.id, thumbnail)
+          const { error: thumbErr } = await supabase.storage
+            .from(RESIDENCE_BUCKET)
+            .upload(newThumbnailPath, thumbnail, { upsert: false })
+          if (thumbErr) {
+            await supabase.storage.from(RESIDENCE_BUCKET).remove([newPath]).catch(() => {})
+            logger.error('فشل رفع الـ thumbnail:', thumbErr)
+            toast.error('فشل رفع الصورة المقتطعة')
+            setSaving(false)
+            return
+          }
+        }
+
+        // حذف الملفات القديمة
+        const oldPath = formData.residence_image_url
+        const oldThumb = formData.residence_thumbnail_url
+        if (oldPath && !isLegacyExternalUrl(oldPath)) {
+          await supabase.storage.from(RESIDENCE_BUCKET).remove([oldPath]).catch(() => {})
+        }
+        if (oldThumb && !isLegacyExternalUrl(oldThumb)) {
+          await supabase.storage.from(RESIDENCE_BUCKET).remove([oldThumb]).catch(() => {})
+        }
+
+        actualUpdateData['residence_image_url'] = newPath
+        actualUpdateData['residence_thumbnail_url'] = newThumbnailPath
+        pendingFilesRef.current = null
+        if (thumbnailPreviewUrl) URL.revokeObjectURL(thumbnailPreviewUrl)
+        setThumbnailPreviewUrl(null)
+        setHasPendingResidenceFile(false)
+      }
 
       const normalizedAdditionalFields = buildEmployeeBusinessAdditionalFields(
         formData.additional_fields,
@@ -646,6 +717,19 @@ export default function EmployeeCard({
         })
       }
 
+      // تحديث formData فوراً بالقيم المحفوظة لتجنب stale display بعد الحفظ
+      if (Object.keys(actualUpdateData).length > 0) {
+        setFormData((prev) => {
+          const next = { ...prev }
+          for (const [key, val] of Object.entries(actualUpdateData)) {
+            if (key in next) {
+              ;(next as Record<string, unknown>)[key] = val ?? ''
+            }
+          }
+          return next
+        })
+      }
+
       toast.success('تم حفظ التعديلات بنجاح')
       setIsEditMode(false)
 
@@ -659,6 +743,12 @@ export default function EmployeeCard({
   }
 
   const handleCancel = () => {
+    // تنظيف ملفات الإقامة المؤجّلة
+    pendingFilesRef.current = null
+    if (thumbnailPreviewUrl) URL.revokeObjectURL(thumbnailPreviewUrl)
+    setThumbnailPreviewUrl(null)
+    setHasPendingResidenceFile(false)
+
     // إعادة تعيين البيانات إلى القيم الأصلية
     setFormData({
       ...employee,
@@ -668,11 +758,12 @@ export default function EmployeeCard({
         string,
         string | number | boolean | null
       >,
-      health_insurance_expiry: employee.health_insurance_expiry || '', // تحديث: ending_subscription_insurance_date → health_insurance_expiry
+      health_insurance_expiry: employee.health_insurance_expiry || '',
       hired_worker_contract_expiry: employee.hired_worker_contract_expiry || '',
       salary: employee.salary || 0,
       notes: employee.notes || '',
       residence_image_url: employee.residence_image_url || '',
+      residence_thumbnail_url: employee.residence_thumbnail_url || '',
       residence_number: employee.residence_number || 0,
     })
     setIsEditMode(false)
@@ -1012,8 +1103,13 @@ export default function EmployeeCard({
           </div>
         </div>
 
-        {/* Status Alerts */}
-        <EmployeeExpirySection employee={employee} />
+        {/* Status Alerts + Profile Photo */}
+        <EmployeeExpirySection
+          employee={employee}
+          residenceImagePath={formData.residence_image_url || null}
+          residenceThumbnailPath={formData.residence_thumbnail_url || null}
+          thumbnailPreviewUrl={thumbnailPreviewUrl}
+        />
 
         {/* Content */}
         <div className="p-6">
@@ -1544,9 +1640,8 @@ export default function EmployeeCard({
                       currentPath={formData.residence_image_url || null}
                       disabled={false}
                       isDeleted={employee.is_deleted ?? false}
-                      onPathChange={(newPath) =>
-                        setFormData({ ...formData, residence_image_url: newPath ?? '' })
-                      }
+                      onFilesReady={handleFilesReady}
+                      hasPendingFile={hasPendingResidenceFile}
                     />
                   ) : (
                     <>
