@@ -39,12 +39,6 @@ function CompanyCard({
   const powerStatus = calculatePowerSubscriptionStatus(company.ending_subscription_power_date)
   const moqeemStatus = calculateMoqeemSubscriptionStatus(company.ending_subscription_moqeem_date)
 
-  const formatDaysText = (days: number) => {
-    if (days < 0) return `${Math.abs(days)} يوم منذ الانتهاء`
-    if (days === 0) return 'اليوم'
-    return `${days} يوم`
-  }
-
   // تحديد لون الحدود حسب أعلى أولوية (طارئ > عاجل > متوسط > ساري)
   const getBorderColor = () => {
     const priorities = [commercialRegStatus.priority, powerStatus.priority, moqeemStatus.priority]
@@ -172,7 +166,7 @@ function CompanyCard({
           {/* حالة السجل التجاري */}
           <div>
             <div className="mb-1 text-[12px] font-semibold text-neutral-600">
-              حالة السجل التجاري
+              السجل التجاري
             </div>
             {company.commercial_registration_expiry ? (
               <div
@@ -190,12 +184,9 @@ function CompanyCard({
                             ? '✅'
                             : '❌'}
                   </div>
-                  <div className="flex flex-col">
-                    <span className="font-bold">{commercialRegStatus.status}</span>
-                    <span className="text-xs opacity-75">
-                      {formatDaysText(commercialRegStatus.daysRemaining)}
-                    </span>
-                  </div>
+                  <span className="font-bold">
+                    {commercialRegStatus.status} ({Math.abs(commercialRegStatus.daysRemaining)})
+                  </span>
                 </div>
               </div>
             ) : (
@@ -207,7 +198,7 @@ function CompanyCard({
 
           {/* حالة اشتراك قوى */}
           <div>
-            <div className="mb-1 text-[12px] font-semibold text-neutral-600">حالة اشتراك قوى</div>
+            <div className="mb-1 text-[12px] font-semibold text-neutral-600">اشتراك قوى</div>
             {company.ending_subscription_power_date ? (
               <div
                 className={`min-h-[74px] rounded-lg border-2 px-2 py-1 text-xs font-medium ${powerStatus.color.backgroundColor} ${powerStatus.color.textColor} ${powerStatus.color.borderColor}`}
@@ -224,12 +215,9 @@ function CompanyCard({
                             ? '✅'
                             : '❌'}
                   </div>
-                  <div className="flex flex-col">
-                    <span className="font-bold">{powerStatus.status}</span>
-                    <span className="text-xs opacity-75">
-                      {formatDaysText(powerStatus.daysRemaining)}
-                    </span>
-                  </div>
+                  <span className="font-bold">
+                    {powerStatus.status} ({Math.abs(powerStatus.daysRemaining)})
+                  </span>
                 </div>
               </div>
             ) : (
@@ -241,7 +229,7 @@ function CompanyCard({
 
           {/* حالة اشتراك مقيم */}
           <div>
-            <div className="mb-1 text-[12px] font-semibold text-neutral-600">حالة اشتراك مقيم</div>
+            <div className="mb-1 text-[12px] font-semibold text-neutral-600">اشتراك مقيم</div>
             {company.ending_subscription_moqeem_date ? (
               <div
                 className={`min-h-[74px] rounded-lg border-2 px-2 py-1 text-xs font-medium ${moqeemStatus.color.backgroundColor} ${moqeemStatus.color.textColor} ${moqeemStatus.color.borderColor}`}
@@ -258,12 +246,9 @@ function CompanyCard({
                             ? '✅'
                             : '❌'}
                   </div>
-                  <div className="flex flex-col">
-                    <span className="font-bold">{moqeemStatus.status}</span>
-                    <span className="text-xs opacity-75">
-                      {formatDaysText(moqeemStatus.daysRemaining)}
-                    </span>
-                  </div>
+                  <span className="font-bold">
+                    {moqeemStatus.status} ({Math.abs(moqeemStatus.daysRemaining)})
+                  </span>
                 </div>
               </div>
             ) : (

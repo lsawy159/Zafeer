@@ -2,7 +2,7 @@ export const compactButtonBaseClass =
   'h-9 px-3 text-sm font-medium rounded-lg transition inline-flex items-center justify-center gap-1.5 disabled:opacity-60 disabled:cursor-not-allowed'
 
 export const outlineCompactButtonClass = `${compactButtonBaseClass} bg-surface border border-border-300 text-foreground-secondary hover:bg-surface-secondary-50`
-export const primaryCompactButtonClass = `${compactButtonBaseClass} bg-primary text-foreground hover:bg-[#e2b800]`
+export const primaryCompactButtonClass = `${compactButtonBaseClass} bg-primary text-white hover:bg-primary/85 hover:shadow-[0_8px_24px_hsl(217_33%_17%/0.30)]`
 export const successCompactButtonClass = `${compactButtonBaseClass} bg-green-600 text-white hover:bg-green-700`
 export const indigoCompactButtonClass = `${compactButtonBaseClass} bg-indigo-600 text-white hover:bg-indigo-700`
 export const slateCompactButtonClass = `${compactButtonBaseClass} bg-surface-secondary-600 text-white hover:bg-surface-secondary-700`
