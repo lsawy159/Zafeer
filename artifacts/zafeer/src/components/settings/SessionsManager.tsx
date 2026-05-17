@@ -36,22 +36,26 @@ export default function SessionsManager() {
   const [sessionToDelete, setSessionToDelete] = useState<UserSession | null>(null)
   const [showConfirmDeleteMultiple, setShowConfirmDeleteMultiple] = useState(false)
 
+  const attachUsers = async (sessions: UserSession[]): Promise<UserSession[]> => {
+    const userIds = [...new Set(sessions.map((s) => s.user_id).filter(Boolean))]
+    if (userIds.length === 0) return sessions
+
+    const { data: usersData } = await supabase
+      .from('users')
+      .select('id, email, full_name')
+      .in('id', userIds)
+
+    const usersMap = new Map((usersData || []).map((u) => [u.id, u]))
+    return sessions.map((s) => ({ ...s, users: usersMap.get(s.user_id) }))
+  }
+
   const loadActiveSessions = async () => {
     try {
       setIsLoading(true)
       const now = new Date().toISOString()
       const { data, error } = await supabase
         .from('user_sessions')
-        .select(
-          `
-          *,
-          users (
-            id,
-            email,
-            full_name
-          )
-        `
-        )
+        .select('*')
         .eq('is_active', true)
         .gt('expires_at', now)
         .order('last_activity', { ascending: false })
@@ -64,7 +68,7 @@ export default function SessionsManager() {
         throw error
       }
 
-      setActiveSessions(data || [])
+      setActiveSessions(await attachUsers(data || []))
     } catch (error) {
       console.error('Error loading active sessions:', error)
       setActiveSessions([])
@@ -78,16 +82,7 @@ export default function SessionsManager() {
       setIsLoading(true)
       const { data, error } = await supabase
         .from('user_sessions')
-        .select(
-          `
-          *,
-          users (
-            id,
-            email,
-            full_name
-          )
-        `
-        )
+        .select('*')
         .order('created_at', { ascending: false })
         .limit(100)
 
@@ -99,7 +94,7 @@ export default function SessionsManager() {
         throw error
       }
 
-      setSessionHistory(data || [])
+      setSessionHistory(await attachUsers(data || []))
     } catch (error) {
       console.error('Error loading session history:', error)
       setSessionHistory([])

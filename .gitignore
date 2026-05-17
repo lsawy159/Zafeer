@@ -94,5 +94,9 @@ desktop.ini
 # ===== Claude Code worktrees (temporary agent workspaces) =====
 .claude/worktrees/
 
+# ===== Impeccable live mode (local session data & tokens — لا يُرفع) =====
+.impeccable/
+artifacts/zafeer/.impeccable/
+
 # ===== Brand handoff assets (local-only — brand guidelines, design tokens, reference HTML) =====
 /handoff/

@@ -4323,7 +4323,7 @@ tr:last-child td{border-bottom:none}
             onClick={() => setActivePageTab('search')}
             className={`inline-flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold transition ${
               activePageTab === 'search'
-                ? 'bg-primary text-foreground shadow-soft'
+                ? 'bg-primary text-white shadow-soft'
                 : 'border border-border-200 bg-surface text-foreground-secondary hover:bg-surface-secondary-50'
             }`}
           >
@@ -4335,7 +4335,7 @@ tr:last-child td{border-bottom:none}
             onClick={() => setActivePageTab('runs')}
             className={`inline-flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold transition ${
               activePageTab === 'runs'
-                ? 'bg-primary text-foreground shadow-soft'
+                ? 'bg-primary text-white shadow-soft'
                 : 'border border-border-200 bg-surface text-foreground-secondary hover:bg-surface-secondary-50'
             }`}
           >
@@ -4347,7 +4347,7 @@ tr:last-child td{border-bottom:none}
             onClick={() => setActivePageTab('obligations')}
             className={`inline-flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold transition ${
               activePageTab === 'obligations'
-                ? 'bg-primary text-foreground shadow-soft'
+                ? 'bg-primary text-white shadow-soft'
                 : 'border border-border-200 bg-surface text-foreground-secondary hover:bg-surface-secondary-50'
             }`}
           >

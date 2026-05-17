@@ -13,12 +13,12 @@ function getDateStatus(days: number | null, expiredText: string = 'منتهي'):
   if (days === null)
     return { status: 'غير محدد', emoji: '—', color: 'bg-neutral-100 text-neutral-500 border-neutral-200' }
   if (days < 0)
-    return { status: expiredText, emoji: '🚨', color: 'bg-red-50 text-red-700 border-red-300' }
+    return { status: `${expiredText} (${Math.abs(days)})`, emoji: '🚨', color: 'bg-red-50 text-red-700 border-red-300' }
   if (days <= 15)
     return { status: `${days}ي`, emoji: '🔥', color: 'bg-orange-50 text-orange-700 border-orange-300' }
   if (days <= 30)
     return { status: `${days}ي`, emoji: '⚠️', color: 'bg-yellow-50 text-yellow-700 border-yellow-300' }
-  return { status: 'ساري', emoji: '✅', color: 'bg-green-50 text-green-700 border-green-200' }
+  return { status: `ساري (${days})`, emoji: '✅', color: 'bg-green-50 text-green-700 border-green-200' }
 }
 
 function getBorderColor(
@@ -93,7 +93,7 @@ export const EmployeeGridCard = memo(function EmployeeGridCard({
           <div className="flex-shrink-0 w-6 h-6 rounded-lg bg-primary/10 flex items-center justify-center">
             <User className="h-3 w-3 text-primary" />
           </div>
-          <h3 className="text-[11px] font-bold text-neutral-900 line-clamp-1 leading-tight">{employee.name}</h3>
+          <p className="text-[11px] font-bold text-foreground line-clamp-1 leading-tight m-0">{employee.name}</p>
         </div>
         <div className="flex gap-0.5 flex-shrink-0" onClick={(e) => e.stopPropagation()}>
           {canEditEmployee && (
@@ -118,21 +118,21 @@ export const EmployeeGridCard = memo(function EmployeeGridCard({
       {/* معلومات أساسية */}
       <div className="space-y-0.5 mb-2">
         {(employee.company?.name) && (
-          <div className="flex items-center gap-1 text-[11px] text-neutral-500 leading-tight">
-            <span className="text-neutral-400 flex-shrink-0">م:</span>
-            <span className="truncate font-medium text-neutral-700">{employee.company.name}</span>
+          <div className="flex items-center gap-1 text-[11px] text-foreground-tertiary leading-tight">
+            <span className="text-foreground-tertiary flex-shrink-0">م:</span>
+            <span className="truncate font-medium text-foreground-secondary">{employee.company.name}</span>
           </div>
         )}
         {(employee.project?.name || employee.project_name) && (
-          <div className="flex items-center gap-1 text-[11px] text-neutral-500 leading-tight">
-            <span className="text-neutral-400 flex-shrink-0">مش:</span>
-            <span className="truncate font-medium text-primary/80">{employee.project?.name || employee.project_name}</span>
+          <div className="flex items-center gap-1 text-[11px] text-foreground-tertiary leading-tight">
+            <span className="text-foreground-tertiary flex-shrink-0">مش:</span>
+            <span className="truncate font-medium text-foreground-secondary">{employee.project?.name || employee.project_name}</span>
           </div>
         )}
         {employee.profession && (
-          <div className="flex items-center gap-1 text-[11px] text-neutral-500 leading-tight">
-            <span className="text-neutral-400 flex-shrink-0">مهنة:</span>
-            <span className="truncate">{employee.profession}</span>
+          <div className="flex items-center gap-1 text-[11px] text-foreground-tertiary leading-tight">
+            <span className="text-foreground-tertiary flex-shrink-0">مهنة:</span>
+            <span className="truncate text-foreground-tertiary">{employee.profession}</span>
           </div>
         )}
       </div>

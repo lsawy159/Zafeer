@@ -36,7 +36,7 @@ export function SettingControl({ setting, value, disabled, onChange }: SettingCo
           value={getInputValue(resolvedValue)}
           onChange={(e) => onChange(setting.setting_key, e.target.value)}
           disabled={disabled}
-          className="disabled:cursor-not-allowed disabled:bg-gray-100"
+          className="disabled:cursor-not-allowed disabled:bg-surface-secondary-100"
         />
       )
 
@@ -47,7 +47,7 @@ export function SettingControl({ setting, value, disabled, onChange }: SettingCo
           value={getInputValue(resolvedValue)}
           onChange={(e) => onChange(setting.setting_key, Number(e.target.value))}
           disabled={disabled}
-          className="disabled:cursor-not-allowed disabled:bg-gray-100"
+          className="disabled:cursor-not-allowed disabled:bg-surface-secondary-100"
         />
       )
 
@@ -61,7 +61,7 @@ export function SettingControl({ setting, value, disabled, onChange }: SettingCo
             disabled={disabled}
             className="h-4 w-4 rounded border-border-300 text-primary focus:ring-primary disabled:cursor-not-allowed"
           />
-          <span className="mr-2 text-sm text-gray-600">{resolvedValue ? 'مفعل' : 'معطل'}</span>
+          <span className="mr-2 text-sm text-foreground-secondary">{resolvedValue ? 'مفعل' : 'معطل'}</span>
         </label>
       )
 
@@ -72,7 +72,7 @@ export function SettingControl({ setting, value, disabled, onChange }: SettingCo
           onValueChange={(selectedValue) => onChange(setting.setting_key, selectedValue)}
           disabled={disabled}
         >
-          <SelectTrigger className="disabled:cursor-not-allowed disabled:bg-gray-100">
+          <SelectTrigger className="disabled:cursor-not-allowed disabled:bg-surface-secondary-100">
             <SelectValue placeholder="اختر قيمة" />
           </SelectTrigger>
           <SelectContent>
@@ -114,7 +114,7 @@ export function SettingControl({ setting, value, disabled, onChange }: SettingCo
           value={getInputValue(resolvedValue)}
           onChange={(e) => onChange(setting.setting_key, e.target.value)}
           disabled={disabled}
-          className="disabled:cursor-not-allowed disabled:bg-gray-100"
+          className="disabled:cursor-not-allowed disabled:bg-surface-secondary-100"
         />
       )
 
