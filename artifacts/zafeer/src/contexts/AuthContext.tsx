@@ -909,9 +909,28 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           }
 
           if (!activeSessions || activeSessions.length === 0) {
-            // قبل تسجيل الخروج، نتحقق من أن Supabase Auth نفسه يؤكد بطلان الجلسة.
-            // لو user_sessions فارغ بسبب فشل createUserSession (مشكلة شبكة عند الدخول)،
-            // Supabase Auth ستعيد session صالحة → نُعيد إنشاء السجل ونكمل.
+            // التحقق: هل الجلسة أُنهيت من قِبَل المسؤول (is_active=false) أم لم تُنشأ أصلاً (خطأ شبكة)؟
+            const { data: terminatedSessions } = await supabase
+              .from('user_sessions')
+              .select('id')
+              .eq('user_id', user.id)
+              .eq('is_active', false)
+              .order('created_at', { ascending: false })
+              .limit(1)
+
+            if (terminatedSessions && terminatedSessions.length > 0) {
+              // جلسة موجودة لكن مُنهاة من المسؤول → تسجيل خروج فوري
+              logger.warn('[Auth] Session terminated by admin - signing out')
+              await supabase.auth.signOut()
+              if (mountedRef.current) {
+                setUser(null)
+                setSession(null)
+                setError('تم إنهاء جلستك من قبل المسؤول')
+              }
+              return false
+            }
+
+            // لا يوجد أي سجل جلسة → ربما فشل إنشاؤها بسبب الشبكة عند تسجيل الدخول
             const { data: { session: authSession } } = await supabase.auth.getSession()
             if (authSession) {
               logger.warn('[Auth] user_sessions empty but Supabase Auth session valid - re-creating record')
@@ -969,11 +988,42 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return
     }
 
+    // Realtime: إنهاء الجلسة فوري عند تغيير is_active → false
+    const realtimeChannel = supabase
+      .channel(`session-termination-${user.id}`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'user_sessions',
+          filter: `user_id=eq.${user.id}`,
+        },
+        (payload) => {
+          const updated = payload.new as { is_active?: boolean }
+          if (updated.is_active === false && mountedRef.current) {
+            logger.warn('[Auth] Realtime: session terminated remotely - signing out')
+            void supabase.auth.signOut().then(() => {
+              if (mountedRef.current) {
+                setUser(null)
+                setSession(null)
+                setError('تم إنهاء جلستك من قبل المسؤول')
+              }
+            })
+          }
+        }
+      )
+      .subscribe()
+
+    // polling احتياطي كل 30 ثانية (fallback لو Realtime انقطع)
     const sessionCheckInterval = setInterval(() => {
       void checkSessionValidity()
     }, 30 * 1000)
 
-    return () => clearInterval(sessionCheckInterval)
+    return () => {
+      void supabase.removeChannel(realtimeChannel)
+      clearInterval(sessionCheckInterval)
+    }
   }, [checkSessionValidity, session, user?.id])
 
   return (
