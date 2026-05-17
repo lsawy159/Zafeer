@@ -143,8 +143,8 @@ export default function GeneralSettings() {
         <div className="flex items-center justify-center h-screen">
           <div className="text-center">
             <Shield className="w-16 h-16 mx-auto mb-4 text-red-500" />
-            <h2 className="text-2xl font-bold text-gray-900 mb-2">غير مصرح</h2>
-            <p className="text-gray-600">
+            <h2 className="text-2xl font-bold text-foreground mb-2">غير مصرح</h2>
+            <p className="text-foreground-secondary">
               عذراً، ليس لديك صلاحية لعرض هذه الصفحة.
             </p>
           </div>
@@ -302,8 +302,8 @@ export default function GeneralSettings() {
             <Settings className="w-5 h-5" />
           </div>
           <div>
-            <h1 className="text-xl font-bold text-gray-900">إعدادات النظام</h1>
-            <p className="mt-0.5 text-xs text-gray-600">
+            <h1 className="text-xl font-bold text-foreground">إعدادات النظام</h1>
+            <p className="mt-0.5 text-xs text-foreground-secondary">
               إدارة إعدادات النظام والإعدادات العامة
             </p>
           </div>
@@ -313,7 +313,7 @@ export default function GeneralSettings() {
           {/* Sidebar Navigation */}
           <div className="lg:col-span-1">
             <div className="app-panel sticky top-3 p-2.5">
-              <h3 className="font-semibold text-gray-900 mb-2 text-xs">
+              <h3 className="font-semibold text-foreground mb-2 text-xs">
                 فئات الإعدادات
               </h3>
               <nav className="space-y-1">
@@ -326,11 +326,11 @@ export default function GeneralSettings() {
                       className={`flex w-full items-center gap-2 rounded-xl px-3 py-1.5 text-right text-xs transition-all duration-200 ${
                         activeTab === category.key
                           ? 'bg-primary/15 text-foreground shadow-soft ring-1 ring-primary/40'
-                          : 'text-gray-700 hover:bg-gray-50 hover:text-gray-900'
+                          : 'text-foreground-secondary hover:bg-surface-secondary-50 hover:text-foreground'
                       }`}
                     >
                       <Icon
-                        className={`w-4 h-4 ${activeTab === category.key ? 'text-foreground' : 'text-gray-500'}`}
+                        className={`w-4 h-4 ${activeTab === category.key ? 'text-foreground' : 'text-foreground-tertiary'}`}
                       />
                       <span className="font-medium">{category.label}</span>
                     </button>
@@ -345,15 +345,15 @@ export default function GeneralSettings() {
             {activeCategory && (
               <div className="app-panel overflow-hidden">
                 {/* Tab Header */}
-                <div className="bg-gradient-to-r from-gray-50 to-gray-100 border-b border-border-200 px-4 py-2.5">
+                <div className="bg-surface-secondary-50 border-b border-border-200 px-4 py-2.5">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
                       <activeCategory.icon className="w-5 h-5 text-foreground" />
                       <div>
-                        <h2 className="text-sm font-semibold text-gray-900">
+                        <h2 className="text-sm font-semibold text-foreground">
                           {activeCategory.label}
                         </h2>
-                        <p className="text-xs text-gray-500 mt-0.5 max-w-lg leading-relaxed">
+                        <p className="text-xs text-foreground-tertiary mt-0.5 max-w-lg leading-relaxed">
                           {activeCategory.description}
                         </p>
                       </div>
@@ -396,12 +396,12 @@ export default function GeneralSettings() {
                         >
                           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
                             <div className="flex-1">
-                              <h3 className="font-medium text-gray-900 text-sm mb-0.5">
+                              <h3 className="font-medium text-foreground text-sm mb-0.5">
                                 {setting.description}
                               </h3>
-                              <p className="text-xs text-gray-500">
+                              <p className="text-xs text-foreground-tertiary">
                                 المفتاح:{' '}
-                                <code className="bg-gray-100 px-1 py-0.5 rounded text-xs">
+                                <code className="bg-surface-secondary-100 px-1 py-0.5 rounded text-xs">
                                   {setting.setting_key}
                                 </code>
                               </p>
@@ -419,8 +419,8 @@ export default function GeneralSettings() {
                       ))}
                     </div>
                   ) : (
-                    <div className="text-center py-6 text-gray-500">
-                      <activeCategory.icon className="w-10 h-10 mx-auto mb-2 text-gray-400" />
+                    <div className="text-center py-6 text-foreground-tertiary">
+                      <activeCategory.icon className="w-10 h-10 mx-auto mb-2 text-foreground-tertiary" />
                       <p className="text-xs">
                         لا توجد إعدادات متاحة في هذا القسم
                       </p>
@@ -440,10 +440,10 @@ export default function GeneralSettings() {
                 <Settings className="w-4 h-4" />
               </div>
               <div>
-                <h3 className="font-bold text-xs text-gray-900">
+                <h3 className="font-bold text-xs text-foreground">
                   {settingsCategories.reduce((acc, cat) => acc + (cat.settings?.length || 0), 0)}
                 </h3>
-                <p className="text-xs text-gray-600">إجمالي الإعدادات</p>
+                <p className="text-xs text-foreground-secondary">إجمالي الإعدادات</p>
               </div>
             </div>
           </div>
@@ -454,8 +454,8 @@ export default function GeneralSettings() {
                 <DatabaseIcon className="w-4 h-4 text-white" />
               </div>
               <div>
-                <h3 className="font-bold text-xs text-gray-900">{settingsCategories.length}</h3>
-                <p className="text-xs text-gray-600">فئات الإعدادات</p>
+                <h3 className="font-bold text-xs text-foreground">{settingsCategories.length}</h3>
+                <p className="text-xs text-foreground-secondary">فئات الإعدادات</p>
               </div>
             </div>
           </div>
@@ -466,10 +466,10 @@ export default function GeneralSettings() {
                 <Clock className="w-4 h-4 text-white" />
               </div>
               <div>
-                <h3 className="font-bold text-xs text-gray-900">
+                <h3 className="font-bold text-xs text-foreground">
                   {new Date().toLocaleDateString('ar-SA')}
                 </h3>
-                <p className="text-xs text-gray-600">آخر تحديث</p>
+                <p className="text-xs text-foreground-secondary">آخر تحديث</p>
               </div>
             </div>
           </div>
@@ -500,20 +500,20 @@ export default function GeneralSettings() {
                     key={setting.setting_key}
                     className="rounded border border-primary/20 bg-surface p-3"
                   >
-                    <p className="text-sm font-medium text-gray-900">{setting.description}</p>
+                    <p className="text-sm font-medium text-foreground">{setting.description}</p>
                     <div className="flex items-center justify-between mt-2 text-xs">
                       <div>
-                        <span className="text-gray-600">الحالي: </span>
-                        <code className="bg-gray-100 px-2 py-1 rounded text-gray-700 font-mono">
+                        <span className="text-foreground-secondary">الحالي: </span>
+                        <code className="bg-surface-secondary-100 px-2 py-1 rounded text-foreground-secondary font-mono">
                           {String(setting.currentValue)}
                         </code>
                       </div>
-                      <div className="text-gray-400">←</div>
+                      <div className="text-foreground-tertiary">←</div>
                       <div>
                         <code className="bg-green-100 px-2 py-1 rounded text-green-700 font-mono">
                           {String(setting.defaultValue)}
                         </code>
-                        <span className="text-gray-600"> :الافتراضي</span>
+                        <span className="text-foreground-secondary"> :الافتراضي</span>
                       </div>
                     </div>
                   </div>
@@ -522,8 +522,8 @@ export default function GeneralSettings() {
             </div>
           )}
           {getChangedSettings().length === 0 && (
-            <div className="bg-gray-50 border border-border-200 rounded-lg p-4 text-center">
-              <p className="text-sm text-gray-600">
+            <div className="bg-surface-secondary-50 border border-border-200 rounded-lg p-4 text-center">
+              <p className="text-sm text-foreground-secondary">
                 ✓ جميع الإعدادات موجودة بالفعل على قيمها الافتراضية
               </p>
             </div>

@@ -274,7 +274,7 @@ export default function Dashboard() {
                 />
               </div>
 
-              <div className="mb-2 grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
+              <div className="mb-2 grid grid-cols-2 gap-3 md:grid-cols-4 lg:grid-cols-7">
                 <StatCard
                   title="عدد المؤسسات"
                   value={totalCompaniesCount}
@@ -307,9 +307,6 @@ export default function Dashboard() {
                   accent="danger"
                   onClick={() => navigate('/alerts?tab=employees')}
                 />
-              </div>
-
-              <div className="mb-2 grid grid-cols-1 gap-4 md:grid-cols-3">
                 <MetricCard
                   title="معدل الاستفادة"
                   value={`${stats.utilizationRate}%`}
