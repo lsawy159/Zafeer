@@ -294,9 +294,9 @@ export function LogDetailsModal(props: LogDetailsModalProps) {
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
       <div className="bg-white rounded-xl shadow-2xl max-w-2xl w-full max-h-[80vh] overflow-y-auto">
-        <div className="sticky top-0 bg-gradient-to-r from-purple-600 to-purple-700 text-white p-6 flex justify-between items-center">
+        <div className="sticky top-0 bg-primary text-white p-6 flex justify-between items-center">
           <h3 className="text-xl font-bold">تفاصيل النشاط</h3>
-          <button onClick={onClose} className="p-2 hover:bg-white/20 rounded-lg transition">
+          <button onClick={onClose} className="p-2 hover:bg-white/10 rounded-lg transition">
             <X className="w-5 h-5" />
           </button>
         </div>
@@ -355,11 +355,11 @@ export function LogDetailsModal(props: LogDetailsModalProps) {
 
           <div>
             <label className="block text-sm font-medium text-neutral-700 mb-2">وصف النشاط</label>
-            <div className="bg-blue-50 rounded-lg p-4 border border-blue-200">
+            <div className="bg-surface-secondary-50 rounded-lg p-4 border border-border-200">
               {(() => {
                 const description = generateActivityDescription(log)
                 return typeof description === 'string' ? (
-                  <p className="text-neutral-900 text-base leading-relaxed">{description}</p>
+                  <p className="text-foreground text-base leading-relaxed">{description}</p>
                 ) : (
                   description
                 )
@@ -371,9 +371,10 @@ export function LogDetailsModal(props: LogDetailsModalProps) {
           {renderUpdateDetails()}
 
           {log.details && Object.keys(log.details).length > 0 && (
-            <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg text-xs text-blue-800">
+            <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg text-xs text-amber-900 flex items-start gap-2">
+              <span className="text-amber-500 mt-0.5 flex-shrink-0">💡</span>
               <p>
-                💡 <span className="font-medium">ملاحظة:</span> تم تسجيل هذا النشاط بنجاح مع
+                <span className="font-semibold">ملاحظة:</span> تم تسجيل هذا النشاط بنجاح مع
                 البيانات أعلاه
               </p>
             </div>
@@ -383,7 +384,7 @@ export function LogDetailsModal(props: LogDetailsModalProps) {
         <div className="sticky bottom-0 bg-white border-t border-neutral-200 p-6">
           <button
             onClick={onClose}
-            className="w-full px-6 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition"
+            className="w-full px-6 py-2 bg-primary text-white rounded-lg hover:bg-primary/85 transition"
           >
             إغلاق
           </button>
