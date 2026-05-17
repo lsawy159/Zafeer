@@ -52,11 +52,6 @@ export const PERMISSION_SECTIONS = {
     description: 'الوصول إلى شاشات البحث والتحليل المتقدم.',
     actions: ['view'] as const,
   },
-  userGuide: {
-    label: 'دليل المستخدم',
-    description: 'عرض دليل الاستخدام الداخلي.',
-    actions: ['view'] as const,
-  },
   reports: {
     label: 'التقارير',
     description: 'عرض التقارير النظامية وتصديرها فقط، بدون منح صلاحيات الرواتب أو النقل تلقائياً.',
@@ -82,11 +77,6 @@ export const PERMISSION_SECTIONS = {
     label: 'المستخدمين',
     description: 'الوصول إلى شاشة إدارة المستخدمين وصلاحياتهم.',
     actions: ['view', 'create', 'edit', 'delete'] as const,
-  },
-  settings: {
-    label: 'حدود الشركات',
-    description: 'ضبط حدود المؤسسات والإعدادات المرتبطة بها.',
-    actions: ['view', 'edit'] as const,
   },
   adminSettings: {
     label: 'إعدادات النظام',
