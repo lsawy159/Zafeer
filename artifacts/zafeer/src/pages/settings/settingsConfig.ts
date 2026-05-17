@@ -5,7 +5,6 @@ import {
   FileText,
   Clock,
   Database as DatabaseIcon,
-  Palette,
   Bell,
   BarChart3,
   Users,
@@ -26,7 +25,6 @@ export type TabType =
   | 'sessions'
   | 'audit'
   | 'permissions'
-  | 'ui'
   | 'reports'
   | 'advanced-notifications'
   | 'alert-settings'
@@ -38,7 +36,6 @@ export const ALLOWED_TABS: TabType[] = [
   'sessions',
   'audit',
   'permissions',
-  'ui',
   'reports',
   'advanced-notifications',
   'alert-settings',
@@ -53,55 +50,6 @@ export const LEGACY_SYSTEM_SETTINGS_KEYS = [
   'date_format',
   'working_hours_start',
   'working_hours_end',
-]
-
-export const UI_SETTINGS: GeneralSetting[] = [
-  {
-    setting_key: 'ui_theme',
-    setting_value: 'light',
-    category: 'ui',
-    description: 'المظهر العام',
-    setting_type: 'select',
-    options: ['light', 'dark', 'auto'],
-  },
-  {
-    setting_key: 'ui_primary_color',
-    setting_value: 'blue',
-    category: 'ui',
-    description: 'اللون الأساسي',
-    setting_type: 'select',
-    options: ['blue', 'green', 'purple', 'red', 'orange', 'teal'],
-  },
-  {
-    setting_key: 'ui_font_size',
-    setting_value: 'medium',
-    category: 'ui',
-    description: 'حجم الخط',
-    setting_type: 'select',
-    options: ['small', 'medium', 'large'],
-  },
-  {
-    setting_key: 'items_per_page',
-    setting_value: 12,
-    category: 'ui',
-    description: 'عدد العناصر المعروضة في كل صفحة',
-    setting_type: 'select',
-    options: ['6', '12', '24', '48'],
-  },
-  {
-    setting_key: 'show_animations',
-    setting_value: true,
-    category: 'ui',
-    description: 'تفعيل الحركات والانتقالات',
-    setting_type: 'boolean',
-  },
-  {
-    setting_key: 'compact_mode',
-    setting_value: false,
-    category: 'ui',
-    description: 'الوضع المضغوط (عرض أكثر كثافة)',
-    setting_type: 'boolean',
-  },
 ]
 
 export const REPORTS_SETTINGS: GeneralSetting[] = [
@@ -241,13 +189,6 @@ export function buildSettingsCategories(
       description: 'تحديد صلاحيات كل مستخدم وتعيين الأدوار (مدير / مسؤول / مستخدم) والتحكم في ما يستطيع رؤيته وتعديله.',
       icon: Shield,
       component: PermissionsPanel,
-    },
-    {
-      key: 'ui',
-      label: 'إعدادات واجهة المستخدم',
-      description: 'تخصيص مظهر التطبيق: الثيم، حجم الخط، كثافة العرض، وعدد العناصر في كل صفحة.',
-      icon: Palette,
-      settings: UI_SETTINGS,
     },
     {
       key: 'reports',

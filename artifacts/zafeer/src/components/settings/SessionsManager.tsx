@@ -5,6 +5,7 @@ import { RefreshCw, Trash2, Users } from 'lucide-react'
 import { formatDateWithHijri } from '@/utils/dateFormatter'
 import { HijriDateDisplay } from '@/components/ui/HijriDateDisplay'
 import ConfirmationDialog from '@/components/dialogs/ConfirmationDialog'
+import { useAuth } from '@/contexts/AuthContext'
 
 interface UserSession {
   id: string
@@ -24,6 +25,7 @@ interface UserSession {
 }
 
 export default function SessionsManager() {
+  const { user, signOut } = useAuth()
   const [activeSessions, setActiveSessions] = useState<UserSession[]>([])
   const [sessionHistory, setSessionHistory] = useState<UserSession[]>([])
   const [selectedSessions, setSelectedSessions] = useState<Set<string>>(new Set())
@@ -130,6 +132,13 @@ export default function SessionsManager() {
       setActiveSessions((prev) => prev.filter((s) => s.id !== sessionToTerminate.id))
       if (sessionHistory.length > 0) {
         await loadSessionHistory()
+      }
+
+      // لو المسؤول أنهى جلسة المستخدم الحالي → تسجيل خروج فوري
+      if (sessionToTerminate.user_id === user?.id) {
+        toast.success('تم إنهاء جلستك، سيتم تسجيل خروجك...')
+        setTimeout(() => void signOut(), 1500)
+        return
       }
 
       toast.success('تم إنهاء الجلسة بنجاح')

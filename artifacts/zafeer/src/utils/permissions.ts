@@ -11,7 +11,6 @@ export interface PermissionMatrix {
   employees: { view: boolean; create: boolean; edit: boolean; delete: boolean }
   companies: { view: boolean; create: boolean; edit: boolean; delete: boolean }
   users: { view: boolean; create: boolean; edit: boolean; delete: boolean }
-  settings: { view: boolean; edit: boolean }
   adminSettings: { view: boolean; edit: boolean }
   centralizedSettings: { view: boolean; edit: boolean }
   projects: { view: boolean; create: boolean; edit: boolean; delete: boolean }
@@ -27,7 +26,6 @@ export interface PermissionMatrix {
   payroll: { view: boolean; export: boolean }
   alerts: { view: boolean }
   advancedSearch: { view: boolean }
-  userGuide: { view: boolean }
   importExport: { view: boolean; import: boolean; export: boolean }
   activityLogs: { view: boolean }
   dashboard: { view: boolean }
