@@ -25,6 +25,11 @@ vi.mock('../lib/supabase', () => ({
       signOut: signOutMock,
       onAuthStateChange: onAuthStateChangeMock,
     },
+    channel: vi.fn(() => ({
+      on: vi.fn().mockReturnThis(),
+      subscribe: vi.fn().mockReturnThis(),
+    })),
+    removeChannel: vi.fn().mockResolvedValue(undefined),
     from: vi.fn((table: string) => {
       if (table === 'users') {
         return {
