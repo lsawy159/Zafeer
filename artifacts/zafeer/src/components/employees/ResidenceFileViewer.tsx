@@ -34,7 +34,7 @@ export function ResidenceFileViewer({ path }: Props) {
       URL.revokeObjectURL(objectUrl)
     } catch {
       // fallback: open in new tab
-      window.open(url, '_blank', 'noopener,noreferrer')
+      window.open(url ?? undefined, '_blank', 'noopener,noreferrer')
     }
   }
 
