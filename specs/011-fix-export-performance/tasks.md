@@ -97,11 +97,26 @@
 
 - [ ] T012 حذف النسخ القديمة من داخل ExportTab من `artifacts/zafeer/src/components/import-export/ExportTab.tsx`: `STATUS_THRESHOLDS`, `isExpired`, `isExpiringWithin30Days`, `getDaysRemaining`, `getDateTextColor`, `formatDateStatus` — بعد التأكد أن الـ typecheck ناجح
 
-- [ ] T013 حذف `calculateAvailableSlots` من داخل ExportTab (تُستخدم في company filters فقط — تحقق إن نُقلت مع helpers أو تبقى) في `artifacts/zafeer/src/components/import-export/ExportTab.tsx`
+- [ ] T013 إبقاء `calculateAvailableSlots` داخل ExportTab (تُستخدم في company filters — ليست helper بحتة) في `artifacts/zafeer/src/components/import-export/ExportTab.tsx` — لا تعديل مطلوب لهذه الدالة
 
 - [ ] T014 [P] تشغيل `pnpm typecheck` من `artifacts/zafeer/` والتأكد من صفر أخطاء TypeScript
 
 - [ ] T015 Manual browser test: افتح `/import-export` → تبويب "تصدير" → غيّر نوع التصدير 5 مرات بسرعة → تحقق لا تجمد → جرب التصدير الفعلي لـ "أساسي" و"شهري" → تحقق ملف Excel صحيح
+
+- [ ] T016 [FR-005] إضافة `useIsDesktop` hook بسيط واستبدال CSS `hidden lg:block` / `lg:hidden` بـ conditional rendering في `artifacts/zafeer/src/components/import-export/ExportTab.tsx`:
+  ```typescript
+  // داخل ExportTab (أو في ملف hook منفصل):
+  const [isDesktop, setIsDesktop] = useState(() =>
+    typeof window !== 'undefined' ? window.matchMedia('(min-width: 1024px)').matches : true
+  )
+  useEffect(() => {
+    const mq = window.matchMedia('(min-width: 1024px)')
+    const handler = (e: MediaQueryListEvent) => setIsDesktop(e.matches)
+    mq.addEventListener('change', handler)
+    return () => mq.removeEventListener('change', handler)
+  }, [])
+  ```
+  ثم استبدل الـ class `hidden lg:block` بـ `{isDesktop && <table>...</table>}` و`{!isDesktop && <div className="space-y-3">...</div>}` — يُنجز FR-005 + SC-005
 
 ---
 

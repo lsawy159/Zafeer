@@ -418,9 +418,38 @@ const handleToggleEmployee = useCallback((id: string) => {
 
 ---
 
+#### الخطوة 10: conditional rendering للـ mobile/desktop (FR-005 — T016)
+
+بدلاً من CSS `hidden lg:block` / `lg:hidden` — يُنفَّذ بعد React.memo fix:
+
+```typescript
+// داخل ExportTab — أضف بعد useState declarations:
+const [isDesktop, setIsDesktop] = useState(() =>
+  typeof window !== 'undefined' ? window.matchMedia('(min-width: 1024px)').matches : true
+)
+useEffect(() => {
+  const mq = window.matchMedia('(min-width: 1024px)')
+  const handler = (e: MediaQueryListEvent) => setIsDesktop(e.matches)
+  mq.addEventListener('change', handler)
+  return () => mq.removeEventListener('change', handler)
+}, [])
+```
+
+في الـ JSX — استبدل blocks الـ CSS hidden بـ:
+```tsx
+{isDesktop
+  ? <div className="bg-white rounded-md border ..."> {/* desktop table */} </div>
+  : <div className="space-y-3"> {/* mobile cards */} </div>
+}
+```
+
+النتيجة: ~300 DOM nodes بدلاً من 600 — يحقق FR-005 + SC-005.
+
+---
+
 ## Complexity Tracking
 
-لا violations — هذا تحسين أداء بحت بدون أي انحراف عن الـ constitution.
+لا violations — تحسين أداء بحت بدون أي انحراف عن الـ constitution.
 
 ---
 
