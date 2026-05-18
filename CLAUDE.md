@@ -1,7 +1,7 @@
 <!-- SPECKIT START -->
 For additional context about technologies to be used, project structure,
 shell commands, and other important information, read the current plan:
-specs/010-residency-export-secure-access/plan.md
+specs/011-fix-export-performance/plan.md
 <!-- SPECKIT END -->
 
 <!-- MEMORY SYSTEM START -->
