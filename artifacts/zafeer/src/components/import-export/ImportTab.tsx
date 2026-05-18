@@ -48,7 +48,6 @@ const EMPLOYEE_COLUMNS_ORDER = [
   'تاريخ انتهاء العقد',
   'تاريخ انتهاء عقد أجير',
   'تاريخ انتهاء التأمين الصحي',
-  'رابط صورة الإقامة',
   'الملاحظات',
 ]
 
@@ -388,7 +387,7 @@ export default function ImportTab({
       // ترتيب الأعمدة حسب EMPLOYEE_COLUMNS_ORDER - عرض الأعمدة المطلوبة فقط
       const ordered: string[] = []
       // الأعمدة التي نريد إخفاءها من العرض (لأنها طويلة أو غير ضرورية للعرض)
-      const hiddenColumnNames = ['الشركة أو المؤسسة', 'رابط صورة الإقامة']
+      const hiddenColumnNames = ['الشركة أو المؤسسة']
 
       // دالة للتحقق من أن العمود مخفي
       const isColumnHidden = (columnName: string): boolean => {
@@ -1917,7 +1916,6 @@ export default function ImportTab({
               contract_expiry: normalizedContractExpiry, // تاريخ انتهاء العقد → contract_expiry
               hired_worker_contract_expiry: normalizedHiredWorkerContractExpiry, // تاريخ انتهاء عقد أجير → hired_worker_contract_expiry
               health_insurance_expiry: normalizedHealthInsuranceExpiry, // تاريخ انتهاء التأمين الصحي → health_insurance_expiry
-              residence_image_url: row['رابط صورة الإقامة'] || null,
               notes: row['الملاحظات'] || null,
             }
 
