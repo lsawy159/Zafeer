@@ -17,23 +17,7 @@ description: "Task list for feature: تصدير مسار صورة الإقامة
 
 ---
 
-## Phase 1: Setup
-
-**Purpose**: لا بنية تحتية جديدة — الكود الموجود كافٍ.
-
-*لا مهام setup مطلوبة.*
-
----
-
-## Phase 2: Foundational (Blocking Prerequisites)
-
-**Purpose**: لا متطلبات أساسية — التغييرات مستقلة ومباشرة.
-
-*لا مهام foundational مطلوبة.*
-
----
-
-## Phase 3: User Story 1 — تأكيد صحة التصدير (Priority: P1) 🎯
+## Phase 1: User Story 1 — تأكيد صحة التصدير (Priority: P1) 🎯
 
 **Goal**: التحقق أن `ExportTab.tsx` يصدّر مسار الإقامة بشكل صحيح دون أي تعديل كودي.
 
@@ -41,13 +25,13 @@ description: "Task list for feature: تصدير مسار صورة الإقامة
 
 ### Implementation
 
-- [ ] T001 [US1] افحص `artifacts/zafeer/src/components/import-export/ExportTab.tsx` السطر ~654 وتحقق أن `'رابط صورة الإقامة': emp.residence_image_url || ''` موجود ولم يتغير — لا تعديل مطلوب
+- [x] T001 [US1] افحص `artifacts/zafeer/src/components/import-export/ExportTab.tsx` السطر ~654 وتحقق أن `'رابط صورة الإقامة': emp.residence_image_url || ''` موجود ولم يتغير — لا تعديل مطلوب
 
 **Checkpoint**: التصدير يعمل بالفعل — انتقل للـ Phase 4.
 
 ---
 
-## Phase 4: User Story 2 — حذف عمود الإقامة من قالب الاستيراد ومحركه (Priority: P1)
+## Phase 2: User Story 2 — حذف عمود الإقامة من قالب الاستيراد ومحركه (Priority: P1)
 
 **Goal**: إزالة عمود "رابط صورة الإقامة" من قالب الاستيراد ومن جميع مراحل معالجة الاستيراد.
 
@@ -55,16 +39,16 @@ description: "Task list for feature: تصدير مسار صورة الإقامة
 
 ### Implementation
 
-- [ ] T002 [P] [US2] احذف `'رابط صورة الإقامة': '',` من `artifacts/zafeer/src/components/import-export/TemplatesTab.tsx` السطر ~31
-- [ ] T003 [P] [US2] احذف `'رابط صورة الإقامة',` من `EMPLOYEE_COLUMNS_ORDER` في `artifacts/zafeer/src/components/import-export/ImportTab.tsx` السطر ~51
-- [ ] T004 [US2] احذف `'رابط صورة الإقامة'` من `hiddenColumnNames` في `artifacts/zafeer/src/components/import-export/ImportTab.tsx` السطر ~391 (يعتمد على T003)
-- [ ] T005 [US2] احذف `residence_image_url: row['رابط صورة الإقامة'] || null,` من import mapping في `artifacts/zafeer/src/components/import-export/ImportTab.tsx` السطر ~1920 (يعتمد على T003)
+- [x] T002 [P] [US2] احذف `'رابط صورة الإقامة': '',` من `artifacts/zafeer/src/components/import-export/TemplatesTab.tsx` السطر ~31
+- [x] T003 [P] [US2] احذف `'رابط صورة الإقامة',` من `EMPLOYEE_COLUMNS_ORDER` في `artifacts/zafeer/src/components/import-export/ImportTab.tsx` السطر ~51
+- [x] T004 [US2] احذف `'رابط صورة الإقامة'` من `hiddenColumnNames` في `artifacts/zafeer/src/components/import-export/ImportTab.tsx` السطر ~391 (يعتمد على T003)
+- [x] T005 [US2] احذف `residence_image_url: row['رابط صورة الإقامة'] || null,` من import mapping في `artifacts/zafeer/src/components/import-export/ImportTab.tsx` السطر ~1920 (يعتمد على T003)
 
 **Checkpoint**: قالب الاستيراد بدون عمود الإقامة + استيراد أي ملف (قديم أو جديد) يتجاهل العمود كلياً.
 
 ---
 
-## Phase 5: User Story 3 — توثيق آلية الوصول الآمن (Priority: P2)
+## Phase 3: User Story 3 — توثيق آلية الوصول الآمن (Priority: P2)
 
 **Goal**: التحقق أن آلية الوصول الآمن لملفات الإقامة تعمل بشكل صحيح (signed URLs + RLS).
 
@@ -72,17 +56,17 @@ description: "Task list for feature: تصدير مسار صورة الإقامة
 
 ### Implementation
 
-- [ ] T006 [US3] افحص `artifacts/zafeer/src/hooks/useResidenceFile.ts` السطر ~118-139 وتحقق أن `useResidenceSignedUrl()` موجود ويولّد روابط موقّعة 3600s — لا تعديل مطلوب
+- [x] T006 [US3] افحص `artifacts/zafeer/src/hooks/useResidenceFile.ts` السطر ~118-139 وتحقق أن `useResidenceSignedUrl()` موجود ويولّد روابط موقّعة 3600s — لا تعديل مطلوب
 
 **Checkpoint**: الوصول الآمن مكفول بـ Supabase RLS + signed URLs الموجودة.
 
 ---
 
-## Phase 6: Polish & Verification
+## Phase 4: Polish & Verification
 
 **Purpose**: التحقق النهائي من صحة جميع التعديلات.
 
-- [ ] T007 شغّل `pnpm run typecheck` من `artifacts/zafeer/` وتأكد صفر أخطاء TypeScript
+- [x] T007 شغّل `pnpm run typecheck` من `artifacts/zafeer/` وتأكد صفر أخطاء TypeScript
 - [ ] T008 اختبار يدوي للتصدير: صدّر موظف لديه `residence_image_url` → تحقق من الخانة في Excel
 - [ ] T009 اختبار يدوي للقالب: حمّل قالب الاستيراد → تحقق من غياب عمود "رابط صورة الإقامة"
 - [ ] T010 اختبار يدوي للاستيراد: استورد ملف يحتوي عمود الإقامة → اكتمال بدون خطأ
@@ -93,10 +77,10 @@ description: "Task list for feature: تصدير مسار صورة الإقامة
 
 ### Phase Dependencies
 
-- **Phase 3 (US1)**: مستقلة — تحقق قراءة فقط، لا تعديل
-- **Phase 4 (US2)**: مستقلة — T002 و T003 يمكن تشغيلهما بالتوازي (ملفات مختلفة)
-- **Phase 5 (US3)**: مستقلة — تحقق قراءة فقط، لا تعديل
-- **Phase 6**: تعتمد على اكتمال T002-T005
+- **Phase 1 (US1)**: مستقلة — تحقق قراءة فقط، لا تعديل
+- **Phase 2 (US2)**: مستقلة — T002 و T003 يمكن تشغيلهما بالتوازي (ملفات مختلفة)
+- **Phase 3 (US3)**: مستقلة — تحقق قراءة فقط، لا تعديل
+- **Phase 4**: تعتمد على اكتمال T002-T005
 
 ### User Story Dependencies
 
@@ -112,7 +96,7 @@ description: "Task list for feature: تصدير مسار صورة الإقامة
 
 ---
 
-## Parallel Example: Phase 4 (US2)
+## Parallel Example: Phase 2 (US2)
 
 ```text
 # في نفس الوقت:
