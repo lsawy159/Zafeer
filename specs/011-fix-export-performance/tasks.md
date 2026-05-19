@@ -25,13 +25,13 @@
 
 **⚠️ CRITICAL**: لا يمكن البدء في أي user story قبل اكتمال هذه المرحلة
 
-- [ ] T001 تعديل imports: إضافة `useCallback` و `memo` في `artifacts/zafeer/src/components/import-export/ExportTab.tsx` (السطر 1: `import { useState, useEffect, useMemo, useCallback, memo, ReactNode } from 'react'`)
+- [X] T001 تعديل imports: إضافة `useCallback` و `memo` في `artifacts/zafeer/src/components/import-export/ExportTab.tsx` (السطر 1: `import { useState, useEffect, useMemo, useCallback, memo, ReactNode } from 'react'`)
 
-- [ ] T002 نقل `STATUS_THRESHOLDS` const من داخل ExportTab إلى module-level (قبل الـ component، بعد imports) في `artifacts/zafeer/src/components/import-export/ExportTab.tsx`
+- [X] T002 نقل `STATUS_THRESHOLDS` const من داخل ExportTab إلى module-level (قبل الـ component، بعد imports) في `artifacts/zafeer/src/components/import-export/ExportTab.tsx`
 
-- [ ] T003 نقل الـ helper functions الست التالية من داخل ExportTab إلى module-level في `artifacts/zafeer/src/components/import-export/ExportTab.tsx`: `isExpired`, `isExpiringWithin30Days`, `getDaysRemaining`, `getDateTextColor`, `formatDateStatus` — تأتي مباشرة بعد `STATUS_THRESHOLDS`
+- [X] T003 نقل الـ helper functions الست التالية من داخل ExportTab إلى module-level في `artifacts/zafeer/src/components/import-export/ExportTab.tsx`: `isExpired`, `isExpiringWithin30Days`, `getDaysRemaining`, `getDateTextColor`, `formatDateStatus` — تأتي مباشرة بعد `STATUS_THRESHOLDS`
 
-- [ ] T004 إضافة `type EmployeeWithRelations` و `interface EmployeeDisplayData` و `function computeEmployeeDisplayData` في module-level بعد helpers في `artifacts/zafeer/src/components/import-export/ExportTab.tsx` — الكود الكامل في `specs/011-fix-export-performance/plan.md` قسم "الخطوة 3"
+- [X] T004 إضافة `type EmployeeWithRelations` و `interface EmployeeDisplayData` و `function computeEmployeeDisplayData` في module-level بعد helpers في `artifacts/zafeer/src/components/import-export/ExportTab.tsx` — الكود الكامل في `specs/011-fix-export-performance/plan.md` قسم "الخطوة 3"
 
 **Checkpoint**: البنية التحتية جاهزة — يمكن الآن البدء في user stories
 
@@ -45,15 +45,15 @@
 
 ### Implementation for User Story 1
 
-- [ ] T005 [US1] إضافة `EmployeeTableRow` كـ `memo` component في module-level بعد `computeEmployeeDisplayData` في `artifacts/zafeer/src/components/import-export/ExportTab.tsx` — الكود الكامل في `specs/011-fix-export-performance/plan.md` قسم "الخطوة 4"
+- [X] T005 [US1] إضافة `EmployeeTableRow` كـ `memo` component في module-level بعد `computeEmployeeDisplayData` في `artifacts/zafeer/src/components/import-export/ExportTab.tsx` — الكود الكامل في `specs/011-fix-export-performance/plan.md` قسم "الخطوة 4"
 
-- [ ] T006 [US1] إضافة `EmployeeCardItem` كـ `memo` component في module-level بعد `EmployeeTableRow` في `artifacts/zafeer/src/components/import-export/ExportTab.tsx` — الكود الكامل في `specs/011-fix-export-performance/plan.md` قسم "الخطوة 5"
+- [X] T006 [US1] إضافة `EmployeeCardItem` كـ `memo` component في module-level بعد `EmployeeTableRow` في `artifacts/zafeer/src/components/import-export/ExportTab.tsx` — الكود الكامل في `specs/011-fix-export-performance/plan.md` قسم "الخطوة 5"
 
-- [ ] T007 [US1] إضافة `today` useMemo و `employeeDisplayData` useMemo داخل ExportTab بعد useState declarations في `artifacts/zafeer/src/components/import-export/ExportTab.tsx` — الكود الكامل في `specs/011-fix-export-performance/plan.md` قسم "الخطوة 6"
+- [X] T007 [US1] إضافة `today` useMemo و `employeeDisplayData` useMemo داخل ExportTab بعد useState declarations في `artifacts/zafeer/src/components/import-export/ExportTab.tsx` — الكود الكامل في `specs/011-fix-export-performance/plan.md` قسم "الخطوة 6"
 
-- [ ] T008 [US1] استبدال `<tbody>` في الجدول (سطر ~1301-1415) باستخدام `<EmployeeTableRow>` بدلاً من inline `<tr>` مع IIFEs في `artifacts/zafeer/src/components/import-export/ExportTab.tsx` — الكود في `specs/011-fix-export-performance/plan.md` قسم "الخطوة 7"
+- [X] T008 [US1] استبدال `<tbody>` في الجدول (سطر ~1301-1415) باستخدام `<EmployeeTableRow>` بدلاً من inline `<tr>` مع IIFEs في `artifacts/zafeer/src/components/import-export/ExportTab.tsx` — الكود في `specs/011-fix-export-performance/plan.md` قسم "الخطوة 7"
 
-- [ ] T009 [US1] استبدال mobile grid (سطر ~1437-1570) باستخدام `<EmployeeCardItem>` بدلاً من inline cards مع inline date computations في `artifacts/zafeer/src/components/import-export/ExportTab.tsx` — الكود في `specs/011-fix-export-performance/plan.md` قسم "الخطوة 8"
+- [X] T009 [US1] استبدال mobile grid (سطر ~1437-1570) باستخدام `<EmployeeCardItem>` بدلاً من inline cards مع inline date computations في `artifacts/zafeer/src/components/import-export/ExportTab.tsx` — الكود في `specs/011-fix-export-performance/plan.md` قسم "الخطوة 8"
 
 **Checkpoint**: غيّر نوع التصدير من "أساسي" إلى "شهري" — يجب ألا يكون هناك تجمد مرئي
 
@@ -67,7 +67,7 @@
 
 ### Implementation for User Story 2
 
-- [ ] T010 [US2] إضافة `handleToggleEmployee` كـ `useCallback` داخل ExportTab في `artifacts/zafeer/src/components/import-export/ExportTab.tsx` — يستخدم functional state update بدلاً من reference capture (الكود في `specs/011-fix-export-performance/plan.md` قسم "الخطوة 6")
+- [X] T010 [US2] إضافة `handleToggleEmployee` كـ `useCallback` داخل ExportTab في `artifacts/zafeer/src/components/import-export/ExportTab.tsx` — يستخدم functional state update بدلاً من reference capture (الكود في `specs/011-fix-export-performance/plan.md` قسم "الخطوة 6")
 
   > **ملاحظة**: إذا كانت T008/T009 تستخدمان `toggleEmployeeSelection` بالفعل بدلاً من `handleToggleEmployee`، بدّل الـ prop في `EmployeeTableRow` + `EmployeeCardItem` ليستخدم `handleToggleEmployee` الجديدة
 
@@ -83,7 +83,7 @@
 
 ### Implementation for User Story 3
 
-- [ ] T011 [US3] تحقق أن `employeeDisplayData` useMemo مربوط بـ `[filteredEmployees, today]` فقط في `artifacts/zafeer/src/components/import-export/ExportTab.tsx` — إذا كانت T007 أنجزت هذا بشكل صحيح، هذه مجرد verification لا تعديل
+- [X] T011 [US3] تحقق أن `employeeDisplayData` useMemo مربوط بـ `[filteredEmployees, today]` فقط في `artifacts/zafeer/src/components/import-export/ExportTab.tsx` — إذا كانت T007 أنجزت هذا بشكل صحيح، هذه مجرد verification لا تعديل
 
   > **تنبيه**: `today` stable (لا يتغير) → `employeeDisplayData` يُعاد حسابه فقط لما `filteredEmployees` تتغير — هذا السلوك الصحيح
 
@@ -95,15 +95,15 @@
 
 **Purpose**: حذف الكود القديم + التحقق النهائي
 
-- [ ] T012 حذف النسخ القديمة من داخل ExportTab من `artifacts/zafeer/src/components/import-export/ExportTab.tsx`: `STATUS_THRESHOLDS`, `isExpired`, `isExpiringWithin30Days`, `getDaysRemaining`, `getDateTextColor`, `formatDateStatus` — بعد التأكد أن الـ typecheck ناجح
+- [X] T012 حذف النسخ القديمة من داخل ExportTab من `artifacts/zafeer/src/components/import-export/ExportTab.tsx`: `STATUS_THRESHOLDS`, `isExpired`, `isExpiringWithin30Days`, `getDaysRemaining`, `getDateTextColor`, `formatDateStatus` — بعد التأكد أن الـ typecheck ناجح
 
-- [ ] T013 إبقاء `calculateAvailableSlots` داخل ExportTab (تُستخدم في company filters — ليست helper بحتة) في `artifacts/zafeer/src/components/import-export/ExportTab.tsx` — لا تعديل مطلوب لهذه الدالة
+- [X] T013 إبقاء `calculateAvailableSlots` داخل ExportTab (تُستخدم في company filters — ليست helper بحتة) في `artifacts/zafeer/src/components/import-export/ExportTab.tsx` — لا تعديل مطلوب لهذه الدالة
 
-- [ ] T014 [P] تشغيل `pnpm typecheck` من `artifacts/zafeer/` والتأكد من صفر أخطاء TypeScript
+- [X] T014 [P] تشغيل `pnpm typecheck` من `artifacts/zafeer/` والتأكد من صفر أخطاء TypeScript
 
 - [ ] T015 Manual browser test: افتح `/import-export` → تبويب "تصدير" → غيّر نوع التصدير 5 مرات بسرعة → تحقق لا تجمد → جرب التصدير الفعلي لـ "أساسي" و"شهري" → تحقق ملف Excel صحيح
 
-- [ ] T016 [FR-005] إضافة `useIsDesktop` hook بسيط واستبدال CSS `hidden lg:block` / `lg:hidden` بـ conditional rendering في `artifacts/zafeer/src/components/import-export/ExportTab.tsx`:
+- [X] T016 [FR-005] إضافة `useIsDesktop` hook بسيط واستبدال CSS `hidden lg:block` / `lg:hidden` بـ conditional rendering في `artifacts/zafeer/src/components/import-export/ExportTab.tsx`:
   ```typescript
   // داخل ExportTab (أو في ملف hook منفصل):
   const [isDesktop, setIsDesktop] = useState(() =>

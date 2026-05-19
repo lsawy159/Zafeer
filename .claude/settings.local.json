@@ -12,7 +12,13 @@
       "mcp__claude_ai_Vercel__list_deployments",
       "mcp__supabase__get_project_url",
       "mcp__github__create_issue",
-      "mcp__github__create_pull_request"
+      "mcp__github__create_pull_request",
+      "mcp__supabase__generate_typescript_types",
+      "mcp__claude_ai_Supabase__apply_migration",
+      "mcp__github__get_pull_request_status",
+      "mcp__github__get_pull_request",
+      "mcp__github__list_pull_requests",
+      "mcp__claude_ai_Supabase__search_docs"
     ]
   },
   "enableAllProjectMcpServers": true,
