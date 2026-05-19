@@ -12,6 +12,7 @@ import { loadXlsx } from '@/utils/lazyXlsx'
 import { saveAs } from 'file-saver'
 import { toast } from 'sonner'
 import { formatDateShortWithHijri } from '@/utils/dateFormatter'
+import { RESIDENCE_BUCKET, isLegacyExternalUrl } from '@/lib/residenceFile'
 
 type TabType = 'export' | 'import' | 'templates'
 type DataEntityType = 'employees' | 'companies' | 'transferProcedures'
@@ -46,6 +47,31 @@ export default function ImportExport() {
         .eq('is_deleted', false)
         .order('name')
       if (empErr) throw empErr
+
+      const empStoragePaths = (rawEmp ?? [])
+        .map((e) => ((e as unknown) as Record<string, unknown>).residence_image_url as string | null)
+        .filter((p): p is string => !!p && !isLegacyExternalUrl(p))
+
+      const exportSignedUrlMap = new Map<string, string>()
+      if (empStoragePaths.length > 0) {
+        for (let i = 0; i < empStoragePaths.length; i += 100) {
+          const chunk = empStoragePaths.slice(i, i + 100)
+          const { data: signedResults, error: signErr } = await supabase.storage
+            .from(RESIDENCE_BUCKET)
+            .createSignedUrls(chunk, 604800)
+          if (signErr) {
+            toast.warning('تعذّر توليد روابط صور الإقامة — سيُصدَّر الملف بدونها')
+            break
+          }
+          if (signedResults) {
+            for (const result of signedResults) {
+              if (result.signedUrl && result.path && !result.error) {
+                exportSignedUrlMap.set(result.path, result.signedUrl)
+              }
+            }
+          }
+        }
+      }
 
       const employees = (rawEmp ?? []) as unknown[]
       if (employees.length > 0) {
@@ -84,11 +110,35 @@ export default function ImportExport() {
             'تاريخ انتهاء العقد': fmtDate(emp.contract_expiry),
             'تاريخ انتهاء عقد أجير': fmtDate(emp.hired_worker_contract_expiry),
             'تاريخ انتهاء التأمين الصحي': fmtDate(emp.health_insurance_expiry),
-            'رابط صورة الإقامة': emp.residence_image_url ?? '',
+            'رابط صورة الإقامة': (() => {
+              const p = emp.residence_image_url as string | null | undefined
+              if (!p) return ''
+              if (isLegacyExternalUrl(p)) return p
+              return exportSignedUrlMap.get(p) ?? ''
+            })(),
             الملاحظات: emp.notes ?? '',
           }
         })
         const wsE = XLSX.utils.json_to_sheet(empData)
+        const wsERef = wsE['!ref']
+        if (wsERef) {
+          const wsERange = XLSX.utils.decode_range(wsERef)
+          let linkColIdx = -1
+          for (let c = wsERange.s.c; c <= wsERange.e.c; c++) {
+            if (wsE[XLSX.utils.encode_cell({ r: wsERange.s.r, c })]?.v === 'رابط صورة الإقامة') {
+              linkColIdx = c; break
+            }
+          }
+          if (linkColIdx !== -1) {
+            for (let r = wsERange.s.r + 1; r <= wsERange.e.r; r++) {
+              const cRef = XLSX.utils.encode_cell({ r, c: linkColIdx })
+              const rawUrl = typeof wsE[cRef]?.v === 'string' ? (wsE[cRef].v as string) : ''
+              wsE[cRef] = rawUrl.startsWith('http')
+                ? { t: 's', v: 'اضغط هنا لعرض الإقامة', l: { Target: rawUrl, Tooltip: 'فتح صورة الإقامة' } }
+                : { t: 's', v: rawUrl }
+            }
+          }
+        }
         const wbE = XLSX.utils.book_new()
         XLSX.utils.book_append_sheet(wbE, wsE, 'الموظفين')
         wsE['!cols'] = Array(21).fill({ wch: 18 })

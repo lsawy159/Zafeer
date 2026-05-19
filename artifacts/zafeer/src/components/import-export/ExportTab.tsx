@@ -1,5 +1,5 @@
-import { useState, useEffect, useMemo, ReactNode } from 'react'
-import { supabase, Employee, Company, Project } from '@/lib/supabase'
+import { useState, useEffect, useMemo, useCallback, memo, ReactNode } from 'react'
+import { supabase, Employee, Company, Project, ObligationType } from '@/lib/supabase'
 import {
   FileDown,
   CheckSquare,
@@ -27,6 +27,7 @@ import {
   normalizePayrollObligationBreakdown,
 } from '@/utils/payrollObligationBuckets'
 import { EmployeeListSkeleton } from '@/components/ui/Skeleton'
+import { RESIDENCE_BUCKET, isLegacyExternalUrl } from '@/lib/residenceFile'
 
 interface CompanyWithStats extends Company {
   employee_count?: number
@@ -66,6 +67,292 @@ function Chip({
     </button>
   )
 }
+
+// ─── Module-level helpers (stable across renders, no closure over state) ────
+
+const STATUS_THRESHOLDS = { urgent: 7, high: 15, medium: 30 }
+
+const isExpired = (date: string | null | undefined): boolean => {
+  if (!date) return false
+  return differenceInDays(new Date(date), new Date()) < 0
+}
+
+const isExpiringWithin30Days = (date: string | null | undefined): boolean => {
+  if (!date) return false
+  const daysRemaining = differenceInDays(new Date(date), new Date())
+  return daysRemaining >= 0 && daysRemaining <= 30
+}
+
+const getDaysRemaining = (date?: string | null): number | null => {
+  if (!date) return null
+  return differenceInDays(new Date(date), new Date())
+}
+
+const getDateTextColor = (days: number | null): string => {
+  if (days === null) return 'text-neutral-700'
+  if (days < 0) return 'text-red-700'
+  if (days <= STATUS_THRESHOLDS.urgent) return 'text-red-600'
+  if (days <= STATUS_THRESHOLDS.high) return 'text-warning-600'
+  if (days <= STATUS_THRESHOLDS.medium) return 'text-amber-600'
+  return 'text-neutral-700'
+}
+
+const formatDateStatus = (days: number | null, expiredLabel: string): string => {
+  if (days === null) return ''
+  if (days < 0) return expiredLabel
+  if (days === 0) return 'اليوم'
+  return `بعد ${days} يوم`
+}
+
+// ─── Employee display data (pre-computed once, stable when filteredEmployees unchanged) ─
+
+type EmployeeWithRelations = Employee & { company: Company; project?: Project }
+
+interface EmployeeDisplayData {
+  contractDays: number | null
+  hiredDays: number | null
+  residenceDays: number | null
+  insuranceDays: number | null
+  contractFormatted: string
+  hiredFormatted: string
+  residenceFormatted: string
+  insuranceFormatted: string
+}
+
+function computeEmployeeDisplayData(emp: EmployeeWithRelations, today: Date): EmployeeDisplayData {
+  return {
+    contractDays: emp.contract_expiry
+      ? differenceInDays(new Date(emp.contract_expiry), today)
+      : null,
+    hiredDays: emp.hired_worker_contract_expiry
+      ? differenceInDays(new Date(emp.hired_worker_contract_expiry), today)
+      : null,
+    residenceDays: emp.residence_expiry
+      ? differenceInDays(new Date(emp.residence_expiry), today)
+      : null,
+    insuranceDays: emp.health_insurance_expiry
+      ? differenceInDays(new Date(emp.health_insurance_expiry), today)
+      : null,
+    contractFormatted: emp.contract_expiry ? formatDateShortWithHijri(emp.contract_expiry) : '',
+    hiredFormatted: emp.hired_worker_contract_expiry
+      ? formatDateShortWithHijri(emp.hired_worker_contract_expiry)
+      : '',
+    residenceFormatted: emp.residence_expiry ? formatDateShortWithHijri(emp.residence_expiry) : '',
+    insuranceFormatted: emp.health_insurance_expiry
+      ? formatDateShortWithHijri(emp.health_insurance_expiry)
+      : '',
+  }
+}
+
+// ─── Memoized row components — skips reconciliation when props unchanged ─────
+
+const EmployeeTableRow = memo(function EmployeeTableRow({
+  emp,
+  displayData,
+  isSelected,
+  onToggle,
+}: {
+  emp: EmployeeWithRelations
+  displayData: EmployeeDisplayData
+  isSelected: boolean
+  onToggle: (id: string) => void
+}) {
+  return (
+    <tr className="hover:bg-neutral-50 cursor-pointer" onClick={() => onToggle(emp.id)}>
+      <td className="px-3 py-1.5 text-center">
+        {isSelected ? (
+          <CheckSquare className="w-4 h-4 text-blue-600" />
+        ) : (
+          <Square className="w-4 h-4 text-neutral-400" />
+        )}
+      </td>
+      <td className="px-3 py-1.5 text-[12px] font-medium text-neutral-900">{emp.name}</td>
+      <td className="px-3 py-1.5 text-[12px] text-neutral-700">{emp.profession}</td>
+      <td className="px-3 py-1.5 text-[12px] text-neutral-700">{emp.nationality}</td>
+      <td className="px-3 py-1.5 text-[12px] text-neutral-700">
+        {emp.company?.unified_number
+          ? `${emp.company.name} (${emp.company.unified_number})`
+          : emp.company?.name || ''}
+      </td>
+      <td className="px-3 py-1.5 text-[12px] text-neutral-700">
+        {emp.project?.name || emp.project_name || '-'}
+      </td>
+      <td className="px-3 py-1.5 text-[12px] font-mono text-neutral-900">
+        {emp.residence_number || '-'}
+      </td>
+      <td className="px-3 py-1.5 text-[12px]">
+        <div className="flex flex-col gap-0.5 items-start">
+          <span className={getDateTextColor(displayData.contractDays)}>
+            {displayData.contractFormatted || '-'}
+          </span>
+          {emp.contract_expiry && (
+            <span className="text-[11px] text-neutral-500">
+              {formatDateStatus(displayData.contractDays, 'منتهي')}
+            </span>
+          )}
+        </div>
+      </td>
+      <td className="px-3 py-1.5 text-[12px]">
+        <div className="flex flex-col gap-0.5 items-start">
+          <span className={getDateTextColor(displayData.hiredDays)}>
+            {displayData.hiredFormatted || '-'}
+          </span>
+          {emp.hired_worker_contract_expiry && (
+            <span className="text-[11px] text-neutral-500">
+              {formatDateStatus(displayData.hiredDays, 'منتهي')}
+            </span>
+          )}
+        </div>
+      </td>
+      <td className="px-3 py-1.5 text-[12px]">
+        <div className="flex flex-col gap-0.5 items-start">
+          <span className={getDateTextColor(displayData.residenceDays)}>
+            {displayData.residenceFormatted || '-'}
+          </span>
+          {emp.residence_expiry && (
+            <span className="text-[11px] text-neutral-500">
+              {formatDateStatus(displayData.residenceDays, 'منتهية')}
+            </span>
+          )}
+        </div>
+      </td>
+      <td className="px-3 py-1.5 text-[12px]">
+        <div className="flex flex-col gap-0.5 items-start">
+          <span className={getDateTextColor(displayData.insuranceDays)}>
+            {displayData.insuranceFormatted || '-'}
+          </span>
+          {emp.health_insurance_expiry && (
+            <span className="text-[11px] text-neutral-500">
+              {formatDateStatus(displayData.insuranceDays, 'منتهي')}
+            </span>
+          )}
+        </div>
+      </td>
+    </tr>
+  )
+})
+
+const EmployeeCardItem = memo(function EmployeeCardItem({
+  emp,
+  displayData,
+  isSelected,
+  onToggle,
+}: {
+  emp: EmployeeWithRelations
+  displayData: EmployeeDisplayData
+  isSelected: boolean
+  onToggle: (id: string) => void
+}) {
+  return (
+    <div
+      onClick={() => onToggle(emp.id)}
+      className={`bg-white border-2 rounded-lg p-4 cursor-pointer transition-all shadow-sm ${
+        isSelected
+          ? 'border-blue-500 bg-blue-50'
+          : 'border-neutral-200 hover:border-blue-300 hover:shadow'
+      }`}
+    >
+      <div className="flex items-start gap-3 mb-3 pb-3 border-b border-neutral-200">
+        <div className="pt-0.5">
+          {isSelected ? (
+            <CheckSquare className="w-5 h-5 text-blue-600" />
+          ) : (
+            <Square className="w-5 h-5 text-neutral-400" />
+          )}
+        </div>
+        <div className="flex-1">
+          <h4 className="font-bold text-neutral-900 text-base leading-tight">{emp.name}</h4>
+          <div className="flex flex-wrap gap-2 mt-1">
+            <span className="text-xs text-neutral-600">{emp.profession}</span>
+            <span className="text-xs text-neutral-400">•</span>
+            <span className="text-xs text-neutral-600">{emp.nationality}</span>
+          </div>
+          <p className="text-xs text-blue-600 mt-1">{emp.company?.name || 'غير محدد'}</p>
+          {emp.project?.name && (
+            <p className="text-xs text-success-600 mt-0.5">📁 {emp.project.name}</p>
+          )}
+          {emp.residence_number && (
+            <p className="text-xs text-neutral-500 mt-0.5 font-mono">🆔 {emp.residence_number}</p>
+          )}
+        </div>
+      </div>
+      <div className="grid grid-cols-2 gap-3">
+        <div className="space-y-1">
+          <p className="text-xs font-semibold text-neutral-500 flex items-center gap-1">
+            <FileText className="w-3 h-3" />
+            العقد
+          </p>
+          {emp.contract_expiry ? (
+            <>
+              <p className={`text-xs font-medium ${getDateTextColor(displayData.contractDays)}`}>
+                {displayData.contractFormatted}
+              </p>
+              <p className="text-[10px] text-neutral-500">
+                {formatDateStatus(displayData.contractDays, 'منتهي')}
+              </p>
+            </>
+          ) : (
+            <p className="text-xs text-neutral-400">غير محدد</p>
+          )}
+        </div>
+        <div className="space-y-1">
+          <p className="text-xs font-semibold text-neutral-500 flex items-center gap-1">
+            <FileText className="w-3 h-3" />
+            عقد الأجير
+          </p>
+          {emp.hired_worker_contract_expiry ? (
+            <>
+              <p className={`text-xs font-medium ${getDateTextColor(displayData.hiredDays)}`}>
+                {displayData.hiredFormatted}
+              </p>
+              <p className="text-[10px] text-neutral-500">
+                {formatDateStatus(displayData.hiredDays, 'منتهي')}
+              </p>
+            </>
+          ) : (
+            <p className="text-xs text-neutral-400">غير محدد</p>
+          )}
+        </div>
+        <div className="space-y-1">
+          <p className="text-xs font-semibold text-neutral-500 flex items-center gap-1">
+            <Calendar className="w-3 h-3" />
+            الإقامة
+          </p>
+          {emp.residence_expiry ? (
+            <>
+              <p className={`text-xs font-medium ${getDateTextColor(displayData.residenceDays)}`}>
+                {displayData.residenceFormatted}
+              </p>
+              <p className="text-[10px] text-neutral-500">
+                {formatDateStatus(displayData.residenceDays, 'منتهية')}
+              </p>
+            </>
+          ) : (
+            <p className="text-xs text-neutral-400">غير محدد</p>
+          )}
+        </div>
+        <div className="space-y-1">
+          <p className="text-xs font-semibold text-neutral-500 flex items-center gap-1">
+            <Shield className="w-3 h-3" />
+            التأمين
+          </p>
+          {emp.health_insurance_expiry ? (
+            <>
+              <p className={`text-xs font-medium ${getDateTextColor(displayData.insuranceDays)}`}>
+                {displayData.insuranceFormatted}
+              </p>
+              <p className="text-[10px] text-neutral-500">
+                {formatDateStatus(displayData.insuranceDays, 'منتهي')}
+              </p>
+            </>
+          ) : (
+            <p className="text-xs text-neutral-400">غير محدد</p>
+          )}
+        </div>
+      </div>
+    </div>
+  )
+})
 
 export default function ExportTab({
   initialExportType = 'employees',
@@ -120,6 +407,16 @@ export default function ExportTab({
     exempted: false,
     notExempted: false,
   })
+
+  const [isDesktop, setIsDesktop] = useState(() =>
+    typeof window !== 'undefined' ? window.matchMedia('(min-width: 1024px)').matches : true
+  )
+  useEffect(() => {
+    const mq = window.matchMedia('(min-width: 1024px)')
+    const handler = (e: MediaQueryListEvent) => setIsDesktop(e.matches)
+    mq.addEventListener('change', handler)
+    return () => mq.removeEventListener('change', handler)
+  }, [])
 
   const loadData = async () => {
     try {
@@ -185,48 +482,6 @@ export default function ExportTab({
     loadData()
   }, [])
 
-  // Helper functions for date checks
-  const isExpired = (date: string | null | undefined): boolean => {
-    if (!date) return false
-    const daysRemaining = differenceInDays(new Date(date), new Date())
-    return daysRemaining < 0
-  }
-
-  const isExpiringWithin30Days = (date: string | null | undefined): boolean => {
-    if (!date) return false
-    const daysRemaining = differenceInDays(new Date(date), new Date())
-    return daysRemaining >= 0 && daysRemaining <= 30
-  }
-
-  // Date status helpers for colored indicators
-  const getDaysRemaining = (date?: string | null): number | null => {
-    if (!date) return null
-    return differenceInDays(new Date(date), new Date())
-  }
-
-  // Thresholds similar to main Employees page (fallback values)
-  const STATUS_THRESHOLDS = {
-    urgent: 7,
-    high: 15,
-    medium: 30,
-  }
-
-  const getDateTextColor = (days: number | null): string => {
-    if (days === null) return 'text-neutral-700'
-    if (days < 0) return 'text-red-700'
-    if (days <= STATUS_THRESHOLDS.urgent) return 'text-red-600'
-    if (days <= STATUS_THRESHOLDS.high) return 'text-warning-600'
-    if (days <= STATUS_THRESHOLDS.medium) return 'text-amber-600'
-    return 'text-neutral-700'
-  }
-
-  const formatDateStatus = (days: number | null, expiredLabel: string): string => {
-    if (days === null) return ''
-    if (days < 0) return expiredLabel
-    if (days === 0) return 'اليوم'
-    return `بعد ${days} يوم`
-  }
-
   const calculateAvailableSlots = (company: CompanyWithStats): number => {
     const employeeCount = company.employee_count || 0
     const maxEmployees = company.max_employees || 4
@@ -282,6 +537,22 @@ export default function ExportTab({
       return true
     })
   }, [employees, searchQuery, selectedCompanyIds, selectedProjectName, employeeFilters])
+
+  const today = useMemo(() => new Date(), [])
+
+  const employeeDisplayData = useMemo(
+    () => new Map(filteredEmployees.map(emp => [emp.id, computeEmployeeDisplayData(emp, today)])),
+    [filteredEmployees, today]
+  )
+
+  const handleToggleEmployee = useCallback((id: string) => {
+    setSelectedEmployees(prev => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+  }, [])
 
   // Filter companies list inside employee sidebar by query
   const companiesForEmployeeFilter = useMemo(() => {
@@ -538,13 +809,16 @@ export default function ExportTab({
       const obligationTotalsMap = new Map<string, typeof EMPTY_PAYROLL_OBLIGATION_BREAKDOWN>()
 
       if (selectedIds.length > 0) {
-        const { data: obligationHeaders, error: obligationTotalsError } = await supabase
-          .from('employee_obligation_headers')
-          .select('employee_id, obligation_type, total_amount, status')
-          .in('employee_id', selectedIds)
-
-        if (obligationTotalsError) throw obligationTotalsError
-        ;(obligationHeaders || []).forEach((header) => {
+        const obligationHeaders: { employee_id: string; obligation_type: ObligationType; total_amount: number | null; status: string }[] = []
+        for (let i = 0; i < selectedIds.length; i += 200) {
+          const { data, error } = await supabase
+            .from('employee_obligation_headers')
+            .select('employee_id, obligation_type, total_amount, status')
+            .in('employee_id', selectedIds.slice(i, i + 200))
+          if (error) throw error
+          obligationHeaders.push(...(data || []))
+        }
+        ;(obligationHeaders).forEach((header) => {
           const bucket = getPayrollObligationBucketFromType(header.obligation_type)
           const current = normalizePayrollObligationBreakdown(
             obligationTotalsMap.get(header.employee_id)
@@ -560,30 +834,42 @@ export default function ExportTab({
         nextMonthDate.setMonth(nextMonthDate.getMonth() + 1)
         const nextMonthStart = nextMonthDate.toISOString().slice(0, 10)
 
-        const { data: payrollEntries, error: payrollError } = await supabase
-          .from('payroll_entries')
-          .select(
-            'id, employee_id, payroll_month, overtime_amount, deductions_amount, installment_deducted_amount, deductions_notes, overtime_notes'
-          )
-          .in('employee_id', selectedIds)
+        const { data: monthRuns, error: runsError } = await supabase
+          .from('payroll_runs')
+          .select('id')
           .gte('payroll_month', monthStart)
           .lt('payroll_month', nextMonthStart)
+        if (runsError) throw runsError
+        const runIds = (monthRuns || []).map((r) => r.id)
 
-        if (payrollError) throw payrollError
+        const payrollEntries: { id: string; employee_id: string; overtime_amount: number | null; deductions_amount: number | null; installment_deducted_amount: number | null; deductions_notes: string | null; overtime_notes: string | null }[] = []
+        if (runIds.length > 0) {
+          for (let i = 0; i < selectedIds.length; i += 200) {
+            const { data, error } = await supabase
+              .from('payroll_entries')
+              .select(
+                'id, employee_id, overtime_amount, deductions_amount, installment_deducted_amount, deductions_notes, overtime_notes'
+              )
+              .in('employee_id', selectedIds.slice(i, i + 200))
+              .in('payroll_run_id', runIds)
+            if (error) throw error
+            payrollEntries.push(...(data || []))
+          }
+        }
 
-        const entryIds = (payrollEntries || []).map((entry) => entry.id)
-        const { data: components, error: componentsError } =
-          entryIds.length > 0
-            ? await supabase
-                .from('payroll_entry_components')
-                .select('payroll_entry_id, component_code, amount')
-                .in('payroll_entry_id', entryIds)
-            : { data: [], error: null }
-
-        if (componentsError) throw componentsError
+        const entryIds = payrollEntries.map((entry) => entry.id)
+        const components: { payroll_entry_id: string; component_code: string | null; amount: number | null }[] = []
+        for (let i = 0; i < entryIds.length; i += 200) {
+          const { data, error } = await supabase
+            .from('payroll_entry_components')
+            .select('payroll_entry_id, component_code, amount')
+            .in('payroll_entry_id', entryIds.slice(i, i + 200))
+          if (error) throw error
+          components.push(...(data || []))
+        }
 
         const breakdownByEntryId = new Map<string, typeof EMPTY_PAYROLL_OBLIGATION_BREAKDOWN>()
-        ;(components || []).forEach((component) => {
+        ;(components).forEach((component) => {
           const bucket = getPayrollComponentBucket(component.component_code)
           if (!bucket) return
 
@@ -593,7 +879,7 @@ export default function ExportTab({
           current[bucket] += Number(component.amount || 0)
           breakdownByEntryId.set(component.payroll_entry_id, current)
         })
-        ;(payrollEntries || []).forEach((entry) => {
+        ;(payrollEntries).forEach((entry) => {
           const currentBreakdown = normalizePayrollObligationBreakdown(
             breakdownByEntryId.get(entry.id) ?? {
               ...EMPTY_PAYROLL_OBLIGATION_BREAKDOWN,
@@ -611,6 +897,31 @@ export default function ExportTab({
             breakdown: currentBreakdown,
           })
         })
+      }
+
+      const storagePaths = selectedData
+        .map((emp) => emp.residence_image_url)
+        .filter((p): p is string => !!p && !isLegacyExternalUrl(p))
+
+      const signedUrlMap = new Map<string, string>()
+      if (storagePaths.length > 0) {
+        for (let i = 0; i < storagePaths.length; i += 100) {
+          const chunk = storagePaths.slice(i, i + 100)
+          const { data: signedResults, error: signErr } = await supabase.storage
+            .from(RESIDENCE_BUCKET)
+            .createSignedUrls(chunk, 604800)
+          if (signErr) {
+            toast.warning('تعذّر توليد روابط صور الإقامة — سيُصدَّر الملف بدونها')
+            break
+          }
+          if (signedResults) {
+            for (const result of signedResults) {
+              if (result.signedUrl && result.path && !result.error) {
+                signedUrlMap.set(result.path, result.signedUrl)
+              }
+            }
+          }
+        }
       }
 
       const excelData = selectedData.map((emp) => {
@@ -651,7 +962,12 @@ export default function ExportTab({
           'تاريخ انتهاء التأمين الصحي': emp.health_insurance_expiry
             ? formatDateShortWithHijri(emp.health_insurance_expiry)
             : '',
-          'رابط صورة الإقامة': emp.residence_image_url || '',
+          'رابط صورة الإقامة': (() => {
+            const p = emp.residence_image_url
+            if (!p) return ''
+            if (isLegacyExternalUrl(p)) return p
+            return signedUrlMap.get(p) ?? ''
+          })(),
           الملاحظات: emp.notes || '',
         }
 
@@ -677,6 +993,25 @@ export default function ExportTab({
       })
 
       const ws = XLSX.utils.json_to_sheet(excelData)
+      const wsRef = ws['!ref']
+      if (wsRef) {
+        const wsRange = XLSX.utils.decode_range(wsRef)
+        let linkColIdx = -1
+        for (let c = wsRange.s.c; c <= wsRange.e.c; c++) {
+          if (ws[XLSX.utils.encode_cell({ r: wsRange.s.r, c })]?.v === 'رابط صورة الإقامة') {
+            linkColIdx = c; break
+          }
+        }
+        if (linkColIdx !== -1) {
+          for (let r = wsRange.s.r + 1; r <= wsRange.e.r; r++) {
+            const cRef = XLSX.utils.encode_cell({ r, c: linkColIdx })
+            const rawUrl = typeof ws[cRef]?.v === 'string' ? (ws[cRef].v as string) : ''
+            ws[cRef] = rawUrl.startsWith('http')
+              ? { t: 's', v: 'اضغط هنا لعرض الإقامة', l: { Target: rawUrl, Tooltip: 'فتح صورة الإقامة' } }
+              : { t: 's', v: rawUrl }
+          }
+        }
+      }
       const wb = XLSX.utils.book_new()
       XLSX.utils.book_append_sheet(
         wb,
@@ -755,7 +1090,13 @@ export default function ExportTab({
       toast.success(`تم تصدير ${selectedEmployees.size} موظف بنجاح`)
     } catch (error) {
       console.error('Export error:', error)
-      toast.error('فشل تصدير البيانات')
+      const msg =
+        error instanceof Error
+          ? error.message
+          : typeof error === 'object' && error !== null && 'message' in error
+            ? String((error as { message: unknown }).message)
+            : String(error)
+      toast.error(`فشل تصدير البيانات: ${msg}`)
     } finally {
       setLoading(false)
     }
@@ -917,19 +1258,20 @@ export default function ExportTab({
               </select>
             </div>
 
-            {employeeExportMode === 'monthly' && (
-              <div className="min-w-[180px]">
-                <label className="mb-1 block text-xs font-semibold text-slate-700">
-                  الشهر المطلوب
-                </label>
-                <input
-                  type="month"
-                  value={monthlyExportMonth}
-                  onChange={(e) => setMonthlyExportMonth(e.target.value)}
-                  className="app-input py-2.5"
-                />
-              </div>
-            )}
+            <div
+              className="min-w-[180px]"
+              style={{ visibility: employeeExportMode === 'monthly' ? 'visible' : 'hidden' }}
+            >
+              <label className="mb-1 block text-xs font-semibold text-slate-700">
+                الشهر المطلوب
+              </label>
+              <input
+                type="month"
+                value={monthlyExportMonth}
+                onChange={(e) => setMonthlyExportMonth(e.target.value)}
+                className="app-input py-2.5"
+              />
+            </div>
           </div>
 
           {/* Search and Filter Toggle */}
@@ -1247,8 +1589,8 @@ export default function ExportTab({
             </div>
           )}
 
-          {/* Employees List - Desktop Table (hidden on mobile) */}
-          <div className="hidden lg:block bg-white rounded-md border border-neutral-200 overflow-hidden">
+          {/* Employees List - Desktop Table */}
+          <div className="bg-white rounded-md border border-neutral-200 overflow-hidden" style={{ contain: 'layout paint', display: isDesktop ? '' : 'none' }}>
             <div className="overflow-x-auto">
               <table className="w-full">
                 <thead className="bg-neutral-50 border-b border-neutral-200">
@@ -1300,123 +1642,21 @@ export default function ExportTab({
                 </thead>
                 <tbody className="divide-y divide-gray-100">
                   {filteredEmployees.map((emp) => (
-                    <tr
+                    <EmployeeTableRow
                       key={emp.id}
-                      className="hover:bg-neutral-50 cursor-pointer"
-                      onClick={() => toggleEmployeeSelection(emp.id)}
-                    >
-                      <td className="px-3 py-1.5 text-center">
-                        {selectedEmployees.has(emp.id) ? (
-                          <CheckSquare className="w-4 h-4 text-blue-600" />
-                        ) : (
-                          <Square className="w-4 h-4 text-neutral-400" />
-                        )}
-                      </td>
-                      <td className="px-3 py-1.5 text-[12px] font-medium text-neutral-900">
-                        {emp.name}
-                      </td>
-                      <td className="px-3 py-1.5 text-[12px] text-neutral-700">{emp.profession}</td>
-                      <td className="px-3 py-1.5 text-[12px] text-neutral-700">
-                        {emp.nationality}
-                      </td>
-                      <td className="px-3 py-1.5 text-[12px] text-neutral-700">
-                        {(() => {
-                          const companyName = emp.company?.name || ''
-                          const unifiedNumber = emp.company?.unified_number
-                          return unifiedNumber ? `${companyName} (${unifiedNumber})` : companyName
-                        })()}
-                      </td>
-                      <td className="px-3 py-1.5 text-[12px] text-neutral-700">
-                        {emp.project?.name || emp.project_name || '-'}
-                      </td>
-                      <td className="px-3 py-1.5 text-[12px] font-mono text-neutral-900">
-                        {emp.residence_number || '-'}
-                      </td>
-                      <td className="px-3 py-1.5 text-[12px]">
-                        {(() => {
-                          const d = getDaysRemaining(emp.contract_expiry)
-                          return (
-                            <div className="flex flex-col gap-0.5 items-start">
-                              <span className={getDateTextColor(d)}>
-                                {emp.contract_expiry
-                                  ? formatDateShortWithHijri(emp.contract_expiry)
-                                  : '-'}
-                              </span>
-                              {emp.contract_expiry && (
-                                <span className="text-[11px] text-neutral-500">
-                                  {formatDateStatus(d, 'منتهي')}
-                                </span>
-                              )}
-                            </div>
-                          )
-                        })()}
-                      </td>
-                      <td className="px-3 py-1.5 text-[12px]">
-                        {(() => {
-                          const d = getDaysRemaining(emp.hired_worker_contract_expiry)
-                          return (
-                            <div className="flex flex-col gap-0.5 items-start">
-                              <span className={getDateTextColor(d)}>
-                                {emp.hired_worker_contract_expiry
-                                  ? formatDateShortWithHijri(emp.hired_worker_contract_expiry)
-                                  : '-'}
-                              </span>
-                              {emp.hired_worker_contract_expiry && (
-                                <span className="text-[11px] text-neutral-500">
-                                  {formatDateStatus(d, 'منتهي')}
-                                </span>
-                              )}
-                            </div>
-                          )
-                        })()}
-                      </td>
-                      <td className="px-3 py-1.5 text-[12px]">
-                        {(() => {
-                          const d = getDaysRemaining(emp.residence_expiry)
-                          return (
-                            <div className="flex flex-col gap-0.5 items-start">
-                              <span className={getDateTextColor(d)}>
-                                {emp.residence_expiry
-                                  ? formatDateShortWithHijri(emp.residence_expiry)
-                                  : '-'}
-                              </span>
-                              {emp.residence_expiry && (
-                                <span className="text-[11px] text-neutral-500">
-                                  {formatDateStatus(d, 'منتهية')}
-                                </span>
-                              )}
-                            </div>
-                          )
-                        })()}
-                      </td>
-                      <td className="px-3 py-1.5 text-[12px]">
-                        {(() => {
-                          const d = getDaysRemaining(emp.health_insurance_expiry)
-                          return (
-                            <div className="flex flex-col gap-0.5 items-start">
-                              <span className={getDateTextColor(d)}>
-                                {emp.health_insurance_expiry
-                                  ? formatDateShortWithHijri(emp.health_insurance_expiry)
-                                  : '-'}
-                              </span>
-                              {emp.health_insurance_expiry && (
-                                <span className="text-[11px] text-neutral-500">
-                                  {formatDateStatus(d, 'منتهي')}
-                                </span>
-                              )}
-                            </div>
-                          )
-                        })()}
-                      </td>
-                    </tr>
+                      emp={emp}
+                      displayData={employeeDisplayData.get(emp.id)!}
+                      isSelected={selectedEmployees.has(emp.id)}
+                      onToggle={handleToggleEmployee}
+                    />
                   ))}
                 </tbody>
               </table>
             </div>
           </div>
 
-          {/* Employees Grid - Mobile View (visible on small screens) */}
-          <div className="lg:hidden space-y-3">
+          {/* Employees Grid - Mobile View */}
+          <div className="space-y-3" style={{ display: isDesktop ? 'none' : '' }}>
             {/* Select All Button */}
             <div className="bg-neutral-50 p-3 rounded-lg border border-neutral-200">
               <button
@@ -1434,139 +1674,15 @@ export default function ExportTab({
             </div>
 
             {/* Employees Grid */}
-            {filteredEmployees.map((emp) => {
-              const contractDays = getDaysRemaining(emp.contract_expiry)
-              const hiredDays = getDaysRemaining(emp.hired_worker_contract_expiry)
-              const residenceDays = getDaysRemaining(emp.residence_expiry)
-              const insuranceDays = getDaysRemaining(emp.health_insurance_expiry)
-
-              return (
-                <div
-                  key={emp.id}
-                  onClick={() => toggleEmployeeSelection(emp.id)}
-                  className={`bg-white border-2 rounded-lg p-4 cursor-pointer transition-all shadow-sm ${
-                    selectedEmployees.has(emp.id)
-                      ? 'border-blue-500 bg-blue-50'
-                      : 'border-neutral-200 hover:border-blue-300 hover:shadow'
-                  }`}
-                >
-                  {/* Header with checkbox and name */}
-                  <div className="flex items-start gap-3 mb-3 pb-3 border-b border-neutral-200">
-                    <div className="pt-0.5">
-                      {selectedEmployees.has(emp.id) ? (
-                        <CheckSquare className="w-5 h-5 text-blue-600" />
-                      ) : (
-                        <Square className="w-5 h-5 text-neutral-400" />
-                      )}
-                    </div>
-                    <div className="flex-1">
-                      <h4 className="font-bold text-neutral-900 text-base leading-tight">
-                        {emp.name}
-                      </h4>
-                      <div className="flex flex-wrap gap-2 mt-1">
-                        <span className="text-xs text-neutral-600">{emp.profession}</span>
-                        <span className="text-xs text-neutral-400">•</span>
-                        <span className="text-xs text-neutral-600">{emp.nationality}</span>
-                      </div>
-                      <p className="text-xs text-blue-600 mt-1">
-                        {emp.company?.name || 'غير محدد'}
-                      </p>
-                      {emp.project?.name && (
-                        <p className="text-xs text-success-600 mt-0.5">📁 {emp.project.name}</p>
-                      )}
-                      {emp.residence_number && (
-                        <p className="text-xs text-neutral-500 mt-0.5 font-mono">
-                          🆔 {emp.residence_number}
-                        </p>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Information Grid */}
-                  <div className="grid grid-cols-2 gap-3">
-                    {/* العقد */}
-                    <div className="space-y-1">
-                      <p className="text-xs font-semibold text-neutral-500 flex items-center gap-1">
-                        <FileText className="w-3 h-3" />
-                        العقد
-                      </p>
-                      {emp.contract_expiry ? (
-                        <>
-                          <p className={`text-xs font-medium ${getDateTextColor(contractDays)}`}>
-                            {formatDateShortWithHijri(emp.contract_expiry)}
-                          </p>
-                          <p className="text-[10px] text-neutral-500">
-                            {formatDateStatus(contractDays, 'منتهي')}
-                          </p>
-                        </>
-                      ) : (
-                        <p className="text-xs text-neutral-400">غير محدد</p>
-                      )}
-                    </div>
-
-                    {/* عقد الأجير */}
-                    <div className="space-y-1">
-                      <p className="text-xs font-semibold text-neutral-500 flex items-center gap-1">
-                        <FileText className="w-3 h-3" />
-                        عقد الأجير
-                      </p>
-                      {emp.hired_worker_contract_expiry ? (
-                        <>
-                          <p className={`text-xs font-medium ${getDateTextColor(hiredDays)}`}>
-                            {formatDateShortWithHijri(emp.hired_worker_contract_expiry)}
-                          </p>
-                          <p className="text-[10px] text-neutral-500">
-                            {formatDateStatus(hiredDays, 'منتهي')}
-                          </p>
-                        </>
-                      ) : (
-                        <p className="text-xs text-neutral-400">غير محدد</p>
-                      )}
-                    </div>
-
-                    {/* الإقامة */}
-                    <div className="space-y-1">
-                      <p className="text-xs font-semibold text-neutral-500 flex items-center gap-1">
-                        <Calendar className="w-3 h-3" />
-                        الإقامة
-                      </p>
-                      {emp.residence_expiry ? (
-                        <>
-                          <p className={`text-xs font-medium ${getDateTextColor(residenceDays)}`}>
-                            {formatDateShortWithHijri(emp.residence_expiry)}
-                          </p>
-                          <p className="text-[10px] text-neutral-500">
-                            {formatDateStatus(residenceDays, 'منتهية')}
-                          </p>
-                        </>
-                      ) : (
-                        <p className="text-xs text-neutral-400">غير محدد</p>
-                      )}
-                    </div>
-
-                    {/* التأمين الصحي */}
-                    <div className="space-y-1">
-                      <p className="text-xs font-semibold text-neutral-500 flex items-center gap-1">
-                        <Shield className="w-3 h-3" />
-                        التأمين
-                      </p>
-                      {emp.health_insurance_expiry ? (
-                        <>
-                          <p className={`text-xs font-medium ${getDateTextColor(insuranceDays)}`}>
-                            {formatDateShortWithHijri(emp.health_insurance_expiry)}
-                          </p>
-                          <p className="text-[10px] text-neutral-500">
-                            {formatDateStatus(insuranceDays, 'منتهي')}
-                          </p>
-                        </>
-                      ) : (
-                        <p className="text-xs text-neutral-400">غير محدد</p>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              )
-            })}
+            {filteredEmployees.map((emp) => (
+              <EmployeeCardItem
+                key={emp.id}
+                emp={emp}
+                displayData={employeeDisplayData.get(emp.id)!}
+                isSelected={selectedEmployees.has(emp.id)}
+                onToggle={handleToggleEmployee}
+              />
+            ))}
           </div>
         </div>
       )}
