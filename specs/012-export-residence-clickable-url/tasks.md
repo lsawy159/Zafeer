@@ -45,13 +45,21 @@
 
   const signedUrlMap = new Map<string, string>()
   if (storagePaths.length > 0) {
-    const { data: signedResults } = await supabase.storage
-      .from(RESIDENCE_BUCKET)
-      .createSignedUrls(storagePaths, 604800)
-    if (signedResults) {
-      for (const result of signedResults) {
-        if (result.signedUrl && !result.error) {
-          signedUrlMap.set(result.path, result.signedUrl)
+    // تقسيم لدفعات 100 (FR-005)
+    for (let i = 0; i < storagePaths.length; i += 100) {
+      const chunk = storagePaths.slice(i, i + 100)
+      const { data: signedResults, error: signErr } = await supabase.storage
+        .from(RESIDENCE_BUCKET)
+        .createSignedUrls(chunk, 604800)
+      if (signErr) {
+        toast.warning('تعذّر توليد روابط صور الإقامة — سيُصدَّر الملف بدونها')
+        break
+      }
+      if (signedResults) {
+        for (const result of signedResults) {
+          if (result.signedUrl && result.path && !result.error) {
+            signedUrlMap.set(result.path, result.signedUrl)
+          }
         }
       }
     }
@@ -94,13 +102,21 @@
 
   const exportSignedUrlMap = new Map<string, string>()
   if (empStoragePaths.length > 0) {
-    const { data: signedResults } = await supabase.storage
-      .from(RESIDENCE_BUCKET)
-      .createSignedUrls(empStoragePaths, 604800)
-    if (signedResults) {
-      for (const result of signedResults) {
-        if (result.signedUrl && !result.error) {
-          exportSignedUrlMap.set(result.path, result.signedUrl)
+    // تقسيم لدفعات 100 (FR-005)
+    for (let i = 0; i < empStoragePaths.length; i += 100) {
+      const chunk = empStoragePaths.slice(i, i + 100)
+      const { data: signedResults, error: signErr } = await supabase.storage
+        .from(RESIDENCE_BUCKET)
+        .createSignedUrls(chunk, 604800)
+      if (signErr) {
+        toast.warning('تعذّر توليد روابط صور الإقامة — سيُصدَّر الملف بدونها')
+        break
+      }
+      if (signedResults) {
+        for (const result of signedResults) {
+          if (result.signedUrl && result.path && !result.error) {
+            exportSignedUrlMap.set(result.path, result.signedUrl)
+          }
         }
       }
     }

@@ -35,12 +35,12 @@
 
 ### 3. معالجة الأخطاء
 
-**Decision**: `Promise.allSettled` + fallback صامت (خلية فارغة) عند الفشل
+**Decision**: معالجة مزدوجة — toast عند فشل الـ batch كلّه، صمت عند فشل عنصر واحد
 
 **Rationale**:
-- FR-006: فشل موظف واحد لا يوقف باقي التصدير
-- `createSignedUrls` يعيد مصفوفة نتائج — كل عنصر قد يحمل `error != null`
-- نبني Map من path → signedUrl، ونترك فارغاً إن فشل التوليد
+- FR-006 (محدَّث): فشل كلّي → toast تحذيري + استمرار بخلايا فارغة، **ممنوع الفشل الصامت**
+- فشل موظف واحد (level عنصر) → خلية فارغة بصمت
+- `result.path` قد يكون `null` → check `result.path && result.signedUrl && !result.error` قبل الإدراج في الـ Map
 
 ---
 
@@ -54,6 +54,17 @@
 - كلاهما يكتب `residence_image_url` كـ raw path في Excel
 - `ExportTab.tsx` هو الاستخدام الرئيسي (تصدير موظفين محددين)
 - `ImportExport.tsx:exportAll()` يصدّر كل الموظفين دفعة واحدة
+
+---
+
+### 4b. Chunking
+
+**Decision**: تقسيم الـ paths لدفعات 100 لكل طلب
+
+**Rationale**:
+- لا سقف موثّق لـ `createSignedUrls` لكن payload كبير قد يصطدم بحدود حجم الطلب
+- اتساق مع نمط `employee_obligation_headers` في نفس الملف (chunks of 200)
+- 100 per chunk أكثر تحفظاً وكافٍ للأداء
 
 ---
 
