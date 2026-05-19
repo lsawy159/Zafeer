@@ -35,9 +35,9 @@
 
 ### Implementation for User Story 1
 
-- [ ] T001 [US1] أضف `import { RESIDENCE_BUCKET, isLegacyExternalUrl } from '@/lib/residenceFile'` في أعلى `artifacts/zafeer/src/components/import-export/ExportTab.tsx`
+- [x] T001 [US1] أضف `import { RESIDENCE_BUCKET, isLegacyExternalUrl } from '@/lib/residenceFile'` في أعلى `artifacts/zafeer/src/components/import-export/ExportTab.tsx`
 
-- [ ] T002 [US1] في دالة `exportEmployees()` بعد تعريف `selectedData` (السطر ~793) وقبل بناء `excelData`، أضف كتلة توليد Signed URLs في `artifacts/zafeer/src/components/import-export/ExportTab.tsx`:
+- [x] T002 [US1] في دالة `exportEmployees()` بعد تعريف `selectedData` (السطر ~793) وقبل بناء `excelData`، أضف كتلة توليد Signed URLs في `artifacts/zafeer/src/components/import-export/ExportTab.tsx`:
   ```typescript
   const storagePaths = selectedData
     .map((emp) => emp.residence_image_url)
@@ -66,7 +66,7 @@
   }
   ```
 
-- [ ] T003 [US1] في نفس الملف، عدّل السطر ~939 داخل `excelData.map()` في `artifacts/zafeer/src/components/import-export/ExportTab.tsx`:
+- [x] T003 [US1] في نفس الملف، عدّل السطر ~939 داخل `excelData.map()` في `artifacts/zafeer/src/components/import-export/ExportTab.tsx`:
   ```typescript
   // استبدل:
   'رابط صورة الإقامة': emp.residence_image_url || '',
@@ -92,9 +92,9 @@
 
 ### Implementation for User Story 2
 
-- [ ] T004 [US2] أضف `import { RESIDENCE_BUCKET, isLegacyExternalUrl } from '@/lib/residenceFile'` في أعلى `artifacts/zafeer/src/pages/ImportExport.tsx`
+- [x] T004 [US2] أضف `import { RESIDENCE_BUCKET, isLegacyExternalUrl } from '@/lib/residenceFile'` في أعلى `artifacts/zafeer/src/pages/ImportExport.tsx`
 
-- [ ] T005 [US2] في دالة `exportAll()` بعد `if (empErr) throw empErr` (السطر ~48) وقبل `const empData = employees.map(...)`, أضف كتلة توليد Signed URLs في `artifacts/zafeer/src/pages/ImportExport.tsx`:
+- [x] T005 [US2] في دالة `exportAll()` بعد `if (empErr) throw empErr` (السطر ~48) وقبل `const empData = employees.map(...)`, أضف كتلة توليد Signed URLs في `artifacts/zafeer/src/pages/ImportExport.tsx`:
   ```typescript
   const empStoragePaths = (rawEmp ?? [])
     .map((e) => (e as Record<string, unknown>).residence_image_url as string | null)
@@ -123,7 +123,7 @@
   }
   ```
 
-- [ ] T006 [US2] في نفس الملف، عدّل السطر ~87 داخل `employees.map()` في `artifacts/zafeer/src/pages/ImportExport.tsx`:
+- [x] T006 [US2] في نفس الملف، عدّل السطر ~87 داخل `employees.map()` في `artifacts/zafeer/src/pages/ImportExport.tsx`:
   ```typescript
   // استبدل:
   'رابط صورة الإقامة': emp.residence_image_url ?? '',
@@ -145,7 +145,7 @@
 
 **Purpose**: التحقق من سلامة الأنواع والمنطق
 
-- [ ] T007 شغّل typecheck: `pnpm --filter @workspace/zafeer run typecheck` من جذر المشروع وتأكد أن لا أخطاء
+- [x] T007 شغّل typecheck: `pnpm --filter @workspace/zafeer run typecheck` من جذر المشروع وتأكد أن لا أخطاء
 - [ ] T008 تحقق يدوي حسب `specs/012-export-residence-clickable-url/quickstart.md`: صدّر موظفاً لديه صورة إقامة، افتح Excel، اضغط الرابط → يفتح في المتصفح
 
 ---

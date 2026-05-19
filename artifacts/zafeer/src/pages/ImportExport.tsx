@@ -12,6 +12,7 @@ import { loadXlsx } from '@/utils/lazyXlsx'
 import { saveAs } from 'file-saver'
 import { toast } from 'sonner'
 import { formatDateShortWithHijri } from '@/utils/dateFormatter'
+import { RESIDENCE_BUCKET, isLegacyExternalUrl } from '@/lib/residenceFile'
 
 type TabType = 'export' | 'import' | 'templates'
 type DataEntityType = 'employees' | 'companies' | 'transferProcedures'
@@ -46,6 +47,31 @@ export default function ImportExport() {
         .eq('is_deleted', false)
         .order('name')
       if (empErr) throw empErr
+
+      const empStoragePaths = (rawEmp ?? [])
+        .map((e) => ((e as unknown) as Record<string, unknown>).residence_image_url as string | null)
+        .filter((p): p is string => !!p && !isLegacyExternalUrl(p))
+
+      const exportSignedUrlMap = new Map<string, string>()
+      if (empStoragePaths.length > 0) {
+        for (let i = 0; i < empStoragePaths.length; i += 100) {
+          const chunk = empStoragePaths.slice(i, i + 100)
+          const { data: signedResults, error: signErr } = await supabase.storage
+            .from(RESIDENCE_BUCKET)
+            .createSignedUrls(chunk, 604800)
+          if (signErr) {
+            toast.warning('تعذّر توليد روابط صور الإقامة — سيُصدَّر الملف بدونها')
+            break
+          }
+          if (signedResults) {
+            for (const result of signedResults) {
+              if (result.signedUrl && result.path && !result.error) {
+                exportSignedUrlMap.set(result.path, result.signedUrl)
+              }
+            }
+          }
+        }
+      }
 
       const employees = (rawEmp ?? []) as unknown[]
       if (employees.length > 0) {
@@ -84,7 +110,12 @@ export default function ImportExport() {
             'تاريخ انتهاء العقد': fmtDate(emp.contract_expiry),
             'تاريخ انتهاء عقد أجير': fmtDate(emp.hired_worker_contract_expiry),
             'تاريخ انتهاء التأمين الصحي': fmtDate(emp.health_insurance_expiry),
-            'رابط صورة الإقامة': emp.residence_image_url ?? '',
+            'رابط صورة الإقامة': (() => {
+              const p = emp.residence_image_url as string | null | undefined
+              if (!p) return ''
+              if (isLegacyExternalUrl(p)) return p
+              return exportSignedUrlMap.get(p) ?? ''
+            })(),
             الملاحظات: emp.notes ?? '',
           }
         })
