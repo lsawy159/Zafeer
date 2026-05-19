@@ -993,6 +993,25 @@ export default function ExportTab({
       })
 
       const ws = XLSX.utils.json_to_sheet(excelData)
+      const wsRef = ws['!ref']
+      if (wsRef) {
+        const wsRange = XLSX.utils.decode_range(wsRef)
+        let linkColIdx = -1
+        for (let c = wsRange.s.c; c <= wsRange.e.c; c++) {
+          if (ws[XLSX.utils.encode_cell({ r: wsRange.s.r, c })]?.v === 'رابط صورة الإقامة') {
+            linkColIdx = c; break
+          }
+        }
+        if (linkColIdx !== -1) {
+          for (let r = wsRange.s.r + 1; r <= wsRange.e.r; r++) {
+            const cRef = XLSX.utils.encode_cell({ r, c: linkColIdx })
+            const rawUrl = typeof ws[cRef]?.v === 'string' ? (ws[cRef].v as string) : ''
+            ws[cRef] = rawUrl.startsWith('http')
+              ? { t: 's', v: 'اضغط هنا لعرض الإقامة', l: { Target: rawUrl, Tooltip: 'فتح صورة الإقامة' } }
+              : { t: 's', v: rawUrl }
+          }
+        }
+      }
       const wb = XLSX.utils.book_new()
       XLSX.utils.book_append_sheet(
         wb,
