@@ -146,7 +146,8 @@
 **Purpose**: التحقق من سلامة الأنواع والمنطق
 
 - [x] T007 شغّل typecheck: `pnpm --filter @workspace/zafeer run typecheck` من جذر المشروع وتأكد أن لا أخطاء
-- [ ] T008 تحقق يدوي حسب `specs/012-export-residence-clickable-url/quickstart.md`: صدّر موظفاً لديه صورة إقامة، افتح Excel، اضغط الرابط → يفتح في المتصفح
+- [x] T008 تحقق يدوي حسب `specs/012-export-residence-clickable-url/quickstart.md`: صدّر موظفاً لديه صورة إقامة، افتح Excel، اضغط الرابط → يفتح في المتصفح
+- [x] T009 [US1] [US2] تحويل خلية رابط الإقامة في ملف Excel من plain text إلى Hyperlink قابل للنقر مباشرة بنص "اضغط هنا لعرض الإقامة" — تطبيق post-processing على worksheet بعد `json_to_sheet` في كلا `ExportTab.tsx` و`ImportExport.tsx`
 
 ---
 

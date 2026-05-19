@@ -120,6 +120,25 @@ export default function ImportExport() {
           }
         })
         const wsE = XLSX.utils.json_to_sheet(empData)
+        const wsERef = wsE['!ref']
+        if (wsERef) {
+          const wsERange = XLSX.utils.decode_range(wsERef)
+          let linkColIdx = -1
+          for (let c = wsERange.s.c; c <= wsERange.e.c; c++) {
+            if (wsE[XLSX.utils.encode_cell({ r: wsERange.s.r, c })]?.v === 'رابط صورة الإقامة') {
+              linkColIdx = c; break
+            }
+          }
+          if (linkColIdx !== -1) {
+            for (let r = wsERange.s.r + 1; r <= wsERange.e.r; r++) {
+              const cRef = XLSX.utils.encode_cell({ r, c: linkColIdx })
+              const rawUrl = typeof wsE[cRef]?.v === 'string' ? (wsE[cRef].v as string) : ''
+              wsE[cRef] = rawUrl.startsWith('http')
+                ? { t: 's', v: 'اضغط هنا لعرض الإقامة', l: { Target: rawUrl, Tooltip: 'فتح صورة الإقامة' } }
+                : { t: 's', v: rawUrl }
+            }
+          }
+        }
         const wbE = XLSX.utils.book_new()
         XLSX.utils.book_append_sheet(wbE, wsE, 'الموظفين')
         wsE['!cols'] = Array(21).fill({ wch: 18 })
