@@ -8,6 +8,7 @@ import {
   calculateCompanyStats,
   calculateEmployeeStats,
   calculateCompanyAlertStats,
+  calculateCompanyExpiredDocs,
   calculateCompanyMissingData,
   calculateEmployeeAlertStats,
   calculateEmployeeExpiredDocs,
@@ -103,6 +104,9 @@ export default function StatsDashboard() {
     () => calculateCompanyAlertStats(statsCompanies, statusThresholds as StatusThresholds, today),
     [statsCompanies, statusThresholds, today]
   )
+
+  // ── Section G ─ وثائق المؤسسات المنتهية
+  const companyExpired = useMemo(() => calculateCompanyExpiredDocs(statsCompanies, today), [statsCompanies, today])
 
   // ── Section F ─ بيانات المؤسسات الناقصة
   const companyMissing = useMemo(() => calculateCompanyMissingData(statsCompanies), [statsCompanies])
@@ -251,6 +255,34 @@ export default function StatsDashboard() {
             loading={!thresholdsLoaded || dataLoading}
             badge={statusBadge}
             onClick={() => openCompanyModal('تنبيهات المؤسسات — متوسط', (r, t) => predicates.isMediumAlertCompany(r, statusThresholds as StatusThresholds, t))}
+          />
+        </div>
+      </section>
+
+      {/* ── Section G — وثائق المؤسسات المنتهية ─────── */}
+      <section>
+        <SectionHeader icon={<FileX size={16} />} title="وثائق المؤسسات المنتهية" />
+        <div className="grid grid-cols-3 gap-3">
+          <StatCard
+            label="سجل تجاري منتهٍ"
+            count={companyExpired.commercial_reg}
+            color="red"
+            loading={dataLoading}
+            onClick={() => openCompanyModal('سجل تجاري منتهٍ', predicates.hasExpiredCommercialReg)}
+          />
+          <StatCard
+            label="اشتراك قوى منتهٍ"
+            count={companyExpired.power_subscription}
+            color="red"
+            loading={dataLoading}
+            onClick={() => openCompanyModal('اشتراك قوى منتهٍ', predicates.hasExpiredPowerDate)}
+          />
+          <StatCard
+            label="اشتراك مقيم منتهٍ"
+            count={companyExpired.moqeem_subscription}
+            color="red"
+            loading={dataLoading}
+            onClick={() => openCompanyModal('اشتراك مقيم منتهٍ', predicates.hasExpiredMoqeemDate)}
           />
         </div>
       </section>

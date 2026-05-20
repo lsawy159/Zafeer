@@ -9,6 +9,7 @@ import type {
   CompanyStatsResult,
   EmployeeStatsResult,
   CompanyAlertStatsResult,
+  CompanyExpiredDocsResult,
   CompanyMissingDataResult,
   EmployeeExpiredDocsResult,
   EmployeeMissingDocsResult,
@@ -172,6 +173,23 @@ export function calculateEmployeeExpiredDocs(
 }
 
 // ──────────────────────────────────────────────
+// Section G — وثائق المؤسسات المنتهية
+// ──────────────────────────────────────────────
+
+export function calculateCompanyExpiredDocs(
+  rows: StatsCompanyRow[],
+  today: Date
+): CompanyExpiredDocsResult {
+  let commercial_reg = 0, power_subscription = 0, moqeem_subscription = 0
+  for (const row of rows) {
+    if (isDateExpired(row.commercial_registration_expiry, today)) commercial_reg++
+    if (isDateExpired(row.ending_subscription_power_date, today)) power_subscription++
+    if (isDateExpired(row.ending_subscription_moqeem_date, today)) moqeem_subscription++
+  }
+  return { commercial_reg, power_subscription, moqeem_subscription }
+}
+
+// ──────────────────────────────────────────────
 // Section F — بيانات المؤسسات الناقصة
 // ──────────────────────────────────────────────
 
@@ -272,6 +290,11 @@ export const predicates = {
   isHealthyCompany: (row: StatsCompanyRow, today: Date) => classifyCompany(row, today) === 'healthy',
   isDamagedCompany: (row: StatsCompanyRow, today: Date) => classifyCompany(row, today) === 'damaged',
   isMissingCompany: (row: StatsCompanyRow, today: Date) => classifyCompany(row, today) === 'missing',
+
+  // Company expired docs (Section G)
+  hasExpiredCommercialReg: (row: StatsCompanyRow, today: Date) => isDateExpired(row.commercial_registration_expiry, today),
+  hasExpiredPowerDate: (row: StatsCompanyRow, today: Date) => isDateExpired(row.ending_subscription_power_date, today),
+  hasExpiredMoqeemDate: (row: StatsCompanyRow, today: Date) => isDateExpired(row.ending_subscription_moqeem_date, today),
 
   // Company missing data (Section F)
   isMissingCommercialReg: (row: StatsCompanyRow) => isDateMissing(row.commercial_registration_expiry),
