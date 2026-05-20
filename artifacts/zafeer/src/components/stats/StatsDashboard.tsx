@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react'
-import { Building2, Users, AlertTriangle, FileX, FileMinus, Bell } from 'lucide-react'
+import { Building2, Users, AlertTriangle, FileX, FileMinus, Bell, Info } from 'lucide-react'
 import { useAllCompanies } from '@/hooks/useCompanies'
 import { useAllEmployeesPage } from '@/hooks/useEmployees'
 import { DEFAULT_STATUS_THRESHOLDS, getStatusThresholds } from '@/utils/autoCompanyStatus'
@@ -8,6 +8,8 @@ import {
   calculateCompanyStats,
   calculateEmployeeStats,
   calculateCompanyAlertStats,
+  calculateCompanyExpiredDocs,
+  calculateCompanyMissingData,
   calculateEmployeeAlertStats,
   calculateEmployeeExpiredDocs,
   calculateEmployeeMissingDocs,
@@ -19,6 +21,7 @@ import type {
   StatusThresholds,
   EmployeeThresholds,
   ModalState,
+  CompanyMissingDataResult,
 } from '@/types/statsTypes'
 import type { Company, EmployeeWithRelations } from '@/lib/supabase'
 import StatCard from './StatCard'
@@ -101,6 +104,12 @@ export default function StatsDashboard() {
     () => calculateCompanyAlertStats(statsCompanies, statusThresholds as StatusThresholds, today),
     [statsCompanies, statusThresholds, today]
   )
+
+  // ── Section G ─ وثائق المؤسسات المنتهية
+  const companyExpired = useMemo(() => calculateCompanyExpiredDocs(statsCompanies, today), [statsCompanies, today])
+
+  // ── Section F ─ بيانات المؤسسات الناقصة
+  const companyMissing = useMemo(() => calculateCompanyMissingData(statsCompanies), [statsCompanies])
 
   // ── Section C ─ وثائق الموظفين المنتهية
   const employeeExpired = useMemo(() => calculateEmployeeExpiredDocs(statsEmployees, today), [statsEmployees, today])
@@ -216,7 +225,12 @@ export default function StatsDashboard() {
 
       {/* ── Section B — تنبيهات المؤسسات ─────────────── */}
       <section>
-        <SectionHeader icon={<Bell size={16} />} title="تنبيهات المؤسسات" subtitle="المؤسسات السليمة فقط" />
+        <SectionHeader
+          icon={<Bell size={16} />}
+          title="تنبيهات المؤسسات"
+          subtitle="السليمة فقط"
+          tooltip="تحسب المؤسسات السليمة (لديها جميع التواريخ الثلاثة وكلها غير منتهية) التي ستنتهي قريباً. المؤسسات الناقصة والمتضررة تظهر في أقسام أخرى."
+        />
         <div className="grid grid-cols-3 gap-3">
           <StatCard
             label="طارئ"
@@ -241,6 +255,62 @@ export default function StatsDashboard() {
             loading={!thresholdsLoaded || dataLoading}
             badge={statusBadge}
             onClick={() => openCompanyModal('تنبيهات المؤسسات — متوسط', (r, t) => predicates.isMediumAlertCompany(r, statusThresholds as StatusThresholds, t))}
+          />
+        </div>
+      </section>
+
+      {/* ── Section G — وثائق المؤسسات المنتهية ─────── */}
+      <section>
+        <SectionHeader icon={<FileX size={16} />} title="وثائق المؤسسات المنتهية" />
+        <div className="grid grid-cols-3 gap-3">
+          <StatCard
+            label="سجل تجاري منتهٍ"
+            count={companyExpired.commercial_reg}
+            color="red"
+            loading={dataLoading}
+            onClick={() => openCompanyModal('سجل تجاري منتهٍ', predicates.hasExpiredCommercialReg)}
+          />
+          <StatCard
+            label="اشتراك قوى منتهٍ"
+            count={companyExpired.power_subscription}
+            color="red"
+            loading={dataLoading}
+            onClick={() => openCompanyModal('اشتراك قوى منتهٍ', predicates.hasExpiredPowerDate)}
+          />
+          <StatCard
+            label="اشتراك مقيم منتهٍ"
+            count={companyExpired.moqeem_subscription}
+            color="red"
+            loading={dataLoading}
+            onClick={() => openCompanyModal('اشتراك مقيم منتهٍ', predicates.hasExpiredMoqeemDate)}
+          />
+        </div>
+      </section>
+
+      {/* ── Section F — بيانات المؤسسات الناقصة ─────── */}
+      <section>
+        <SectionHeader icon={<FileMinus size={16} />} title="بيانات المؤسسات الناقصة" />
+        <div className="grid grid-cols-3 gap-3">
+          <StatCard
+            label="سجل تجاري ناقص"
+            count={companyMissing.commercial_reg}
+            color="gray"
+            loading={dataLoading}
+            onClick={() => openCompanyModal('مؤسسات بدون سجل تجاري', predicates.isMissingCommercialReg)}
+          />
+          <StatCard
+            label="اشتراك قوى ناقص"
+            count={companyMissing.power_subscription}
+            color="gray"
+            loading={dataLoading}
+            onClick={() => openCompanyModal('مؤسسات بدون اشتراك قوى', predicates.isMissingPowerDate)}
+          />
+          <StatCard
+            label="اشتراك مقيم ناقص"
+            count={companyMissing.moqeem_subscription}
+            color="gray"
+            loading={dataLoading}
+            onClick={() => openCompanyModal('مؤسسات بدون اشتراك مقيم', predicates.isMissingMoqeemDate)}
           />
         </div>
       </section>
@@ -355,12 +425,31 @@ export default function StatsDashboard() {
 // Section header helper
 // ──────────────────────────────────────────────
 
-function SectionHeader({ icon, title, subtitle }: { icon: React.ReactNode; title: string; subtitle?: string }) {
+function SectionHeader({
+  icon,
+  title,
+  subtitle,
+  tooltip,
+}: {
+  icon: React.ReactNode
+  title: string
+  subtitle?: string
+  tooltip?: string
+}) {
   return (
     <div className="flex items-center gap-2 mb-3">
       <span className="text-gray-500">{icon}</span>
       <h3 className="font-semibold text-gray-700 text-sm">{title}</h3>
       {subtitle && <span className="text-xs text-gray-400">({subtitle})</span>}
+      {tooltip && (
+        <span
+          title={tooltip}
+          className="cursor-help text-gray-400 hover:text-gray-600 transition-colors"
+          aria-label={tooltip}
+        >
+          <Info size={13} />
+        </span>
+      )}
     </div>
   )
 }

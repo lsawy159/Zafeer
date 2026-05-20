@@ -11,6 +11,7 @@ import {
   Bell,
   Wallet,
   RefreshCcw,
+  FileText,
 } from 'lucide-react'
 import { useAlertsStats } from '@/hooks/useAlertsStats'
 import { usePermissions } from '@/utils/permissions'
@@ -84,6 +85,13 @@ export function useNavItems() {
         icon: Wallet,
         label: 'الرواتب والاستقطاعات',
         permission: { section: 'payroll' as const, action: 'view' },
+        badge: null,
+      },
+      {
+        path: '/extracts',
+        icon: FileText,
+        label: 'المستخلصات',
+        permission: { section: 'extracts' as const, action: 'view' },
         badge: null,
       },
       {

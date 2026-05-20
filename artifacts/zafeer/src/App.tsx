@@ -56,6 +56,9 @@ const PayrollDeductions = lazy(() => import('./pages/PayrollDeductions'))
 const ImportExport = lazy(() => import('./pages/ImportExport'))
 const AdvancedSearch = lazy(() => import('./pages/AdvancedSearch'))
 const GeneralSettings = lazy(() => import('./pages/GeneralSettings'))
+const Extracts = lazy(() => import('./pages/Extracts'))
+const CreateExtractWizard = lazy(() => import('./pages/extracts/CreateExtractWizard'))
+const ExtractDetail = lazy(() => import('./pages/extracts/ExtractDetail'))
 
 // Loading fallback component
 function PageLoader({
@@ -229,6 +232,30 @@ function AppRoutes() {
             element={
               <RouteGuard>
                 <ImportExport />
+              </RouteGuard>
+            }
+          />
+          <Route
+            path="/extracts"
+            element={
+              <RouteGuard>
+                <Extracts />
+              </RouteGuard>
+            }
+          />
+          <Route
+            path="/extracts/new"
+            element={
+              <RouteGuard>
+                <CreateExtractWizard />
+              </RouteGuard>
+            }
+          />
+          <Route
+            path="/extracts/:id"
+            element={
+              <RouteGuard>
+                <ExtractDetail />
               </RouteGuard>
             }
           />
