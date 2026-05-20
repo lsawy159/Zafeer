@@ -60,6 +60,13 @@ export interface CompanyMissingDataResult {
   any_missing: number            // لديها حقل واحد على الأقل ناقص
 }
 
+// Section G — وثائق المؤسسات المنتهية
+export interface CompanyExpiredDocsResult {
+  commercial_reg: number
+  power_subscription: number
+  moqeem_subscription: number
+}
+
 // Section C — وثائق الموظفين المنتهية
 export interface EmployeeExpiredDocsResult {
   residence: number
@@ -91,6 +98,7 @@ export interface EmployeeAlertStatsResult {
 export interface AllStatsResult {
   companyStats: CompanyStatsResult
   companyAlerts: CompanyAlertStatsResult
+  companyExpired: CompanyExpiredDocsResult
   companyMissing: CompanyMissingDataResult
   employeeStats: EmployeeStatsResult
   employeeExpired: EmployeeExpiredDocsResult
