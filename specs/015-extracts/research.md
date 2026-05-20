@@ -85,14 +85,27 @@ export const extractStatusEnum = pgEnum('extract_status_enum', ['draft', 'export
 
 ## RES-005: Snapshot Immutability Strategy
 
-**Decision**: نسخ البيانات في `extract_invoice_lines` عند الإنشاء — لا FK references للأسعار
+**Decision**: نسخ البيانات في `extract_invoice_lines` عند الإنشاء عبر RPC — لا FK references للأسعار
 
-**Rationale**: FR-012 يشترط تجميد البيانات. الـ snapshot يُخزَّن كـ columns مباشرة في السطر: `profession_snapshot`, `monthly_rate_snapshot`, `residence_number_snapshot`, `employee_name_snapshot`.
+**Rationale**: FR-012 يشترط تجميد البيانات. الـ snapshot يُخزَّن كـ columns مباشرة في السطر: `profession_snapshot`, `monthly_rate_snapshot`, `residence_number_snapshot`, `employee_name_snapshot`. الإنشاء يتم في Postgres transaction واحدة عبر RPC لضمان atomicity.
 
 **Implementation**:
-- عند إنشاء المستخلص: SELECT بيانات الموظفين + أسعار المهنة → INSERT في `extract_invoice_lines`
-- لا trigger لازم — الـ application layer يُنفّذ snapshot عند الإنشاء
+- RPC `create_extract_invoice(...)` تُنفّذ: INSERT header + INSERT all lines + UPDATE totals في transaction واحدة
+- لا multi-step client inserts — كل العمليات في Postgres
 - `extract_invoice_lines` لا يحتوي FK لـ `project_job_title_rates` (الـ rate قد يتغير)
+- status يبدأ 'draft' → يُحوَّل 'exported' من الـ client بعد نجاح Excel download
+
+---
+
+## RES-005b: Create vs Export — Single Flow Decision
+
+**Decision**: الإنشاء والتصدير مرتبطان في نهاية الـ wizard — لا 'draft' مرئي للمستخدم
+
+**Rationale**: الـ wizard ينتهي بزر "تصدير Excel". عند الضغط: (1) RPC تُنشئ المستخلص (status='draft'), (2) client يُولّد Excel ويُنزّله, (3) useMarkExported() يُحوّل status → 'exported'. 'draft' موجود في الـ enum للحالة المؤقتة بين RPC والـ download — لا يُعرض للمستخدم. إعادة التصدير من ExtractDetail تستدعي useMarkExported() مباشرة (المستخلص موجود بالفعل).
+
+**Alternatives considered**:
+- عملية واحدة كاملة (create + exported مباشرة): يخفي الفاصل بين إنشاء البيانات وتأكيد التصدير
+- 'draft' مرئي في UI: يعقّد الـ wizard بدون قيمة مضافة
 
 ---
 
@@ -139,9 +152,9 @@ WHERE project_id = $1 AND period_month = $2
 
 ## RES-008: Permission Section
 
-**Decision**: `extracts` section بـ 3 actions: `view`, `create`, `export`
+**Decision**: `extracts` section بـ 5 actions: `view`, `create`, `edit`, `delete`, `export`
 
-**Rationale**: FR-015 يشترط منفصلة عن صلاحيات الرواتب. لا `edit` أو `delete` — المستخلصات غير قابلة للتعديل بعد الإنشاء.
+**Rationale**: FR-015 + FR-016-018 يشترطون صلاحيات منفصلة للتعديل والحذف. `edit` = تعديل أيام + إضافة سطور. `delete` = حذف سطور. كلاهما يعمل على المسوَّدات فقط، إلا admin يتجاوز هذا القيد.
 
 **Files to update**:
 1. `PERMISSIONS_SCHEMA.ts` → إضافة section
@@ -167,3 +180,23 @@ WHERE project_id = $1 AND period_month = $2
 **Files to update**:
 - `nav-config.ts`: `{ id: 'extracts', labelAr: 'المستخلصات', icon: FileText, to: '/extracts', group: 'operational', order: 10 }`
 - `useNavItems.ts`: `{ path: '/extracts', icon: FileText, label: 'المستخلصات', permission: { section: 'extracts' as const, action: 'view' } }`
+
+---
+
+## RES-011: Edit/Delete/Duplicate — Draft vs Exported Rules
+
+**Decision**: 
+- Draft: أي مستخدم بصلاحية edit/delete يُعدّل/يحذف سطور مباشرة
+- Exported + Admin: يُعدّل مباشرة بدون قيود  
+- Exported + غير Admin: لا تعديل مباشر — يجب Duplicate أولاً → نسخة draft جديدة → تعديل → تصدير
+
+**Rationale**: يحفظ سلامة المستخلصات المُصدَّرة (audit trail) بينما يعطي admin المرونة الكاملة. غير admin لا يخسر العمل — يُكرّر ويُعدّل.
+
+**Implementation**: 
+- Helper function `extract_is_directly_editable(invoice_id)` في Postgres تُستخدم في RLS
+- Frontend: `useIsAdmin()` أو `user.role === 'admin'` يتحكم في visibility الـ edit controls
+- RPC `duplicate_extract_invoice` تُنشئ نسخة draft كاملة في transaction واحدة
+
+**Alternatives considered**:
+- فتح التعديل لكل مُصدَّر: يُفقد audit trail
+- إغلاق التعديل كلياً بعد التصدير: يُلزم المستخدم بحذف ملف Excel وإعادة الكل

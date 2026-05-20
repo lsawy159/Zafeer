@@ -86,10 +86,14 @@ artifacts/zafeer/src/
 │           ├── ExtractTable.tsx            🆕 NEW
 │           └── AttendanceMatchSummary.tsx  🆕 NEW
 ├── components/
+│   └── extracts/
+│       └── AddLineModal.tsx               🆕 NEW — modal إضافة سطر يدوي
+├── components/
 │   └── projects/
 │       └── JobTitleRatesModal.tsx          🆕 NEW — modal أسعار المهن من ProjectDetailModal
 ├── hooks/
-│   ├── useExtracts.ts                     🆕 NEW — CRUD للمستخلصات
+│   ├── useExtracts.ts                     🆕 NEW — CRUD + duplicate + mark exported
+│   ├── useExtractLines.ts                 🆕 NEW — edit/add/delete lines + recalculate
 │   └── useJobTitleRates.ts                🆕 NEW — CRUD لأسعار المهن
 └── utils/
     ├── PERMISSIONS_SCHEMA.ts              ✏️ MODIFY — إضافة section 'extracts'

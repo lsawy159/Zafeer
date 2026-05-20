@@ -186,6 +186,191 @@ ALTER TABLE public.employees
 
 ---
 
+## RPC Function
+
+### `create_extract_invoice`
+
+تُغلّف إنشاء المستخلص الكامل في transaction واحدة — تُستدعى من `useCreateExtract()` في الـ frontend.
+
+```sql
+CREATE OR REPLACE FUNCTION public.create_extract_invoice(
+  p_project_id     UUID,
+  p_period_month   DATE,        -- أول الشهر دائماً
+  p_total_days     INTEGER,
+  p_lines          JSONB,       -- array of {employee_id, employee_name, residence_number, profession, monthly_rate, attendance_days, amount}
+  p_created_by     UUID
+) RETURNS UUID
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+DECLARE
+  v_version        INTEGER;
+  v_invoice_id     UUID;
+  v_total_amount   NUMERIC(12,2);
+  v_employee_count INTEGER;
+  v_line           JSONB;
+BEGIN
+  -- احسب النسخة التالية
+  SELECT COALESCE(MAX(version), 0) + 1
+    INTO v_version
+    FROM public.extract_invoices
+   WHERE project_id = p_project_id
+     AND period_month = p_period_month;
+
+  -- أنشئ رأس المستخلص (status='draft' مبدئياً — يُحوَّل 'exported' من الـ client بعد نجاح download)
+  INSERT INTO public.extract_invoices
+    (project_id, period_month, version, status, total_amount, employee_count, total_days_in_month, created_by)
+  VALUES
+    (p_project_id, p_period_month, v_version, 'draft', 0, 0, p_total_days, p_created_by)
+  RETURNING id INTO v_invoice_id;
+
+  -- أدرج السطور (snapshot)
+  FOR v_line IN SELECT * FROM jsonb_array_elements(p_lines) LOOP
+    INSERT INTO public.extract_invoice_lines
+      (invoice_id, employee_id, employee_name_snapshot, residence_number_snapshot,
+       profession_snapshot, monthly_rate_snapshot, attendance_days, total_days_in_month, amount)
+    VALUES (
+      v_invoice_id,
+      (v_line->>'employee_id')::UUID,
+      v_line->>'employee_name',
+      (v_line->>'residence_number')::BIGINT,
+      v_line->>'profession',
+      (v_line->>'monthly_rate')::NUMERIC,
+      (v_line->>'attendance_days')::INTEGER,
+      p_total_days,
+      (v_line->>'amount')::NUMERIC
+    );
+  END LOOP;
+
+  -- حدّث الإجماليات في الرأس
+  SELECT SUM(amount), COUNT(*)
+    INTO v_total_amount, v_employee_count
+    FROM public.extract_invoice_lines
+   WHERE invoice_id = v_invoice_id;
+
+  UPDATE public.extract_invoices
+     SET total_amount = v_total_amount, employee_count = v_employee_count
+   WHERE id = v_invoice_id;
+
+  RETURN v_invoice_id;
+END;
+$$;
+
+-- GRANT للـ authenticated (RLS يتحقق داخل الـ function عبر SECURITY DEFINER)
+GRANT EXECUTE ON FUNCTION public.create_extract_invoice TO authenticated;
+```
+
+**ملاحظات**:
+- `SECURITY DEFINER` تعني الـ function تُنفَّذ بصلاحية owner — لكن الـ client يجب أن يملك `extracts.create` permission (يُتحقق في الـ application layer قبل الاستدعاء)
+- status يبدأ `'draft'` ثم الـ client يُحوّله `'exported'` عبر `useMarkExported()` بعد نجاح Excel download
+- transaction محمية — إذا فشل أي insert تُرجع كل العمليات
+
+---
+
+### `duplicate_extract_invoice`
+
+تُنشئ نسخة جديدة من مستخلص موجود بنفس البيانات (snapshot) — status='draft'، version+1.
+
+```sql
+CREATE OR REPLACE FUNCTION public.duplicate_extract_invoice(
+  p_source_id  UUID,
+  p_created_by UUID
+) RETURNS UUID
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+DECLARE
+  v_source      public.extract_invoices%ROWTYPE;
+  v_new_version INTEGER;
+  v_new_id      UUID;
+BEGIN
+  SELECT * INTO v_source FROM public.extract_invoices WHERE id = p_source_id;
+
+  SELECT COALESCE(MAX(version), 0) + 1
+    INTO v_new_version
+    FROM public.extract_invoices
+   WHERE project_id = v_source.project_id
+     AND period_month = v_source.period_month;
+
+  INSERT INTO public.extract_invoices
+    (project_id, period_month, version, status, total_amount, employee_count,
+     total_days_in_month, created_by)
+  VALUES
+    (v_source.project_id, v_source.period_month, v_new_version, 'draft',
+     v_source.total_amount, v_source.employee_count,
+     v_source.total_days_in_month, p_created_by)
+  RETURNING id INTO v_new_id;
+
+  INSERT INTO public.extract_invoice_lines
+    (invoice_id, employee_id, employee_name_snapshot, residence_number_snapshot,
+     profession_snapshot, monthly_rate_snapshot, attendance_days, total_days_in_month, amount)
+  SELECT
+    v_new_id, employee_id, employee_name_snapshot, residence_number_snapshot,
+    profession_snapshot, monthly_rate_snapshot, attendance_days, total_days_in_month, amount
+  FROM public.extract_invoice_lines
+  WHERE invoice_id = p_source_id;
+
+  RETURN v_new_id;
+END;
+$$;
+
+GRANT EXECUTE ON FUNCTION public.duplicate_extract_invoice TO authenticated;
+```
+
+---
+
+### `extract_is_directly_editable` (Helper)
+
+تُستخدم في RLS policies — ترجع true إذا كان المستخلص draft أو المستخدم admin.
+
+```sql
+CREATE OR REPLACE FUNCTION public.extract_is_directly_editable(p_invoice_id UUID)
+RETURNS BOOLEAN
+LANGUAGE sql
+SECURITY DEFINER
+AS $$
+  SELECT (
+    EXISTS (
+      SELECT 1 FROM public.extract_invoices
+      WHERE id = p_invoice_id AND status = 'draft'
+    )
+    AND (SELECT user_has_permission('extracts', 'edit'))
+  ) OR (SELECT is_admin());
+$$;
+
+GRANT EXECUTE ON FUNCTION public.extract_is_directly_editable TO authenticated;
+```
+
+---
+
+### `recalculate_extract_totals` (Helper)
+
+تُستدعى من الـ client بعد كل تعديل على السطور — تُحدّث total_amount وemployee_count في الرأس.
+
+```sql
+CREATE OR REPLACE FUNCTION public.recalculate_extract_totals(p_invoice_id UUID)
+RETURNS VOID
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+BEGIN
+  UPDATE public.extract_invoices
+     SET total_amount   = (SELECT COALESCE(SUM(amount), 0)  FROM public.extract_invoice_lines WHERE invoice_id = p_invoice_id),
+         employee_count = (SELECT COUNT(*) FROM public.extract_invoice_lines WHERE invoice_id = p_invoice_id)
+   WHERE id = p_invoice_id;
+END;
+$$;
+
+GRANT EXECUTE ON FUNCTION public.recalculate_extract_totals TO authenticated;
+```
+
+**ملاحظات أمان** (S1):
+- `SECURITY DEFINER` تُنفَّذ بصلاحية owner — لا تحتوي داخلها على permission check صريح
+- الحماية تعتمد على: (1) RLS policies في `extract_invoice_lines` تستدعي `extract_is_directly_editable` قبل قبول أي UPDATE/INSERT/DELETE، (2) application layer يجب التحقق من `extract_is_directly_editable(invoiceId)` قبل استدعاء هذه الـ function
+- **قاعدة**: لا تستدعِ `recalculate_extract_totals` من frontend إلا بعد نجاح mutation على السطور — إذا رفضت RLS الـ mutation فلا داعي للـ recalculate
+
+---
+
 ## RLS Policies
 
 ```sql
@@ -198,8 +383,8 @@ CREATE POLICY "job_title_rates_read" ON public.project_job_title_rates
 
 CREATE POLICY "job_title_rates_write" ON public.project_job_title_rates
   FOR ALL TO authenticated
-  USING ((SELECT user_has_permission('extracts', 'create')))
-  WITH CHECK ((SELECT user_has_permission('extracts', 'create')));
+  USING ((SELECT user_has_permission('extracts', 'create') OR user_has_permission('extracts', 'edit')))
+  WITH CHECK ((SELECT user_has_permission('extracts', 'create') OR user_has_permission('extracts', 'edit')));
 
 -- extract_invoices
 ALTER TABLE public.extract_invoices ENABLE ROW LEVEL SECURITY;
@@ -212,10 +397,19 @@ CREATE POLICY "extract_invoices_insert" ON public.extract_invoices
   FOR INSERT TO authenticated
   WITH CHECK ((SELECT user_has_permission('extracts', 'create')));
 
-CREATE POLICY "extract_invoices_update_export" ON public.extract_invoices
+-- UPDATE: draft+edit OR export (status change) OR admin
+CREATE POLICY "extract_invoices_update" ON public.extract_invoices
   FOR UPDATE TO authenticated
-  USING ((SELECT user_has_permission('extracts', 'export')))
-  WITH CHECK ((SELECT user_has_permission('extracts', 'export')));
+  USING (
+    (status = 'draft' AND (SELECT user_has_permission('extracts', 'edit')))
+    OR (SELECT user_has_permission('extracts', 'export'))
+    OR (SELECT is_admin())
+  )
+  WITH CHECK (
+    (status = 'draft' AND (SELECT user_has_permission('extracts', 'edit')))
+    OR (SELECT user_has_permission('extracts', 'export'))
+    OR (SELECT is_admin())
+  );
 
 -- extract_invoice_lines
 ALTER TABLE public.extract_invoice_lines ENABLE ROW LEVEL SECURITY;
@@ -224,9 +418,30 @@ CREATE POLICY "extract_invoice_lines_read" ON public.extract_invoice_lines
   FOR SELECT TO authenticated
   USING ((SELECT user_has_permission('extracts', 'view')));
 
+-- INSERT: initial creation via RPC (SECURITY DEFINER bypasses RLS) OR manual add (edit permission + draft)
 CREATE POLICY "extract_invoice_lines_insert" ON public.extract_invoice_lines
   FOR INSERT TO authenticated
-  WITH CHECK ((SELECT user_has_permission('extracts', 'create')));
+  WITH CHECK (
+    (SELECT user_has_permission('extracts', 'create'))
+    OR (SELECT extract_is_directly_editable(invoice_id))
+  );
+
+-- UPDATE: draft+edit permission OR admin
+CREATE POLICY "extract_invoice_lines_update" ON public.extract_invoice_lines
+  FOR UPDATE TO authenticated
+  USING ((SELECT extract_is_directly_editable(invoice_id)))
+  WITH CHECK ((SELECT extract_is_directly_editable(invoice_id)));
+
+-- DELETE: draft+delete permission OR admin
+CREATE POLICY "extract_invoice_lines_delete" ON public.extract_invoice_lines
+  FOR DELETE TO authenticated
+  USING (
+    (EXISTS (
+      SELECT 1 FROM public.extract_invoices ei
+      WHERE ei.id = invoice_id AND ei.status = 'draft'
+    ) AND (SELECT user_has_permission('extracts', 'delete')))
+    OR (SELECT is_admin())
+  );
 ```
 
 ---
