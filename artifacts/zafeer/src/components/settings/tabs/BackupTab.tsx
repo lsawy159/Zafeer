@@ -84,7 +84,8 @@ function ScheduleForm({ initial, onSaved }: ScheduleFormProps) {
     },
     onError: (err) => {
       logger.error('[BackupTab] save settings error:', err)
-      toast.error('فشل حفظ الإعدادات: ' + (err instanceof Error ? err.message : String(err)))
+      const msg = err instanceof Error ? err.message : ((err as Record<string, unknown>)?.message as string | undefined) ?? String(err)
+      toast.error('فشل حفظ الإعدادات: ' + msg)
     },
   })
 
