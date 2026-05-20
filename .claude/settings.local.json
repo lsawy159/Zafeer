@@ -19,7 +19,8 @@
       "mcp__github__get_pull_request",
       "mcp__github__list_pull_requests",
       "mcp__claude_ai_Supabase__search_docs",
-      "mcp__supabase__deploy_edge_function"
+      "mcp__supabase__deploy_edge_function",
+      "mcp__supabase__search_docs"
     ]
   },
   "enableAllProjectMcpServers": true,
