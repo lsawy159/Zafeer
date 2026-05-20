@@ -16,6 +16,7 @@ import { toast } from 'sonner'
 import { saveAs } from 'file-saver'
 import { loadXlsx } from '@/utils/lazyXlsx'
 import { DEFAULT_STATUS_THRESHOLDS, getStatusThresholds } from '@/utils/autoCompanyStatus'
+import StatsDashboard from '@/components/stats/StatsDashboard'
 import { usePermissions } from '@/utils/permissions'
 import { Button } from '@/components/ui/Button'
 import { PageHeader } from '@/components/ui/PageHeader'
@@ -35,7 +36,7 @@ interface SubscriptionItem {
   status: 'expired' | 'urgent' | 'medium' | 'valid'
 }
 
-type TabType = 'companies' | 'employees'
+type TabType = 'companies' | 'employees' | 'stats'
 
 const COMPANY_TYPES = ['سجل تجاري', 'تأمينات اجتماعية', 'اشتراك مقيم', 'اشتراك قوى']
 const EMPLOYEE_TYPES = ['إقامة', 'عقد', 'عقد أجير', 'تأمين صحي']
@@ -132,6 +133,7 @@ export default function Reports() {
   )
 
   const updateTabStatistics = useCallback((items: SubscriptionItem[], tab: TabType) => {
+    if (tab === 'stats') return
     const types = tab === 'companies' ? COMPANY_TYPES : EMPLOYEE_TYPES
     const tabItems = items.filter((item) => types.includes(item.type))
 
@@ -260,6 +262,7 @@ export default function Reports() {
   }, [activeTab, subscriptionItems, updateTabStatistics])
 
   useEffect(() => {
+    if (activeTab === 'stats') return
     setFilterType('all')
   }, [activeTab])
 
@@ -406,7 +409,7 @@ export default function Reports() {
     }
   }
 
-  if (loading) {
+  if (loading && activeTab !== 'stats') {
     return (
       <Layout>
         <div className="app-page app-tech-grid">
@@ -427,7 +430,7 @@ export default function Reports() {
     <Layout>
       <div className="app-page app-tech-grid">
         <PageHeader
-          title="التقارير"
+          title="التقارير والإحصائيات"
           description={`عدد النتائج: ${filteredItems.length}`}
           className="mb-6"
           actions={
@@ -470,9 +473,27 @@ export default function Reports() {
               <Users className="w-5 h-5" />
               <span>الموظفين</span>
             </button>
+            <button
+              onClick={() => setActiveTab('stats')}
+              className={`app-tab-button ${
+                activeTab === 'stats'
+                  ? 'app-tab-button-active'
+                  : 'hover:bg-surface-secondary hover:text-foreground'
+              }`}
+            >
+              <BarChart3 className="w-5 h-5" />
+              <span>الإحصائيات</span>
+            </button>
           </div>
         </div>
 
+        {activeTab === 'stats' && (
+          <div className="pb-8">
+            <StatsDashboard />
+          </div>
+        )}
+
+        {activeTab !== 'stats' && (<>
         <div className="mb-6 grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
           <div className="app-panel p-6">
             <div className="flex items-center justify-between">
@@ -653,6 +674,7 @@ export default function Reports() {
             )}
           </div>
         </div>
+        </>)}
       </div>
     </Layout>
   )
