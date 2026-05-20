@@ -8,6 +8,7 @@ import {
   AlertCircle,
   BarChart3,
   DollarSign,
+  FileText,
   Upload,
   Bell,
   Settings,
@@ -118,6 +119,15 @@ export const NAV_ITEMS: NavItem[] = [
     to: '/payroll-deductions',
     group: 'operational',
     order: 9,
+  },
+  {
+    id: 'extracts',
+    labelAr: 'المستخلصات',
+    labelEn: 'Extracts',
+    icon: FileText,
+    to: '/extracts',
+    group: 'operational',
+    order: 10,
   },
   {
     id: 'import-export',

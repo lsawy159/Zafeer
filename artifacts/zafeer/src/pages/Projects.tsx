@@ -401,6 +401,7 @@ export default function Projects() {
               onClose={handleModalClose}
               onEdit={handleEditProject}
               onDelete={handleDeleteProject}
+              onEmployeeChange={loadProjects}
             />
           )}
 
