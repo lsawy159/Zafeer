@@ -94,28 +94,88 @@ NEW:
 
 ---
 
-### D4 — Employee Navigation for Missing Docs (Section D)
-**Decision**: Option A — extend `useEmployeeFilters.ts` with new filter value `'ناقص'` + `applyUrlFilter` shortcuts.
-
-**Rationale**: Option B (open page without filter) destroys precision. Option C (multi-param URLs) creates a parallel mechanism bypassing the proven switch statement. Option A adds `'ناقص'` as a recognized string alongside existing `'منتهي'`, `'طارئ'`, etc. The matching logic detects `status === 'غير محدد'` (what `getStatusForField` returns for null dates).
-
-New URL shortcuts: `missing-residence`, `missing-contract`, `missing-hired-worker-contract`, `missing-insurance`.
+### D4 — SUPERSEDED by D10
+URL-navigation approach abandoned. See D10 for modal architecture.
 
 ---
 
-### D5 — Company Navigation for Classified Cards (Sections A/B)
-**Decision**: Option A — extend Companies.tsx with `classificationFilter` state + named URL filter values.
-
-**Rationale**: Option C (`showAlertsOnly`) cannot distinguish "ناقصة" from "متضررة". Option B (raw status enum URL params) would use Companies.tsx's hardcoded 30-day window, not the configurable thresholds, causing card-count ↔ page-count mismatch.
-
-Add `classificationFilter: 'all' | 'healthy' | 'damaged' | 'missing'` state + corresponding `useMemo` clause using the same 3-date rule as `classifyCompany()` in `statsCalculator.ts`. URL support: `?filter=damaged`, `?filter=missing`, `?filter=healthy`.
+### D5 — SUPERSEDED by D10
+URL-navigation approach abandoned. See D10 for modal architecture.
 
 ---
 
-### D6 — Merge Not Replace on Navigation
-**Decision**: URL-driven filter effects only set targeted fields; never call `clearFilters()`.
+### D6 — SUPERSEDED by D10
+No URL navigation = no merge-vs-replace concern. See D10.
 
-**Rationale**: Existing `applyUrlFilter` already behaves this way. New `classificationFilter` in Companies.tsx must NOT be saved to `localStorage` (so URL wins on navigation). The URL effect keyed on `[location.search]` naturally runs after `loadSavedFilters()` on mount. Alert-level cards use URL params that ADD to existing filters — existing company status filter states are not reset.
+---
+
+### D10 — StatsDetailModal Architecture (replaces D4/D5/D6)
+**Decision**: Card click opens `StatsDetailModal` (in-page popup) instead of navigating to another page.
+
+**Rationale**: User explicitly requested popup-within-page approach. Advantages: preserves stats context, enables direct editing without navigation, avoids cross-page filter state synchronization problems.
+
+**Implementation**:
+- `StatsDetailModal` receives: `{ title: string, entities: Company[] | Employee[], type: 'company' | 'employee', onClose: () => void }`
+- Entities pre-filtered using predicate functions from `statsCalculator.ts` at click time: `companies.filter(predicates.isDamagedCompany)` — lazy, no re-calculation
+- Rendered via `createPortal(modal, document.body)` — correct stacking
+- Modal z-index: backdrop `z-40`, panel `z-50`
+- Entity detail modals (CompanyCard, EmployeeDetailModal): backdrop `z-60`, panel `z-70`
+- `StatsDashboard` maintains `modalState: { open: boolean, title: string, entities, type } | null`
+- No changes to Companies.tsx, useEmployeeFilters.ts, or URL routing
+
+---
+
+### D11 — classifyEmployee() Function
+**Decision**: Add `classifyEmployee(row: StatsEmployeeRow, today: Date): EmployeeClassification` to `statsCalculator.ts`.
+
+**Priority**: missing (any null/0/empty in trackable fields) > damaged (any date expired) > healthy (all dates valid and not expired).
+
+**Trackable fields for classification**: `residence_expiry`, `contract_expiry`, `hired_worker_contract_expiry`, `health_insurance_expiry` — dates only. Missing data fields (salary, profession, etc.) go to Section D, not Section A'.
+
+**Date fields for classification**: missing = null/empty on any date; damaged = any date where `today > expiry`; healthy = all 4 dates present and not expired.
+
+---
+
+### D12 — Predicate-Based Calculator (Opus recommendation)
+**Decision**: `statsCalculator.ts` exports both aggregate counts AND predicate functions.
+
+```typescript
+// Aggregate counts (for card display)
+export function calculateCompanyStats(rows, today): CompanyStatsResult
+// Predicate functions (for modal filtering at click time)
+export const predicates = {
+  isHealthyCompany: (row, today) => classifyCompany(row, today) === 'healthy',
+  isDamagedCompany: (row, today) => classifyCompany(row, today) === 'damaged',
+  isMissingCompany: (row, today) => classifyCompany(row, today) === 'missing',
+  isHealthyEmployee: (row, today) => classifyEmployee(row, today) === 'healthy',
+  // ...etc
+}
+```
+
+**Rationale**: Avoids storing entity IDs in stats result. Modal filters lazily at click — no new memoized lists until needed.
+
+---
+
+### D13 — Modal Stacking & Outside-Click
+**Decision**: Stack-aware outside-click using `data-modal-root` attribute on each modal panel.
+
+```typescript
+// Outside click handler in StatsDetailModal
+const handleBackdropClick = (e: React.MouseEvent) => {
+  if (!(e.target as Element).closest('[data-modal-root]')) onClose()
+}
+```
+
+When CompanyCard/EmployeeDetailModal is open (inner modal at z-60/z-70), it captures its own outside-click at z-60 backdrop — StatsDetailModal backdrop at z-40 is below and doesn't receive the event. Natural z-index stacking handles this correctly.
+
+---
+
+### D14 — Virtualization in Modal List
+**Decision**: Use `@tanstack/react-virtual` `useVirtualizer` inside StatsDetailModal for the entity list.
+
+**Parameters**: `estimateSize: () => 72` (compact row), `overscan: 5`, `getScrollElement` → scrollable div inside modal.
+**Threshold**: Skip virtualizer if `entities.length < 50` (render flat list for small datasets).
+**Container**: Modal panel `max-height: 70vh`, overflow-y: auto, positioned element for virtualizer.
 
 ---
 
@@ -142,14 +202,13 @@ Add `classificationFilter: 'all' | 'healthy' | 'damaged' | 'missing'` state + co
 
 ## Implementation Sequence
 
-1. **`statsTypes.ts`** — define all interfaces first (zero deps)
-2. **`statsCalculator.ts`** — pure logic, imports only `statsTypes.ts`
-3. **`StatCard.tsx`** — leaf presentational component, no business logic
-4. **`useEmployeeFilters.ts`** — add `'ناقص'` matching + URL shortcuts (parallel with step 5)
-5. **`Companies.tsx`** — add `classificationFilter` + URL handler + `useMemo` clause (parallel with step 4)
-6. **`StatsDashboard.tsx`** — depends on steps 1, 2, 3, 4, 5
-7. **`Reports.tsx`** — tab integration, loading gate fix, depends on step 6
-8. **`nav-config.ts`** — trivial rename, last
+1. **`statsTypes.ts`** — define all interfaces + modal props (zero deps)
+2. **`statsCalculator.ts`** — pure logic + predicate functions (imports only `statsTypes.ts`)
+3. **`StatCard.tsx`** — leaf presentational component (no business logic)
+4. **`StatsDetailModal.tsx`** — modal with virtualizer (depends on steps 1+2+3)
+5. **`StatsDashboard.tsx`** — orchestrator, calls steps 1-4 (depends on all above)
+6. **`Reports.tsx`** — tab integration, loading gate fix (depends on step 5)
+7. **`nav-config.ts`** — trivial rename (parallel with anything)
 
 ---
 
@@ -160,13 +219,16 @@ Add `classificationFilter: 'all' | 'healthy' | 'damaged' | 'missing'` state + co
 | Thresholds null on first render → crash | State initialized to defaults; skeleton shown until `thresholdsLoaded=true` |
 | Deleted employees counted | `calculateEmployee*` defensively skips `is_deleted === true`; `useAllEmployeesPage` also filters at DB level |
 | Today-expired in Section B/E | Alert logic requires `daysRemaining > 0` (strict positive) — today-expired excluded |
-| Card count ≠ filtered list count | Classification logic lives once in `statsCalculator.ts`; Companies + useEmployeeFilters reuse the SAME rule with cross-reference comment |
-| Date math inconsistency across files | `statsCalculator.ts` defines one `daysBetween()` helper using floor convention; Companies.tsx alert filtering uses `calculateCompanyStatusStats` from `autoCompanyStatus.ts` |
-| localStorage overrides URL nav on Companies | `classificationFilter` NOT saved to localStorage; URL effect runs after restore |
+| Card count ≠ modal list count | Modal uses SAME predicate functions as calculator — mathematical identity, not approximation |
+| Date math inconsistency | `statsCalculator.ts` defines one `daysBetween()` helper (floor convention) — only place |
 | Reports.tsx spinner blocks stats tab | Fix: `if (loading && activeTab !== 'stats')` |
 | `setFilterType` / `updateTabStatistics` effects fail on `'stats'` | Guard with `if (activeTab === 'stats') return` |
 | Empty dataset / zero counts | Calculator guards all zero cases; cards render `0` explicitly |
 | `useMemo` recalculates every render | `today` memoized once per mount: `useMemo(() => new Date(), [])` |
+| Modal list lag (500+ entities) | `useVirtualizer` with overscan:5; skip virtualizer for <50 items |
+| Outer modal closes when inner modal open | z-index tiers: outer z-40/z-50, inner z-60/z-70; `data-modal-root` click guard |
+| Salary=0 counted as valid | Calculator treats `salary === 0 \|\| salary === null` as missing — explicit guard |
+| Modal edits not reflected in stats | React Query `invalidateQueries` after mutation; `useAllCompanies`/`useAllEmployeesPage` cache busted |
 
 ---
 
