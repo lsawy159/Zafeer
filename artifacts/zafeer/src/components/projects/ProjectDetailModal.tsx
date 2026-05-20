@@ -2,11 +2,12 @@ import { useState, useEffect, useCallback } from 'react'
 import { createPortal } from 'react-dom'
 import { useModalScrollLock } from '@/hooks/useModalScrollLock'
 import { supabase, Project, Employee, Company, EmployeeWithRelations } from '@/lib/supabase'
-import { X, FolderKanban, Users, DollarSign, Eye, Edit2, Trash2 } from 'lucide-react'
+import { X, FolderKanban, Users, DollarSign, Eye, Edit2, Trash2, FileText } from 'lucide-react'
 import { toast } from 'sonner'
 import EmployeeCard from '@/components/employees/EmployeeCard'
 import { formatDateShortWithHijri } from '@/utils/dateFormatter'
 import { HijriDateDisplay } from '@/components/ui/HijriDateDisplay'
+import JobTitleRatesModal from '@/components/projects/JobTitleRatesModal'
 
 interface ProjectDetailModalProps {
   project: Project & {
@@ -16,6 +17,7 @@ interface ProjectDetailModalProps {
   onClose: () => void
   onEdit: (project: Project) => void
   onDelete: (project: Project) => void
+  onEmployeeChange?: () => void
 }
 
 export default function ProjectDetailModal({
@@ -23,11 +25,13 @@ export default function ProjectDetailModal({
   onClose,
   onEdit,
   onDelete,
+  onEmployeeChange,
 }: ProjectDetailModalProps) {
   const [employees, setEmployees] = useState<EmployeeWithRelations[]>([])
   const [loadingEmployees, setLoadingEmployees] = useState(true)
   const [selectedEmployee, setSelectedEmployee] = useState<EmployeeWithRelations | null>(null)
   const [showEmployeeCard, setShowEmployeeCard] = useState(false)
+  const [showRatesModal, setShowRatesModal] = useState(false)
 
   const loadEmployees = useCallback(async () => {
     try {
@@ -38,6 +42,7 @@ export default function ProjectDetailModal({
           'id,company_id,name,profession,nationality,birth_date,phone,passport_number,residence_number,joining_date,contract_expiry,hired_worker_contract_expiry,residence_expiry,project_id,project_name,bank_account,residence_image_url,health_insurance_expiry,salary,notes,additional_fields,is_deleted,deleted_at,created_at,updated_at, company:companies(id,name,unified_number,labor_subscription_number,commercial_registration_expiry,social_insurance_number,commercial_registration_status,additional_fields,ending_subscription_power_date,ending_subscription_moqeem_date,employee_count,max_employees,notes,exemptions,company_type,created_at,updated_at), project:projects(id,name,description,status,created_at,updated_at)'
         )
         .eq('project_id', project.id)
+        .eq('is_deleted', false)
         .order('name')
 
       if (error) throw error
@@ -55,6 +60,9 @@ export default function ProjectDetailModal({
   }, [loadEmployees])
 
   useModalScrollLock(true)
+
+  const computedEmployeeCount = employees.length
+  const computedTotalSalaries = employees.reduce((sum, emp) => sum + (emp.salary || 0), 0)
 
   const handleCloseEmployeeCard = useCallback(() => {
     setShowEmployeeCard(false)
@@ -107,6 +115,7 @@ export default function ProjectDetailModal({
 
   const handleEmployeeUpdate = () => {
     loadEmployees()
+    onEmployeeChange?.()
   }
 
   const getStatusColor = (status: string) => {
@@ -158,16 +167,22 @@ export default function ProjectDetailModal({
                   >
                     {getStatusText(project.status || 'active')}
                   </span>
-                  <span className="text-blue-100 text-sm">{project.employee_count || 0} موظف</span>
-                  {project.total_salaries !== undefined && (
-                    <span className="text-blue-100 text-sm">
-                      {project.total_salaries.toLocaleString('ar-SA')} ريال
-                    </span>
-                  )}
+                  <span className="text-blue-100 text-sm">{computedEmployeeCount} موظف</span>
+                  <span className="text-blue-100 text-sm">
+                    {computedTotalSalaries.toLocaleString('ar-SA')} ريال
+                  </span>
                 </div>
               </div>
             </div>
             <div className="flex items-center gap-2">
+              <button
+                onClick={() => setShowRatesModal(true)}
+                className="flex items-center gap-1 px-3 py-1.5 bg-white/20 hover:bg-white/30 rounded-lg transition text-sm"
+                title="أسعار المهن"
+              >
+                <FileText className="w-4 h-4" />
+                <span>أسعار المهن</span>
+              </button>
               <button
                 onClick={() => onEdit(project)}
                 className="p-2 bg-white/20 hover:bg-white/30 rounded-lg transition"
@@ -202,19 +217,17 @@ export default function ProjectDetailModal({
                   <Users className="w-5 h-5 text-primary" />
                   <span className="text-sm font-medium text-neutral-700">عدد الموظفين</span>
                 </div>
-                <p className="text-2xl font-bold text-neutral-900">{project.employee_count || 0}</p>
+                <p className="text-2xl font-bold text-neutral-900">{computedEmployeeCount}</p>
               </div>
-              {project.total_salaries !== undefined && (
-                <div className="bg-neutral-50 p-4 rounded-lg">
-                  <div className="flex items-center gap-2 mb-2">
-                    <DollarSign className="w-5 h-5 text-success-600" />
-                    <span className="text-sm font-medium text-neutral-700">إجمالي الرواتب</span>
-                  </div>
-                  <p className="text-2xl font-bold text-neutral-900">
-                    {project.total_salaries.toLocaleString('ar-SA')} ريال
-                  </p>
+              <div className="bg-neutral-50 p-4 rounded-lg">
+                <div className="flex items-center gap-2 mb-2">
+                  <DollarSign className="w-5 h-5 text-success-600" />
+                  <span className="text-sm font-medium text-neutral-700">إجمالي الرواتب</span>
                 </div>
-              )}
+                <p className="text-2xl font-bold text-neutral-900">
+                  {computedTotalSalaries.toLocaleString('ar-SA')} ريال
+                </p>
+              </div>
               <div className="bg-neutral-50 p-4 rounded-lg">
                 <div className="flex items-center gap-2 mb-2">
                   <FolderKanban className="w-5 h-5 text-purple-600" />
@@ -319,6 +332,14 @@ export default function ProjectDetailModal({
           onUpdate={handleEmployeeUpdate}
         />
       )}
+
+      {/* modal أسعار المهن */}
+      <JobTitleRatesModal
+        projectId={project.id}
+        projectName={project.name}
+        open={showRatesModal}
+        onOpenChange={setShowRatesModal}
+      />
     </>
   )
 }

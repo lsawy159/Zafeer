@@ -78,6 +78,11 @@ export const PERMISSION_SECTIONS = {
     description: 'الوصول إلى شاشة إدارة المستخدمين وصلاحياتهم.',
     actions: ['view', 'create', 'edit', 'delete'] as const,
   },
+  extracts: {
+    label: 'المستخلصات',
+    description: 'إنشاء وتصدير فواتير التكاليف الشهرية للمشاريع الخارجية.',
+    actions: ['view', 'create', 'edit', 'delete', 'export'] as const,
+  },
   adminSettings: {
     label: 'إعدادات النظام',
     description: 'إعدادات النظام الإدارية العامة.',
