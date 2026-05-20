@@ -45,11 +45,19 @@ export interface EmployeeStatsResult {
   total: number
 }
 
-// Section B — تنبيهات المؤسسات (سليمة فقط)
+// Section B — تنبيهات المؤسسات (سليمة فقط — لديها تواريخ صالحة غير منتهية)
 export interface CompanyAlertStatsResult {
   urgent: number
   high: number
   medium: number
+}
+
+// Section F — بيانات المؤسسات الناقصة
+export interface CompanyMissingDataResult {
+  commercial_reg: number          // commercial_registration_expiry = null
+  power_subscription: number     // ending_subscription_power_date = null
+  moqeem_subscription: number    // ending_subscription_moqeem_date = null
+  any_missing: number            // لديها حقل واحد على الأقل ناقص
 }
 
 // Section C — وثائق الموظفين المنتهية
@@ -83,6 +91,7 @@ export interface EmployeeAlertStatsResult {
 export interface AllStatsResult {
   companyStats: CompanyStatsResult
   companyAlerts: CompanyAlertStatsResult
+  companyMissing: CompanyMissingDataResult
   employeeStats: EmployeeStatsResult
   employeeExpired: EmployeeExpiredDocsResult
   employeeMissing: EmployeeMissingDocsResult

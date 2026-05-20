@@ -9,6 +9,7 @@ import type {
   CompanyStatsResult,
   EmployeeStatsResult,
   CompanyAlertStatsResult,
+  CompanyMissingDataResult,
   EmployeeExpiredDocsResult,
   EmployeeMissingDocsResult,
   EmployeeAlertStatsResult,
@@ -171,6 +172,24 @@ export function calculateEmployeeExpiredDocs(
 }
 
 // ──────────────────────────────────────────────
+// Section F — بيانات المؤسسات الناقصة
+// ──────────────────────────────────────────────
+
+export function calculateCompanyMissingData(rows: StatsCompanyRow[]): CompanyMissingDataResult {
+  let commercial_reg = 0, power_subscription = 0, moqeem_subscription = 0, any_missing = 0
+  for (const row of rows) {
+    const missingComm = isDateMissing(row.commercial_registration_expiry)
+    const missingPower = isDateMissing(row.ending_subscription_power_date)
+    const missingMoqeem = isDateMissing(row.ending_subscription_moqeem_date)
+    if (missingComm) commercial_reg++
+    if (missingPower) power_subscription++
+    if (missingMoqeem) moqeem_subscription++
+    if (missingComm || missingPower || missingMoqeem) any_missing++
+  }
+  return { commercial_reg, power_subscription, moqeem_subscription, any_missing }
+}
+
+// ──────────────────────────────────────────────
 // Section D — بيانات الموظفين الناقصة
 // ──────────────────────────────────────────────
 
@@ -253,6 +272,11 @@ export const predicates = {
   isHealthyCompany: (row: StatsCompanyRow, today: Date) => classifyCompany(row, today) === 'healthy',
   isDamagedCompany: (row: StatsCompanyRow, today: Date) => classifyCompany(row, today) === 'damaged',
   isMissingCompany: (row: StatsCompanyRow, today: Date) => classifyCompany(row, today) === 'missing',
+
+  // Company missing data (Section F)
+  isMissingCommercialReg: (row: StatsCompanyRow) => isDateMissing(row.commercial_registration_expiry),
+  isMissingPowerDate: (row: StatsCompanyRow) => isDateMissing(row.ending_subscription_power_date),
+  isMissingMoqeemDate: (row: StatsCompanyRow) => isDateMissing(row.ending_subscription_moqeem_date),
 
   // Company alerts
   isUrgentAlertCompany: (row: StatsCompanyRow, thresholds: StatusThresholds, today: Date) =>
