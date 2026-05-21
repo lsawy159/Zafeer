@@ -6,19 +6,26 @@ const CORS_HEADERS = {
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
 }
 
+// FK-ordered for safe restore (INSERT forward, DELETE reverse)
 const TABLES_TO_EXPORT = [
-  'employees',
+  'users',
+  'system_settings',
   'companies',
   'projects',
-  'transfer_procedures',
+  'employees',
+  'project_job_title_rates',
+  'saved_searches',
+  'notifications',
+  'read_alerts',
   'employee_obligation_headers',
   'employee_obligation_lines',
+  'transfer_procedures',
   'payroll_runs',
   'payroll_entries',
   'payroll_entry_components',
   'payroll_slips',
-  'notifications',
-  'saved_searches',
+  'extract_invoices',
+  'extract_invoice_lines',
 ] as const
 
 const BUCKET = 'backups'
@@ -68,17 +75,47 @@ Deno.serve(async (req: Request) => {
     return jsonResponse({ error: 'Server misconfigured: missing env vars' }, 500)
   }
 
-  const userId = extractUserIdFromJwt(req.headers.get('Authorization'))
+  const authHeader = req.headers.get('Authorization')
+  const userId = extractUserIdFromJwt(authHeader)
 
   let backupType = 'full'
+  let skipLock = false
   try {
     const body = await req.json().catch(() => ({}))
     if (body && typeof body.backup_type === 'string') backupType = body.backup_type
+    if (body && typeof body.skip_lock === 'boolean') skipLock = body.skip_lock
   } catch { /* ignore */ }
 
   const admin = createClient(SUPABASE_URL, SERVICE_ROLE_KEY, {
     auth: { autoRefreshToken: false, persistSession: false },
   })
+
+  // Admin check: only admin role can trigger backup
+  if (userId) {
+    const { data: userRow, error: userErr } = await admin
+      .from('users')
+      .select('role')
+      .eq('id', userId)
+      .single()
+
+    if (userErr || !userRow || userRow.role !== 'admin') {
+      return jsonResponse({ error: 'Forbidden: admin role required' }, 403)
+    }
+  }
+  // No userId = scheduled trigger (pg_cron/system) — allow through
+
+  // Advisory lock: prevent concurrent backup/restore (skip when called internally from restore-backup)
+  let lockAcquired = false
+  if (!skipLock) {
+    const { data: locked, error: lockErr } = await admin.rpc('try_backup_lock')
+    if (lockErr) {
+      return jsonResponse({ error: 'Failed to acquire backup lock', details: lockErr.message }, 500)
+    }
+    if (!locked) {
+      return jsonResponse({ error: 'عملية نسخ أو استعادة جارية' }, 409)
+    }
+    lockAcquired = true
+  }
 
   // Insert in_progress record first
   const { data: historyRow, error: insertError } = await admin
@@ -93,6 +130,7 @@ Deno.serve(async (req: Request) => {
     .single()
 
   if (insertError || !historyRow) {
+    if (lockAcquired) await admin.rpc('release_backup_lock')
     return jsonResponse(
       { error: 'Failed to create backup record', details: insertError?.message },
       500,
@@ -102,19 +140,23 @@ Deno.serve(async (req: Request) => {
   const backupId: string = historyRow.id
 
   try {
-    // Export all tables
+    // Export all tables and track record counts
     const dump: Record<string, unknown[]> = {}
+    const tableRecordCounts: Record<string, number> = {}
+
     for (const table of TABLES_TO_EXPORT) {
       const { data, error } = await admin.from(table).select('*')
       if (error) throw new Error(`Export failed for ${table}: ${error.message}`)
       dump[table] = data ?? []
+      tableRecordCounts[table] = dump[table].length
     }
 
     const rawJson = JSON.stringify({
-      version: 1,
+      version: 2,
       created_at: new Date().toISOString(),
       backup_type: backupType,
       triggered_by: userId,
+      table_record_counts: tableRecordCounts,
       tables: dump,
     })
 
@@ -123,8 +165,7 @@ Deno.serve(async (req: Request) => {
     const gzSize = gzipped.byteLength
     const ratio = rawSize > 0 ? gzSize / rawSize : null
 
-    const now = new Date()
-    const filePath = `${now.getUTCFullYear()}/${String(now.getUTCMonth() + 1).padStart(2, '0')}/${backupId}.json.gz`
+    const filePath = `backups/${backupId}.json.gz`
 
     const { error: uploadError } = await admin.storage
       .from(BUCKET)
@@ -140,6 +181,7 @@ Deno.serve(async (req: Request) => {
         file_size: gzSize,
         compression_ratio: ratio,
         completed_at: new Date().toISOString(),
+        table_record_counts: tableRecordCounts,
       })
       .eq('id', backupId)
       .select()
@@ -155,5 +197,7 @@ Deno.serve(async (req: Request) => {
       .update({ status: 'failed', error_message: message, completed_at: new Date().toISOString() })
       .eq('id', backupId)
     return jsonResponse({ success: false, error: message, backup_id: backupId }, 500)
+  } finally {
+    if (lockAcquired) await admin.rpc('release_backup_lock')
   }
 })

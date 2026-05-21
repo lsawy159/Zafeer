@@ -65,23 +65,21 @@ export default function Login() {
       </button>
 
       <div className="relative z-10 w-full max-w-xl">
-        <div className="mx-auto w-full rounded-[26px] border border-border/80 bg-surface/74 p-4 shadow-[0_35px_120px_-50px_rgba(15,23,42,0.42)] backdrop-blur-xl dark:border-white/10 dark:bg-[var(--color-card)]/60 sm:p-6">
-          <div className="rounded-[22px] border border-border/80 bg-surface/95 p-6 shadow-[var(--shadow-xl)] dark:border-white/10 dark:bg-[var(--color-card)]/90 sm:p-7">
-            <div className="mb-6 text-center">
+        <div className="mx-auto w-full rounded-[26px] border border-border/80 bg-surface/74 p-4 shadow-[0_35px_120px_-50px_rgba(15,23,42,0.42)] backdrop-blur-xl dark:border-white/10 dark:bg-[var(--color-card)]/60 sm:p-6 lv1-outer">
+          <div className="rounded-[22px] border border-border/80 bg-surface/95 p-6 shadow-[var(--shadow-xl)] dark:border-white/10 dark:bg-[var(--color-card)]/90 sm:p-7 lv1-inner">
+            <div className="mb-6 text-center lv1-logo">
               <div className="mb-2 flex items-center justify-center">
                 <img src="/logo.png" alt="ZaFeer" className="h-16 w-auto dark:hidden" />
                 <img src="/logo-dark.png" alt="ZaFeer" className="h-16 w-auto hidden dark:block" />
               </div>
             </div>
-
             <form onSubmit={handleSubmit} className="space-y-5">
               {error && (
                 <div className="rounded-xl border border-red-300 bg-red-50/90 px-4 py-3 text-sm text-red-700 dark:border-red-500/30 dark:bg-red-950/30 dark:text-red-200">
                   {error}
                 </div>
               )}
-
-              <div>
+              <div className="lv1-f1">
                 <label htmlFor="login-username" className="mb-2 block text-right text-sm font-semibold text-foreground-secondary dark:text-foreground-secondary">
                   اسم المستخدم أو البريد الإلكتروني
                 </label>
@@ -101,40 +99,38 @@ export default function Login() {
                   autoComplete="username"
                 />
               </div>
-
-              <div>
+              <div className="lv1-f2">
                 <label htmlFor="login-password" className="mb-2 block text-right text-sm font-semibold text-foreground-secondary dark:text-foreground-secondary">
                   كلمة المرور
                 </label>
-                <div className="relative">
-                  <input
-                    id="login-password"
-                    type={showPassword ? 'text' : 'password'}
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    className="app-input pe-12"
-                    required
-                    dir="ltr"
-                    autoComplete="current-password"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword(!showPassword)}
-                    className="absolute inset-inline-end-3 top-1/2 -translate-y-1/2 text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none"
-                    aria-label={showPassword ? 'إخفاء كلمة المرور' : 'إظهار كلمة المرور'}
-                  >
-                    {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
-                  </button>
+                <div className="pw-field">
+                  <div className="pw-input-row">
+                    <input
+                      id="login-password"
+                      type={showPassword ? 'text' : 'password'}
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      required
+                      dir="ltr"
+                      autoComplete="current-password"
+                    />
+                    <span className="pw-sep" aria-hidden="true" />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="pw-toggle"
+                      aria-label={showPassword ? 'إخفاء كلمة المرور' : 'إظهار كلمة المرور'}
+                    >
+                      {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    </button>
+                  </div>
                 </div>
               </div>
-
-              <Button
-                type="submit"
-                disabled={isSubmitting}
-                className="w-full justify-center py-3.5 text-base"
-              >
-                {isSubmitting ? 'جاري تسجيل الدخول...' : 'تسجيل الدخول'}
-              </Button>
+              <div className="lv1-submit">
+                <Button type="submit" disabled={isSubmitting} className="w-full justify-center py-3.5 text-base">
+                  {isSubmitting ? 'جاري تسجيل الدخول...' : 'تسجيل الدخول'}
+                </Button>
+              </div>
             </form>
           </div>
         </div>

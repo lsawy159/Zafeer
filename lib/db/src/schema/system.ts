@@ -1,5 +1,5 @@
 import {
-  pgTable, uuid, text, bigint, numeric, boolean, timestamp, jsonb,
+  pgTable, uuid, text, bigint, numeric, boolean, timestamp, jsonb, integer,
 } from 'drizzle-orm/pg-core'
 import { emailStatusEnum, emailPriorityEnum } from './enums'
 
@@ -9,6 +9,7 @@ export const systemSettingsTable = pgTable('system_settings', {
   id: uuid('id').primaryKey().defaultRandom(),
   setting_key: text('setting_key').notNull().unique(),
   setting_value: jsonb('setting_value').notNull(),
+  maintenance_until: timestamp('maintenance_until', { withTimezone: true }),
   created_at: timestamp('created_at', { withTimezone: true }).defaultNow(),
   updated_at: timestamp('updated_at', { withTimezone: true }).defaultNow(),
 })
@@ -54,6 +55,40 @@ export const backupHistoryTable = pgTable('backup_history', {
   completed_at: timestamp('completed_at', { withTimezone: true }),
   error_message: text('error_message'),
   tables_included: text('tables_included').array(),
+  table_record_counts: jsonb('table_record_counts'),
 })
 
 export type BackupHistory = typeof backupHistoryTable.$inferSelect
+
+// ─── restore_history ──────────────────────────────────────────────────────────
+
+export const restoreHistoryTable = pgTable('restore_history', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  backup_id: uuid('backup_id').notNull().references(() => backupHistoryTable.id),
+  executed_by: uuid('executed_by').notNull(),
+  snapshot_id: uuid('snapshot_id').references(() => backupHistoryTable.id),
+  // status state machine: pending→creating_snapshot→reading_file→staging_data→restoring_data→completed|failed
+  status: text('status').notNull().default('pending'),
+  started_at: timestamp('started_at', { withTimezone: true }).defaultNow(),
+  completed_at: timestamp('completed_at', { withTimezone: true }),
+  tables_restored: integer('tables_restored'),
+  records_restored: integer('records_restored'),
+  error_message: text('error_message'),
+  notes: text('notes'),
+})
+
+export type RestoreHistory = typeof restoreHistoryTable.$inferSelect
+
+// ─── restore_staging ─────────────────────────────────────────────────────────
+
+export const restoreStagingTable = pgTable('restore_staging', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  session_id: uuid('session_id').notNull(),
+  table_name: text('table_name').notNull(),
+  data: jsonb('data').notNull(),
+  chunk_index: integer('chunk_index').notNull().default(0),
+  chunk_total: integer('chunk_total').notNull().default(1),
+  created_at: timestamp('created_at', { withTimezone: true }).defaultNow(),
+})
+
+export type RestoreStaging = typeof restoreStagingTable.$inferSelect
