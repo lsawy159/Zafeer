@@ -11,15 +11,15 @@ import {
   fetchBackupSettings,
   saveBackupSettings,
   triggerManualBackup,
-  getBackupDownloadUrl,
   type BackupRecord,
   type BackupSettings,
 } from '@/lib/backupService'
+import { fetchRestoreHistory, type RestoreHistoryRecord } from '@/lib/restoreService'
+import { BackupListItem } from '@/components/settings/backup/BackupListItem'
+import { downloadBackupAsCsv } from '@/lib/csvExport'
 import {
   Database,
-  Download,
   AlertTriangle,
-  CheckCircle,
   Loader2,
   Clock,
   CalendarClock,
@@ -28,6 +28,7 @@ import {
   Save,
   Shield,
   Play,
+  Info,
 } from 'lucide-react'
 
 const FREQUENCY_LABELS: Record<string, string> = {
@@ -312,9 +313,19 @@ function StatCard({
 
 // ─── Main Component ────────────────────────────────────────────────────────────
 
+const RESTORE_STATUS_AR: Record<string, string> = {
+  pending: 'في الانتظار',
+  creating_snapshot: 'إنشاء Snapshot',
+  reading_file: 'قراءة الملف',
+  staging_data: 'تحضير البيانات',
+  restoring_data: 'استعادة البيانات',
+  completed: 'مكتملة',
+  failed: 'فشلت',
+}
+
 export function BackupTab(): React.JSX.Element {
   const qc = useQueryClient()
-  const [downloadingId, setDownloadingId] = useState<string | null>(null)
+  const [csvDownloadingId, setCsvDownloadingId] = useState<string | null>(null)
 
   // Backup settings
   const {
@@ -338,15 +349,26 @@ export function BackupTab(): React.JSX.Element {
       const { data, error } = await supabase
         .from('backup_history')
         .select(
-          'id, backup_type, triggered_by, file_path, file_size, compression_ratio, status, started_at, completed_at, error_message, tables_included'
+          'id, backup_type, triggered_by, file_path, file_size, compression_ratio, status, started_at, completed_at, error_message, tables_included, table_record_counts'
         )
         .order('started_at', { ascending: false })
-        .limit(20)
+        .limit(30)
 
       if (error) throw error
       return (data as BackupRecord[]) || []
     },
     refetchInterval: 30_000,
+  })
+
+  // Restore history
+  const {
+    data: restoreHistory = [],
+    isLoading: restoreHistoryLoading,
+    refetch: refetchRestoreHistory,
+  } = useQuery({
+    queryKey: ['restore-history'],
+    queryFn: fetchRestoreHistory,
+    staleTime: 30_000,
   })
 
   // Manual backup trigger
@@ -364,27 +386,19 @@ export function BackupTab(): React.JSX.Element {
     },
   })
 
-  const handleDownload = async (backup: BackupRecord) => {
-    setDownloadingId(backup.id)
+  const handleCsvDownload = async (backup: BackupRecord) => {
+    setCsvDownloadingId(backup.id)
     try {
-      const url = await getBackupDownloadUrl(backup.file_path)
-      if (!url) {
-        toast.error('تعذر الحصول على رابط التنزيل')
-        return
-      }
-      const a = document.createElement('a')
-      a.href = url
-      a.download = backup.file_path.split('/').pop() || 'backup.sql'
-      a.click()
+      await downloadBackupAsCsv(backup)
     } catch (err) {
-      toast.error('فشل التنزيل')
-      logger.error('[BackupTab] download error:', err)
+      toast.error('فشل تحضير ملف CSV: ' + (err instanceof Error ? err.message : String(err)))
+      logger.error('[BackupTab] CSV download error:', err)
     } finally {
-      setDownloadingId(null)
+      setCsvDownloadingId(null)
     }
   }
 
-  if (settingsLoading || historyLoading) {
+  if (settingsLoading || historyLoading || restoreHistoryLoading) {
     return (
       <div className="flex items-center justify-center py-16">
         <LoadingSpinner />
@@ -398,6 +412,14 @@ export function BackupTab(): React.JSX.Element {
 
   return (
     <div className="space-y-6" dir="rtl">
+      {/* ── Password Warning Banner ── */}
+      <div className="flex items-start gap-2 rounded-lg border border-blue-200 bg-blue-50 px-4 py-3">
+        <Info className="w-4 h-4 text-blue-600 mt-0.5 shrink-0" />
+        <p className="text-sm text-blue-800">
+          <span className="font-medium">ملاحظة:</span> كلمات المرور وجلسات الدخول خارج نطاق النسخة الاحتياطية. سيحتاج المستخدمون لإعادة تسجيل الدخول بعد أي استعادة.
+        </p>
+      </div>
+
       {/* ── Schedule Settings ── */}
       {settings && (
         <ScheduleForm
@@ -497,81 +519,67 @@ export function BackupTab(): React.JSX.Element {
         ) : (
           <div className="space-y-2">
             {backups.map((backup) => (
-              <div
+              <BackupListItem
                 key={backup.id}
-                className="flex items-center gap-4 rounded-xl border border-border bg-surface px-4 py-3 transition-colors hover:bg-surface-secondary"
-              >
-                {/* Status icon */}
-                <div className="flex-shrink-0">
-                  {backup.status === 'completed' ? (
-                    <CheckCircle className="h-4 w-4 text-success-500" />
-                  ) : backup.status === 'failed' ? (
-                    <AlertTriangle className="h-4 w-4 text-danger-500" />
-                  ) : (
-                    <Loader2 className="h-4 w-4 animate-spin text-amber-500" />
-                  )}
-                </div>
-
-                {/* Info */}
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <span className="text-sm font-medium text-foreground">
-                      {backup.backup_type === 'full' ? 'نسخة كاملة' : 'نسخة جزئية'}
-                    </span>
-                    {backup.triggered_by && backup.triggered_by !== 'manual' && (
-                      <span className="rounded-full bg-blue-100 px-2 py-0.5 text-[10px] font-medium text-blue-700 dark:bg-blue-900/30 dark:text-blue-300">
-                        تلقائي
-                      </span>
-                    )}
-                    <span
-                      className={`rounded-full px-2 py-0.5 text-[10px] font-medium ${
-                        backup.status === 'completed'
-                          ? 'bg-success-50 text-success-700 dark:bg-success-900/20 dark:text-success-300'
-                          : backup.status === 'failed'
-                            ? 'bg-danger-50 text-danger-700 dark:bg-danger-900/20 dark:text-danger-300'
-                            : 'bg-amber-50 text-amber-700 dark:bg-amber-900/20 dark:text-amber-300'
-                      }`}
-                    >
-                      {backup.status === 'completed' ? 'نجح' : backup.status === 'failed' ? 'فشل' : 'جاري...'}
-                    </span>
-                  </div>
-                  <p className="mt-0.5 text-[11px] text-foreground-tertiary">
-                    {backup.completed_at
-                      ? formatDateWithHijri(backup.completed_at)
-                      : formatDateWithHijri(backup.started_at)}
-                  </p>
-                  {backup.error_message && (
-                    <p className="mt-0.5 text-[11px] text-danger-500 truncate">{backup.error_message}</p>
-                  )}
-                </div>
-
-                {/* Size + download */}
-                <div className="flex flex-shrink-0 items-center gap-3">
-                  {backup.file_size > 0 && (
-                    <span className="text-xs text-foreground-tertiary">{formatBytes(backup.file_size)}</span>
-                  )}
-                  {backup.status === 'completed' && backup.file_path && (
-                    <button
-                      type="button"
-                      onClick={() => handleDownload(backup)}
-                      disabled={downloadingId === backup.id}
-                      className="flex items-center gap-1 rounded-lg border border-border px-2.5 py-1.5 text-xs text-foreground-secondary transition-colors hover:bg-surface-secondary disabled:opacity-50"
-                      aria-label={`تحميل النسخة الاحتياطية ${formatBytes(backup.file_size)}`}
-                    >
-                      {downloadingId === backup.id ? (
-                        <Loader2 className="h-3 w-3 animate-spin" />
-                      ) : (
-                        <Download className="h-3 w-3" />
-                      )}
-                      تحميل
-                    </button>
-                  )}
-                </div>
-              </div>
+                backup={backup}
+                onCsvDownload={handleCsvDownload}
+                csvDownloading={csvDownloadingId === backup.id}
+              />
             ))}
           </div>
         )}
       </div>
+
+      {/* ── Restore History ── */}
+      {restoreHistory.length > 0 && (
+        <div>
+          <div className="mb-3 flex items-center justify-between">
+            <h4 className="text-sm font-semibold text-foreground">سجل عمليات الاستعادة</h4>
+            <button
+              type="button"
+              onClick={() => refetchRestoreHistory()}
+              className="flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs text-foreground-tertiary hover:bg-surface-secondary transition-colors"
+            >
+              <RotateCcw className="h-3.5 w-3.5" />
+              تحديث
+            </button>
+          </div>
+          <div className="border border-neutral-200 rounded-lg overflow-hidden">
+            <table className="w-full text-sm">
+              <thead className="bg-neutral-50">
+                <tr>
+                  <th className="text-right p-3 font-medium text-neutral-600 text-xs">التاريخ</th>
+                  <th className="text-right p-3 font-medium text-neutral-600 text-xs">النسخة المُستعادة</th>
+                  <th className="text-right p-3 font-medium text-neutral-600 text-xs">الحالة</th>
+                </tr>
+              </thead>
+              <tbody>
+                {restoreHistory.map((entry: RestoreHistoryRecord, idx) => (
+                  <tr key={entry.id} className={idx % 2 === 0 ? 'bg-white' : 'bg-neutral-50'}>
+                    <td className="p-3 text-neutral-600 text-xs">
+                      {entry.started_at ? formatDateWithHijri(entry.started_at) : '—'}
+                    </td>
+                    <td className="p-3 text-neutral-600 text-xs font-mono">
+                      {entry.backup_id.slice(0, 8)}...
+                    </td>
+                    <td className="p-3">
+                      <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
+                        entry.status === 'completed'
+                          ? 'bg-green-50 text-green-700'
+                          : entry.status === 'failed'
+                          ? 'bg-red-50 text-red-700'
+                          : 'bg-amber-50 text-amber-700'
+                      }`}>
+                        {RESTORE_STATUS_AR[entry.status] ?? entry.status}
+                      </span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

@@ -13,6 +13,7 @@ export interface BackupRecord {
   completed_at: string | null
   error_message?: string | null
   tables_included?: string[]
+  table_record_counts?: Record<string, number>
 }
 
 export interface BackupSettings {
@@ -149,7 +150,7 @@ export async function triggerManualBackup(): Promise<BackupRecord | null> {
   const { data: latest, error: latestErr } = await supabase
     .from('backup_history')
     .select(
-      'id, backup_type, triggered_by, file_path, file_size, compression_ratio, status, started_at, completed_at, error_message, tables_included'
+      'id, backup_type, triggered_by, file_path, file_size, compression_ratio, status, started_at, completed_at, error_message, tables_included, table_record_counts'
     )
     .order('started_at', { ascending: false })
     .limit(1)
