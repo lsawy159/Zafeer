@@ -51,6 +51,7 @@ function Chip({
   color?: 'blue' | 'green'
 }) {
   return (
+
     <button
       onClick={onClick}
       className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-[12px] font-medium leading-4 transition ${
@@ -65,6 +66,7 @@ function Chip({
     >
       {children}
     </button>
+
   )
 }
 

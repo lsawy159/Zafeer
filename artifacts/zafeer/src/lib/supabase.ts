@@ -279,13 +279,15 @@ export interface Notification {
   message?: string
   entity_type?: string
   entity_id?: number
-  priority: 'urgent' | 'high' | 'medium' | 'low'
+  priority: 'critical' | 'urgent' | 'high' | 'medium' | 'low'
   days_remaining?: number
   is_read: boolean
   is_archived: boolean
   created_at: string
   read_at?: string
   target_date?: string
+  snoozed_until?: string | null
+  is_deferred?: boolean
 }
 
 export interface ActivityLog {
