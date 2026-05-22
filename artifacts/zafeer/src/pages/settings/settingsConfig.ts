@@ -2,7 +2,6 @@ import type { GeneralSetting } from './SettingControl'
 import {
   Globe,
   Shield,
-  FileText,
   Clock,
   Database as DatabaseIcon,
   Bell,
@@ -25,7 +24,6 @@ export type TabType =
   | 'sessions'
   | 'audit'
   | 'permissions'
-  | 'reports'
   | 'advanced-notifications'
   | 'alert-settings'
   | 'backup'
@@ -36,7 +34,6 @@ export const ALLOWED_TABS: TabType[] = [
   'sessions',
   'audit',
   'permissions',
-  'reports',
   'advanced-notifications',
   'alert-settings',
   'backup',
@@ -52,44 +49,6 @@ export const LEGACY_SYSTEM_SETTINGS_KEYS = [
   'working_hours_end',
 ]
 
-export const REPORTS_SETTINGS: GeneralSetting[] = [
-  {
-    setting_key: 'report_default_format',
-    setting_value: 'excel',
-    category: 'reports',
-    description: 'تنسيق التقارير الافتراضي',
-    setting_type: 'select',
-    options: ['excel', 'csv'],
-  },
-  {
-    setting_key: 'report_auto_schedule',
-    setting_value: false,
-    category: 'reports',
-    description: 'تفعيل الجدولة التلقائية للتقارير',
-    setting_type: 'boolean',
-  },
-  {
-    setting_key: 'report_recipients',
-    setting_value: '',
-    category: 'reports',
-    description: 'المستلمون الافتراضيون للتقارير (البريد الإلكتروني)',
-    setting_type: 'text',
-  },
-  {
-    setting_key: 'report_include_charts',
-    setting_value: true,
-    category: 'reports',
-    description: 'تضمين الرسوم البيانية في التقارير',
-    setting_type: 'boolean',
-  },
-  {
-    setting_key: 'report_company_logo',
-    setting_value: true,
-    category: 'reports',
-    description: 'إضافة شعار الشركة للتقارير',
-    setting_type: 'boolean',
-  },
-]
 
 export const NOTIFICATIONS_SETTINGS: GeneralSetting[] = [
   {
@@ -189,13 +148,6 @@ export function buildSettingsCategories(
       description: 'تحديد صلاحيات كل مستخدم وتعيين الأدوار (مدير / مسؤول / مستخدم) والتحكم في ما يستطيع رؤيته وتعديله.',
       icon: Shield,
       component: PermissionsPanel,
-    },
-    {
-      key: 'reports',
-      label: 'إعدادات التقارير',
-      description: 'تحديد تنسيق التقارير الافتراضي (Excel/CSV)، جدولة الإرسال التلقائي للبريد الإلكتروني، وإضافة شعار الشركة.',
-      icon: FileText,
-      settings: REPORTS_SETTINGS,
     },
     {
       key: 'advanced-notifications',

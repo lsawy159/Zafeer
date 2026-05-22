@@ -1,8 +1,9 @@
 import { useState } from 'react'
-import { Download, FileSpreadsheet, RotateCcw, Camera } from 'lucide-react'
+import { Download, FileSpreadsheet, RotateCcw, Camera, Mail } from 'lucide-react'
 import type { BackupRecord } from '@/lib/backupService'
 import { getBackupDownloadUrl } from '@/lib/backupService'
 import { RestorePreviewModal } from './RestorePreviewModal'
+import { SendEmailModal } from './SendEmailModal'
 
 function formatBytes(bytes: number): string {
   if (bytes < 1024) return `${bytes} B`
@@ -38,6 +39,7 @@ interface Props {
 export function BackupListItem({ backup, onCsvDownload, csvDownloading }: Props) {
   const [downloading, setDownloading] = useState(false)
   const [showRestoreModal, setShowRestoreModal] = useState(false)
+  const [showEmailModal, setShowEmailModal] = useState(false)
 
   const isSnapshot = backup.backup_type === 'pre-restore-snapshot'
   const tableCount = backup.tables_included?.length ?? 0
@@ -133,6 +135,14 @@ export function BackupListItem({ backup, onCsvDownload, csvDownloading }: Props)
               {csvDownloading ? 'جاري التحضير...' : 'تحميل CSV'}
             </button>
 
+            <button
+              onClick={() => setShowEmailModal(true)}
+              className="app-button-secondary text-xs py-1.5 px-3 gap-1.5"
+            >
+              <Mail className="w-3.5 h-3.5" />
+              إرسال بالبريد
+            </button>
+
             {!isSnapshot && (
               <button
                 onClick={() => setShowRestoreModal(true)}
@@ -148,6 +158,14 @@ export function BackupListItem({ backup, onCsvDownload, csvDownloading }: Props)
 
       {showRestoreModal && (
         <RestorePreviewModal backup={backup} onClose={() => setShowRestoreModal(false)} />
+      )}
+
+      {showEmailModal && (
+        <SendEmailModal
+          backupId={backup.id}
+          backupDate={backup.completed_at ? formatDate(backup.completed_at) : undefined}
+          onClose={() => setShowEmailModal(false)}
+        />
       )}
     </>
   )
