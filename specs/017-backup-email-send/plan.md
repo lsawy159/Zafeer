@@ -5,7 +5,7 @@
 
 ## Summary
 
-إضافة زر "إرسال بالبريد" على كل نسخة احتياطية مكتملة في قسم النسخ الاحتياطية. عند الضغط تظهر نافذة لإدخال البريد الإلكتروني، ثم يُرسَل رابط تحميل مؤقت (Signed URL لمدة 24 ساعة) إلى البريد المُدخل عبر خدمة Resend.
+إضافة زر "إرسال بالبريد" على كل نسخة احتياطية مكتملة (جميع الأنواع). عند الضغط تظهر نافذة لإدخال البريد الإلكتروني، ثم يصل إيميل عربي RTL يحتوي على: (1) رابط تحميل JSON مؤقت (24h Signed URL)، (2) ملف ZIP مرفق يحتوي على جداول النسخة بصيغة CSV — يُنتج لحظياً في Edge Function.
 
 ## Technical Context
 
@@ -16,7 +16,7 @@
 **Target Platform**: Web (RTL Arabic UI)  
 **Project Type**: Web application (monorepo — `artifacts/zafeer` frontend + `supabase/functions` Edge Functions)  
 **Performance Goals**: رد Edge Function في < 5 ثوانٍ  
-**Constraints**: حجم المرفقات غير محدود (نرسل رابط لا ملف) — مقيّد بحد Resend (3000 بريد/شهر free tier)  
+**Constraints**: ZIP attachment ≤ 25MB raw (≈33MB بعد base64) — Resend حد فعلي ~40MB. مقيّد بحد Resend (3000 بريد/شهر free tier)  
 **Scale/Scope**: استخدام داخلي — admin فقط — عدد محدود من الإرسالات
 
 ## Constitution Check
@@ -85,8 +85,13 @@ Logic:
 4. Validate: UUID format + email format
 5. Fetch `backup_history` row → verify `status = 'completed'`
 6. Generate Signed URL: `storage.from('backups').createSignedUrl(file_path, 86400)` (24h)
-7. Send via Resend: HTML email with download link
-8. Return `{ success: true }`
+7. Generate CSV ZIP:
+   - Download + decompress backup JSON.gz from Storage
+   - Convert each table array → CSV string (RFC 4180)
+   - Zip all CSVs via `https://esm.sh/jszip@latest`
+   - Check ZIP size — if >25MB return 413 with Arabic error message
+8. Send via Resend: HTML email (RTL, Arabic, `dir="rtl" lang="ar"`) with JSON Signed URL + ZIP as base64 attachment
+9. Return `{ success: true }`
 
 ### Step 2: `sendBackupByEmail()` في backupService
 
@@ -123,7 +128,10 @@ export async function sendBackupByEmail(backupId: string, recipientEmail: string
 
 ## Complexity Tracking
 
-لا انتهاكات للـ Constitution. الميزة بسيطة: Modal + Edge Function + Resend.
+| Violation | Why Needed | Simpler Alternative Rejected Because |
+|-----------|------------|-------------------------------------|
+| Edge Function بدلاً من `api-server + requireAdmin` (Principle IV/V) | الـ Edge Function تحتاج تنزيل ملف من Supabase Storage، ضغطه، وإنتاج ZIP — عمليات لا تعمل في Express API بدون Supabase service role مباشر | توجيه الطلب عبر api-server يزيد تعقيداً بلا فائدة — Edge Function تعمل في نفس بيئة Supabase وتملك service role مباشرة. Auth check بـ `users.role` يوازي `requireAdmin` وظيفياً |
+| Email validation regex مكررة (Principle III) | Client-side validation للـ UX السريع، server-side للأمان — مكتبة Zod في Edge Function ثقيلة لـ Deno import | استخدام regex بسيط موحد بدلاً من Zod schema كامل مقبول لهذه الحالة البسيطة — الـ regex محدود لحقل واحد |
 
 ## Notes
 

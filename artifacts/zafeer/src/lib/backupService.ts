@@ -172,5 +172,15 @@ export async function getBackupDownloadUrl(filePath: string): Promise<string | n
   return data?.signedUrl ?? null
 }
 
+export async function sendBackupByEmail(backupId: string, recipientEmail: string): Promise<void> {
+  const { data, error } = await supabase.functions.invoke('send-backup-email', {
+    body: { backup_id: backupId, recipient_email: recipientEmail },
+  })
+  if (error) throw error
+  if (data && typeof data === 'object' && 'error' in data) {
+    throw new Error(String(data.error))
+  }
+}
+
 /** @deprecated use triggerManualBackup */
 export const triggerManualBackupAndNotify = triggerManualBackup

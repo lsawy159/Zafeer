@@ -15,14 +15,14 @@ Content-Type: application/json
 
 ```typescript
 {
-  backup_id: string      // UUID — must exist in backup_history with status='completed'
+  backup_id: string       // UUID — must exist in backup_history with status='completed'
   recipient_email: string // valid email address
 }
 ```
 
 ### Validation Rules
 
-- `backup_id`: required, must be valid UUID, must reference an existing `completed` backup
+- `backup_id`: required, valid UUID, references `completed` backup (all types: full/scheduled/pre-restore-snapshot)
 - `recipient_email`: required, must match `/^[^\s@]+@[^\s@]+\.[^\s@]+$/`
 
 ## Response
@@ -41,8 +41,9 @@ Content-Type: application/json
 | Status | Condition | Body |
 |--------|-----------|------|
 | 400 | Missing/invalid fields | `{ "error": "بيانات غير صالحة: ..." }` |
-| 403 | Non-admin user | `{ "error": "Forbidden: admin role required" }` |
+| 403 | Non-admin user | `{ "error": "صلاحية المدير مطلوبة" }` |
 | 404 | backup_id not found or not completed | `{ "error": "النسخة الاحتياطية غير موجودة أو لم تكتمل بعد" }` |
+| 413 | ZIP attachment exceeds 25MB | `{ "error": "حجم الملف كبير جداً للإرسال كمرفق، حاول تحميله يدوياً" }` |
 | 500 | Resend API failure / Storage error | `{ "error": "فشل إرسال البريد: ..." }` |
 
 ## Authorization
@@ -59,16 +60,23 @@ Content-Type: application/json
 `recipient_email` (from request body)
 
 ### Subject
-`نسخة احتياطية — زفير | <date>`
+`نسخة احتياطية — زفير | <date>` — التاريخ بصيغة `dd/MM/yyyy` (Principle II)
 
 ### Body
-HTML email containing:
+HTML email — يجب أن يحتوي على `<html dir="rtl" lang="ar">`:
 - اسم النظام: **زفير**
 - تاريخ النسخة الاحتياطية
 - نوع النسخة (كاملة / تلقائية / Snapshot وقائي)
 - حجم الملف
-- رابط تحميل (Signed URL — صالح 24 ساعة)
+- رابط تحميل JSON (Signed URL — صالح 24 ساعة)
 - تحذير: "هذا الرابط صالح لمدة 24 ساعة فقط"
+
+### Attachment
+- `filename`: `backup-<date>-<backup_id_short>.zip` — `backup_id_short` = first 8 characters of UUID, `date` = `YYYY-MM-DD`
+- `content_type`: `application/zip`
+- `content`: ZIP file (base64) — one CSV per table (e.g. `employees.csv`, `companies.csv`)
+- CSV encoding: UTF-8 with BOM (`﻿`), comma delimiter, RFC 4180 quoting
+- Max size: **25MB raw ZIP** (before base64 encoding) — if exceeded, return 413, no email sent
 
 ## Environment Variables Required
 
