@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import Layout from '@/components/layout/Layout'
 import {
@@ -8,11 +8,16 @@ import {
   Database as DatabaseIcon,
   Clock,
   Shield,
+  AlertTriangle,
+  Send,
+  BellOff,
+  Bell,
 } from 'lucide-react'
-import { supabase } from '@/lib/supabase'
+import { supabase, type Notification } from '@/lib/supabase'
 import { toast } from 'sonner'
 import { useAuth } from '@/contexts/AuthContext'
 import { usePermissions } from '@/utils/permissions'
+import { SnoozeModal } from '@/components/notifications/SnoozeModal'
 import ActivityLogsPage from '@/pages/ActivityLogs'
 import SessionsManager from '@/components/settings/SessionsManager'
 import { BackupTab } from '@/components/settings/tabs/BackupTab'
@@ -45,6 +50,11 @@ export default function GeneralSettings() {
   const [isSaving, setIsSaving] = useState(false)
   const [showConfirmReset, setShowConfirmReset] = useState(false)
   const [resetTabKey, setResetTabKey] = useState<TabType | null>(null)
+  const [csvSending, setCsvSending] = useState(false)
+  const [csvSendMsg, setCsvSendMsg] = useState<{ ok: boolean; text: string } | null>(null)
+  const [deferredNotifications, setDeferredNotifications] = useState<Notification[]>([])
+  const [deferredLoading, setDeferredLoading] = useState(false)
+  const [snoozeTarget, setSnoozeTarget] = useState<Notification | null>(null)
 
   const hasViewPermission = canView('adminSettings')
   const hasEditPermission = canEdit('adminSettings')
@@ -131,6 +141,37 @@ export default function GeneralSettings() {
     }
   }, [searchParams])
 
+  const loadDeferredNotifications = useCallback(async () => {
+    setDeferredLoading(true)
+    try {
+      const { data } = await supabase
+        .from('notifications')
+        .select('*')
+        .or('snoozed_until.not.is.null,is_deferred.eq.true')
+        .eq('is_archived', false)
+        .order('created_at', { ascending: false })
+      setDeferredNotifications((data ?? []) as Notification[])
+    } finally {
+      setDeferredLoading(false)
+    }
+  }, [])
+
+  useEffect(() => {
+    if (activeTab === 'advanced-notifications' && user?.role === 'admin') {
+      loadDeferredNotifications()
+    }
+  }, [activeTab, user, loadDeferredNotifications])
+
+  const handleActivateDeferred = async (id: number) => {
+    const { error } = await supabase
+      .from('notifications')
+      .update({ snoozed_until: null, is_deferred: false })
+      .eq('id', id)
+    if (error) { toast.error('فشل التفعيل'); return }
+    toast.success('تم تفعيل الإشعار')
+    loadDeferredNotifications()
+  }
+
   const handleTabChange = (tab: TabType) => {
     setActiveTab(tab)
     setSearchParams({ tab })
@@ -183,9 +224,6 @@ export default function GeneralSettings() {
         return {
           setting_key: setting.setting_key,
           setting_value: JSON.stringify(currentValue),
-          category: setting.category,
-          description: setting.description,
-          setting_type: setting.setting_type,
         }
       })
 
@@ -278,6 +316,36 @@ export default function GeneralSettings() {
       ...prev,
       [key]: value,
     }))
+  }
+
+  const handleSendCsvReport = async () => {
+    setCsvSending(true)
+    setCsvSendMsg(null)
+    try {
+      const { data, error } = await supabase.functions.invoke('send-alert-report')
+      if (error) {
+        // error.context is the raw Response object — must await .json() to read body
+        let serverMsg: string | undefined
+        try {
+          const body = await (error as unknown as { context: Response }).context.json()
+          serverMsg = body?.error as string | undefined
+        } catch {
+          // context not JSON-parseable
+        }
+        throw new Error(serverMsg ?? error.message)
+      }
+      if (data?.error === 'no_admin_email') {
+        setCsvSendMsg({ ok: false, text: 'إيميل المسؤول غير مضبوط — احفظ الإيميل أولاً ثم أعد المحاولة.' })
+      } else if (data?.email_sent === false) {
+        setCsvSendMsg({ ok: true, text: 'لا توجد تنبيهات نشطة حالياً — لم يُرسل تقرير.' })
+      } else {
+        setCsvSendMsg({ ok: true, text: `تم الإرسال بنجاح إلى ${data?.recipient ?? ''}` })
+      }
+    } catch (err) {
+      setCsvSendMsg({ ok: false, text: err instanceof Error ? err.message : 'حدث خطأ غير متوقع' })
+    } finally {
+      setCsvSending(false)
+    }
   }
 
   const activeCategory = settingsCategories.find((cat) => cat.key === activeTab)
@@ -385,6 +453,17 @@ export default function GeneralSettings() {
 
                 {/* Tab Content */}
                 <div className="p-3">
+                  {activeTab === 'advanced-notifications' && user?.role === 'admin' && !settings.admin_email && (
+                    <div className="mb-3 flex items-start gap-2.5 rounded-xl border border-amber-500/30 bg-amber-500/10 px-3.5 py-3" dir="rtl">
+                      <AlertTriangle className="w-4 h-4 mt-0.5 text-amber-500 shrink-0" />
+                      <div>
+                        <p className="text-sm font-medium text-amber-700 dark:text-amber-400">إيميل المسؤول غير مضبوط</p>
+                        <p className="text-xs text-amber-600 dark:text-amber-500 mt-0.5">
+                          لن تصل الإشعارات اليومية ولا تقارير CSV بالبريد. أدخل إيميل المسؤول في الحقل أدناه.
+                        </p>
+                      </div>
+                    </div>
+                  )}
                   {activeCategory.component ? (
                     <activeCategory.component />
                   ) : activeCategory.settings ? (
@@ -417,6 +496,88 @@ export default function GeneralSettings() {
                           </div>
                         </div>
                       ))}
+
+                      {/* زر إرسال التقرير — advanced-notifications tab + admin only */}
+                      {activeTab === 'advanced-notifications' && user?.role === 'admin' && (
+                        <div className="pt-3 mt-1 border-t border-border-100">
+                          <div className="flex items-center justify-between">
+                            <div>
+                              <h3 className="font-medium text-foreground text-sm">إرسال تقرير CSV الآن</h3>
+                              <p className="text-xs text-foreground-tertiary mt-0.5">
+                                إرسال تقرير التنبيهات النشطة فوراً إلى إيميل المسؤول
+                              </p>
+                              {csvSendMsg && (
+                                <p className={`text-xs mt-1 font-medium ${csvSendMsg.ok ? 'text-green-600' : 'text-red-600'}`}>
+                                  {csvSendMsg.text}
+                                </p>
+                              )}
+                            </div>
+                            <Button onClick={handleSendCsvReport} disabled={csvSending} size="sm" className="text-xs shrink-0">
+                              {csvSending ? <><RefreshCw className="w-3.5 h-3.5 animate-spin" /> جارٍ...</> : <><Send className="w-3.5 h-3.5" /> إرسال الآن</>}
+                            </Button>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* الإشعارات المؤجلة — advanced-notifications tab + admin only */}
+                      {activeTab === 'advanced-notifications' && user?.role === 'admin' && (
+                        <div className="pt-3 mt-1 border-t border-border-100">
+                          <div className="flex items-center justify-between mb-3">
+                            <div className="flex items-center gap-2">
+                              <BellOff className="w-4 h-4 text-foreground-secondary" />
+                              <h3 className="font-medium text-foreground text-sm">الإشعارات المؤجلة</h3>
+                              {deferredNotifications.length > 0 && (
+                                <span className="text-xs bg-surface-secondary-100 text-foreground-secondary px-1.5 py-0.5 rounded-full">
+                                  {deferredNotifications.length}
+                                </span>
+                              )}
+                            </div>
+                            <Button variant="secondary" size="sm" className="text-xs" onClick={loadDeferredNotifications} disabled={deferredLoading}>
+                              <RefreshCw className={`w-3 h-3 ${deferredLoading ? 'animate-spin' : ''}`} />
+                            </Button>
+                          </div>
+                          {deferredLoading ? (
+                            <p className="text-xs text-foreground-tertiary text-center py-4">جارٍ التحميل...</p>
+                          ) : deferredNotifications.length === 0 ? (
+                            <p className="text-xs text-foreground-tertiary text-center py-4">لا توجد إشعارات مؤجلة</p>
+                          ) : (
+                            <div className="space-y-2">
+                              {deferredNotifications.map((n) => (
+                                <div key={n.id} className="flex items-start justify-between gap-3 rounded-xl border border-border-100 bg-surface-secondary-50 px-3 py-2.5">
+                                  <div className="flex-1 min-w-0">
+                                    <p className="text-sm font-medium text-foreground truncate">{n.title}</p>
+                                    <p className="text-xs text-foreground-tertiary mt-0.5">
+                                      {n.is_deferred
+                                        ? 'مؤجَّل حتى يُفعَّل يدوياً'
+                                        : n.snoozed_until
+                                          ? `مؤجَّل حتى: ${new Date(n.snoozed_until).toLocaleDateString('ar-SA')}`
+                                          : ''}
+                                    </p>
+                                  </div>
+                                  <div className="flex gap-1.5 shrink-0">
+                                    <Button
+                                      variant="secondary"
+                                      size="sm"
+                                      className="text-xs"
+                                      onClick={() => setSnoozeTarget(n)}
+                                    >
+                                      تعديل
+                                    </Button>
+                                    <Button
+                                      size="sm"
+                                      className="text-xs"
+                                      onClick={() => handleActivateDeferred(n.id)}
+                                    >
+                                      <Bell className="w-3 h-3" />
+                                      تفعيل
+                                    </Button>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      )}
                     </div>
                   ) : (
                     <div className="text-center py-6 text-foreground-tertiary">
@@ -529,6 +690,15 @@ export default function GeneralSettings() {
             </div>
           )}
         </ConfirmationDialog>
+
+        {snoozeTarget && (
+          <SnoozeModal
+            notification={snoozeTarget}
+            open={!!snoozeTarget}
+            onClose={() => setSnoozeTarget(null)}
+            onSuccess={() => { setSnoozeTarget(null); loadDeferredNotifications() }}
+          />
+        )}
       </div>
     </Layout>
   )

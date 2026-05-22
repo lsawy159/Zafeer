@@ -52,12 +52,19 @@ export const LEGACY_SYSTEM_SETTINGS_KEYS = [
 
 export const NOTIFICATIONS_SETTINGS: GeneralSetting[] = [
   {
+    setting_key: 'admin_email',
+    setting_value: '',
+    category: 'notifications',
+    description: 'إيميل المسؤول (لإرسال الإشعارات اليومية وتقارير CSV)',
+    setting_type: 'text',
+  },
+  {
     setting_key: 'notification_methods',
     setting_value: 'in_app',
     category: 'notifications',
     description: 'طرق الإرسال',
     setting_type: 'select',
-    options: ['in_app', 'email', 'sms', 'all'],
+    options: ['in_app', 'email', 'all'],
   },
   {
     setting_key: 'notification_frequency',
@@ -73,20 +80,6 @@ export const NOTIFICATIONS_SETTINGS: GeneralSetting[] = [
     category: 'notifications',
     description: 'تفعيل الإشعارات العاجلة',
     setting_type: 'boolean',
-  },
-  {
-    setting_key: 'residence_expiry_days',
-    setting_value: 30,
-    category: 'notifications',
-    description: 'التنبيه قبل انتهاء الإقامة (بالأيام)',
-    setting_type: 'number',
-  },
-  {
-    setting_key: 'contract_expiry_days',
-    setting_value: 30,
-    category: 'notifications',
-    description: 'التنبيه قبل انتهاء العقد (بالأيام)',
-    setting_type: 'number',
   },
   {
     setting_key: 'quiet_hours_start',

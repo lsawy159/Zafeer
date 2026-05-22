@@ -1,22 +1,39 @@
-/**
- * 🔐 Notification Management System - Type Definitions
- *
- * Features:
- * - Robust fallback to primary admin email (ahmad.alsawy159@gmail.com)
- * - Comprehensive error handling with logging
- * - Validation functions for JSON parsing
- * - Type-safe recipient management
- *
- * Last Updated: February 4, 2026
- */
-
+import type { SupabaseClient } from '@supabase/supabase-js'
 import { logger } from '@/utils/logger'
 
 /**
- * ✅ Primary Admin Email - FIXED AND UNCHANGEABLE
- * This email ALWAYS receives all notifications
+ * @deprecated استخدم getAdminEmail() بدلاً منه — يقرأ من system_settings key admin_email
+ * محتفظ به مؤقتاً لتوافق الكود القديم
  */
-export const PRIMARY_ADMIN_EMAIL = 'ahmad.alsawy159@gmail.com'
+export const PRIMARY_ADMIN_EMAIL = ''
+
+/**
+ * يقرأ admin_email من system_settings.
+ * يعيد null إذا لم يكن المفتاح موجوداً أو كانت القيمة فارغة.
+ */
+export async function getAdminEmail(supabase: SupabaseClient): Promise<string | null> {
+  const { data, error } = await supabase
+    .from('system_settings')
+    .select('setting_value')
+    .eq('setting_key', 'admin_email')
+    .single()
+
+  if (error || !data) {
+    logger.warn('[getAdminEmail] admin_email غير موجود في system_settings')
+    return null
+  }
+
+  const email = typeof data.setting_value === 'string'
+    ? data.setting_value
+    : String(data.setting_value ?? '')
+
+  if (!email || !email.includes('@')) {
+    logger.warn('[getAdminEmail] admin_email فارغ أو غير صالح — لا إرسال')
+    return null
+  }
+
+  return email
+}
 
 /**
  * 📧 Individual Additional Recipient

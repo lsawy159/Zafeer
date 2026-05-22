@@ -1,11 +1,15 @@
-﻿import { useState, useEffect } from 'react'
+﻿import { useState, useEffect, useCallback } from 'react'
 import { supabase, Notification, Company } from '@/lib/supabase'
+import { SnoozeModal } from '@/components/notifications/SnoozeModal'
 import CompanyDetailModal from '@/components/companies/CompanyDetailModal'
 import Layout from '@/components/layout/Layout'
+import { useAuth } from '@/contexts/AuthContext'
+import { usePermissions } from '@/utils/permissions'
 import {
   Bell,
   AlertTriangle,
   Calendar,
+  Shield,
   Clock,
   Check,
   Trash2,
@@ -13,6 +17,10 @@ import {
   Search,
   Mail,
   Building2,
+  FileSpreadsheet,
+  Send,
+  AlertCircle,
+  BellOff,
 } from 'lucide-react'
 import { formatDistanceToNow } from 'date-fns'
 import { ar } from 'date-fns/locale'
@@ -32,14 +40,29 @@ import {
 
 type FilterType = 'all' | 'unread' | 'read'
 type PriorityFilter = 'all' | 'urgent' | 'high' | 'medium' | 'low'
+type ActiveTab = 'notifications' | 'csv-report' | 'deferred'
 
 export default function Notifications() {
+  const { user } = useAuth()
+  const { canView } = usePermissions()
+  const isAdmin = user?.role === 'admin' && user?.is_active === true
+
   const [notifications, setNotifications] = useState<Notification[]>([])
   const [loading, setLoading] = useState(true)
   const [filterType, setFilterType] = useState<FilterType>('all')
   const [priorityFilter, setPriorityFilter] = useState<PriorityFilter>('all')
   const [searchTerm, setSearchTerm] = useState('')
   const [generating, setGenerating] = useState(false)
+  const [activeTab, setActiveTab] = useState<ActiveTab>('notifications')
+
+  // CSV Report state
+  const [csvSending, setCsvSending] = useState(false)
+  const [csvLastSent, setCsvLastSent] = useState<string | null>(null)
+  const [csvSendResult, setCsvSendResult] = useState<{ ok: boolean; msg: string } | null>(null)
+  const [adminEmail, setAdminEmail] = useState<string>('')
+
+  // Snooze modal
+  const [snoozeTarget, setSnoozeTarget] = useState<Notification | null>(null)
 
   // Confirmation Dialogs
   const [showConfirmDeleteOne, setShowConfirmDeleteOne] = useState(false)
@@ -64,8 +87,53 @@ export default function Notifications() {
     }
   }
 
+  const loadCsvSettings = useCallback(async () => {
+    const { data } = await supabase
+      .from('system_settings')
+      .select('setting_key, setting_value')
+      .in('setting_key', ['csv_report_last_sent', 'admin_email'])
+    for (const row of data ?? []) {
+      if (row.setting_key === 'csv_report_last_sent' && row.setting_value) {
+        const val = typeof row.setting_value === 'string' ? row.setting_value : JSON.stringify(row.setting_value)
+        setCsvLastSent(val.replace(/^"|"$/g, ''))
+      }
+      if (row.setting_key === 'admin_email') {
+        const val = typeof row.setting_value === 'string' ? row.setting_value : String(row.setting_value ?? '')
+        setAdminEmail(val)
+      }
+    }
+  }, [])
+
+  const handleSendCsvReport = async () => {
+    setCsvSending(true)
+    setCsvSendResult(null)
+    try {
+      const { data, error } = await supabase.functions.invoke('send-alert-report')
+      if (error) throw error
+      if (data?.success === false) {
+        if (data.error === 'no_admin_email') {
+          setCsvSendResult({ ok: false, msg: 'إيميل المسؤول غير مضبوط. اذهب إلى الإعدادات وأضف الإيميل.' })
+        } else {
+          setCsvSendResult({ ok: false, msg: data.error ?? 'حدث خطأ أثناء الإرسال' })
+        }
+        return
+      }
+      if (data?.email_sent === false) {
+        setCsvSendResult({ ok: true, msg: 'لا توجد تنبيهات نشطة حالياً — لم يُرسل تقرير.' })
+      } else {
+        setCsvSendResult({ ok: true, msg: `تم الإرسال بنجاح إلى ${data?.recipient ?? adminEmail}` })
+        await loadCsvSettings()
+      }
+    } catch (err) {
+      setCsvSendResult({ ok: false, msg: err instanceof Error ? err.message : 'حدث خطأ غير متوقع' })
+    } finally {
+      setCsvSending(false)
+    }
+  }
+
   useEffect(() => {
     loadNotifications()
+    loadCsvSettings()
 
     // ط§ظ„ط§ط´طھط±ط§ظƒ ظپظٹ ط§ظ„طھط­ط¯ظٹط«ط§طھ ط§ظ„ظپظˆط±ظٹط©
     const channel = supabase
@@ -86,14 +154,14 @@ export default function Notifications() {
     return () => {
       supabase.removeChannel(channel)
     }
-  }, [])
+  }, [loadCsvSettings])
 
   const loadNotifications = async () => {
     try {
       const { data, error } = await supabase
         .from('notifications')
         .select(
-          'id,type,title,message,entity_type,entity_id,priority,days_remaining,is_read,is_archived,created_at,read_at,target_date'
+          'id,type,title,message,entity_type,entity_id,priority,days_remaining,is_read,is_archived,created_at,read_at,target_date,snoozed_until,is_deferred'
         )
         .eq('is_archived', false)
         .order('created_at', { ascending: false })
@@ -232,41 +300,61 @@ export default function Notifications() {
   }
 
   const getPriorityColor = (priority: string) => {
-    const colors = {
+    const colors: Record<string, string> = {
+      critical: 'text-red-600 bg-red-50 border-red-200',
       urgent: 'text-red-600 bg-red-50 border-red-200',
       high: 'text-warning-600 bg-orange-50 border-orange-200',
       medium: 'text-yellow-600 bg-yellow-50 border-yellow-200',
       low: 'text-info-600 bg-blue-50 border-blue-200',
     }
-    return colors[priority as keyof typeof colors] || colors.low
+    return colors[priority] ?? colors.low
   }
 
   const getPriorityIcon = (priority: string) => {
-    if (priority === 'urgent') return <AlertTriangle className="w-5 h-5" />
+    if (priority === 'critical' || priority === 'urgent') return <AlertTriangle className="w-5 h-5" />
     if (priority === 'high') return <Clock className="w-5 h-5" />
     return <Calendar className="w-5 h-5" />
   }
 
   const getPriorityLabel = (priority: string) => {
-    const labels = {
-      urgent: 'ط¹ط§ط¬ظ„',
-      high: 'ط¹ط§ط¬ظ„',
-      medium: 'ظ…طھظˆط³ط·',
-      low: 'ظ…ظ†ط®ظپط¶',
+    const labels: Record<string, string> = {
+      critical: 'عاجل',
+      urgent: 'عاجل',
+      high: 'تحذير',
+      medium: 'تنبيه',
+      low: 'منخفض',
     }
-    return labels[priority as keyof typeof labels] || priority
+    return labels[priority] ?? priority
   }
 
-  // طھط·ط¨ظٹظ‚ ط§ظ„ظپظ„ط§طھط±
+  const handleActivateNow = async (notificationId: number) => {
+    try {
+      const { error } = await supabase
+        .from('notifications')
+        .update({ snoozed_until: null, is_deferred: false })
+        .eq('id', notificationId)
+      if (error) throw error
+      toast.success('تم تفعيل الإشعار')
+      loadNotifications()
+    } catch {
+      toast.error('فشل تفعيل الإشعار')
+    }
+  }
+
+  const deferredNotifications = notifications.filter((n) => {
+    return n.is_deferred === true || (!!n.snoozed_until && new Date(n.snoozed_until) > new Date())
+  })
+
   const filteredNotifications = notifications.filter((notification) => {
-    // ظپظ„طھط± ط§ظ„ظ‚ط±ط§ط،ط©
+    // استثناء المؤجلة والمنتظرة snooze من التبويب النشط
+    if (notification.is_deferred) return false
+    if (notification.snoozed_until && new Date(notification.snoozed_until) > new Date()) return false
+
     if (filterType === 'read' && !notification.is_read) return false
     if (filterType === 'unread' && notification.is_read) return false
 
-    // ظپظ„طھط± ط§ظ„ط£ظˆظ„ظˆظٹط©
     if (priorityFilter !== 'all' && notification.priority !== priorityFilter) return false
 
-    // ظپظ„طھط± ط§ظ„ط¨ط­ط«
     if (searchTerm) {
       const search = searchTerm.toLowerCase()
       return (
@@ -283,9 +371,23 @@ export default function Notifications() {
   const stats = {
     total: notifications.length,
     unread: unreadCount,
-    urgent: notifications.filter((n) => n.priority === 'urgent' && !n.is_read).length,
+    urgent: notifications.filter((n) => (n.priority === 'critical' || n.priority === 'urgent') && !n.is_read).length,
     high: notifications.filter((n) => n.priority === 'high' && !n.is_read).length,
     medium: notifications.filter((n) => n.priority === 'medium' && !n.is_read).length,
+  }
+
+  if (!user || !canView('adminSettings')) {
+    return (
+      <Layout>
+        <div className="flex items-center justify-center h-screen">
+          <div className="text-center">
+            <Shield className="w-16 h-16 mx-auto mb-4 text-red-500" />
+            <h2 className="text-2xl font-bold text-foreground mb-2">غير مصرح</h2>
+            <p className="text-foreground-secondary">عذراً، ليس لديك صلاحية لعرض هذه الصفحة.</p>
+          </div>
+        </div>
+      </Layout>
+    )
   }
 
   return (
@@ -312,7 +414,110 @@ export default function Notifications() {
           </Button>
         </div>
 
-        {/* Stats Cards */}
+        {/* Tabs */}
+        <div className="flex gap-1 mb-6 border-b border-neutral-200">
+          <button
+            onClick={() => setActiveTab('notifications')}
+            className={`flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-t-lg transition ${
+              activeTab === 'notifications'
+                ? 'bg-white border border-b-white border-neutral-200 text-blue-600 -mb-px'
+                : 'text-neutral-500 hover:text-neutral-700'
+            }`}
+          >
+            <Bell className="w-4 h-4" />
+            الإشعارات
+          </button>
+          <button
+            onClick={() => setActiveTab('csv-report')}
+            className={`flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-t-lg transition ${
+              activeTab === 'csv-report'
+                ? 'bg-white border border-b-white border-neutral-200 text-blue-600 -mb-px'
+                : 'text-neutral-500 hover:text-neutral-700'
+            }`}
+          >
+            <FileSpreadsheet className="w-4 h-4" />
+            تقرير CSV
+          </button>
+          <button
+            onClick={() => setActiveTab('deferred')}
+            className={`flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-t-lg transition ${
+              activeTab === 'deferred'
+                ? 'bg-white border border-b-white border-neutral-200 text-blue-600 -mb-px'
+                : 'text-neutral-500 hover:text-neutral-700'
+            }`}
+          >
+            <BellOff className="w-4 h-4" />
+            المؤجلة
+            {deferredNotifications.length > 0 && (
+              <span className="bg-amber-100 text-amber-700 text-xs font-bold rounded-full px-1.5 py-0.5 min-w-[20px] text-center">
+                {deferredNotifications.length}
+              </span>
+            )}
+          </button>
+        </div>
+
+        {/* CSV Report Tab */}
+        {activeTab === 'csv-report' && (
+          <div className="app-panel p-6 space-y-6">
+            <div>
+              <h2 className="text-xl font-bold text-neutral-900 mb-1">تقرير تنبيهات انتهاء الصلاحيات</h2>
+              <p className="text-neutral-500 text-sm">
+                إرسال تقرير CSV مضغوط يشمل الموظفين والمؤسسات التي لديها تنبيهات نشطة إلى إيميل المسؤول.
+              </p>
+            </div>
+
+            {/* admin_email warning — admins only */}
+            {isAdmin && !adminEmail && (
+              <div className="flex items-start gap-3 bg-amber-50 border border-amber-200 rounded-lg p-4">
+                <AlertCircle className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
+                <div>
+                  <p className="font-medium text-amber-800">إيميل المسؤول غير مضبوط</p>
+                  <p className="text-sm text-amber-700 mt-0.5">
+                    اذهب إلى <strong>الإعدادات ← إعدادات الإشعارات المتقدمة</strong> وأضف إيميل المسؤول لتفعيل إرسال التقارير.
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {/* Last sent */}
+            {csvLastSent && (
+              <p className="text-sm text-neutral-500">
+                آخر إرسال:{' '}
+                <span className="font-medium text-neutral-700">
+                  {new Date(csvLastSent).toLocaleString('ar-SA', { timeZone: 'Asia/Riyadh' })}
+                </span>
+              </p>
+            )}
+
+            {/* Result message */}
+            {csvSendResult && (
+              <div className={`flex items-start gap-3 rounded-lg p-4 ${
+                csvSendResult.ok
+                  ? 'bg-green-50 border border-green-200'
+                  : 'bg-red-50 border border-red-200'
+              }`}>
+                <AlertCircle className={`w-5 h-5 flex-shrink-0 mt-0.5 ${csvSendResult.ok ? 'text-green-600' : 'text-red-600'}`} />
+                <p className={`text-sm font-medium ${csvSendResult.ok ? 'text-green-800' : 'text-red-800'}`}>
+                  {csvSendResult.msg}
+                </p>
+              </div>
+            )}
+
+            <Button
+              onClick={handleSendCsvReport}
+              disabled={csvSending}
+              className="gap-2"
+            >
+              {csvSending
+                ? <><RefreshCw className="w-4 h-4 animate-spin" /> جارٍ الإرسال...</>
+                : <><Send className="w-4 h-4" /> إرسال التقرير الآن</>
+              }
+            </Button>
+          </div>
+        )}
+
+        {/* Notifications Tab Content */}
+        {activeTab === 'notifications' && (<>
         <div className="grid grid-cols-1 md:grid-cols-5 gap-4 mb-6">
           <div className="app-panel p-4">
             <div className="text-2xl font-bold text-neutral-900">{stats.total}</div>
@@ -531,6 +736,16 @@ export default function Notifications() {
                           عرض المؤسسة
                         </Button>
                       )}
+                      {isAdmin && (
+                        <Button
+                          onClick={() => setSnoozeTarget(notification)}
+                          variant="secondary"
+                          size="sm"
+                        >
+                          <BellOff className="w-4 h-4" />
+                          تأجيل
+                        </Button>
+                      )}
                       <Button
                         onClick={() => handleDelete(notification)}
                         variant="destructive"
@@ -545,6 +760,84 @@ export default function Notifications() {
               </div>
             ))}
           </div>
+        )}
+        </>)}
+
+        {/* Deferred Tab Content */}
+        {activeTab === 'deferred' && (
+          <div>
+            {deferredNotifications.length === 0 ? (
+              <div className="bg-surface rounded-xl shadow-sm border border-neutral-200 p-12 text-center">
+                <BellOff className="w-16 h-16 mx-auto mb-4 text-neutral-300" />
+                <h3 className="text-lg font-medium text-neutral-900 mb-2">لا توجد إشعارات مؤجلة</h3>
+                <p className="text-neutral-600">الإشعارات التي تؤجّلها ستظهر هنا.</p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {deferredNotifications.map((notification) => (
+                  <div
+                    key={notification.id}
+                    className="bg-surface rounded-xl shadow-sm border-2 border-amber-200 bg-amber-50/20 p-6"
+                  >
+                    <div className="flex items-start gap-4">
+                      <div className="p-3 rounded-xl bg-amber-50 border border-amber-200 text-amber-600">
+                        <BellOff className="w-5 h-5" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <h3 className="text-lg font-semibold text-neutral-700 mb-1">{notification.title}</h3>
+                        <p className="text-neutral-500 mb-2">{notification.message}</p>
+                        <div className="flex flex-wrap items-center gap-2 text-sm text-neutral-500">
+                          {notification.is_deferred && (
+                            <span className="px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 font-medium">
+                              معطَّل يدوياً
+                            </span>
+                          )}
+                          {notification.snoozed_until && !notification.is_deferred && (
+                            <span className="px-2 py-0.5 rounded-full bg-blue-100 text-info-700 font-medium">
+                              مؤجل حتى {new Date(notification.snoozed_until).toLocaleDateString('ar-SA')}
+                            </span>
+                          )}
+                          {notification.days_remaining != null && (
+                            <span className="text-neutral-400">
+                              باقي {notification.days_remaining} يوم
+                            </span>
+                          )}
+                        </div>
+                        <div className="flex gap-2 mt-4">
+                          <Button
+                            onClick={() => handleActivateNow(notification.id)}
+                            variant="default"
+                            size="sm"
+                          >
+                            <Bell className="w-4 h-4" />
+                            تفعيل الآن
+                          </Button>
+                          <Button
+                            onClick={() => setSnoozeTarget(notification)}
+                            variant="secondary"
+                            size="sm"
+                          >
+                            <Clock className="w-4 h-4" />
+                            تعديل التأجيل
+                          </Button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Snooze Modal */}
+        {snoozeTarget && (
+          <SnoozeModal
+            notification={snoozeTarget}
+            open={!!snoozeTarget}
+            onClose={() => setSnoozeTarget(null)}
+            onSuccess={loadNotifications}
+          />
         )}
 
         {/* Delete Confirmation Dialogs */}

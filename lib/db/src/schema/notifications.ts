@@ -22,6 +22,8 @@ export const notificationsTable = pgTable('notifications', {
   target_date: date('target_date'),
   read_at: timestamp('read_at', { withTimezone: true }),
   created_at: timestamp('created_at', { withTimezone: true }).defaultNow(),
+  snoozed_until: timestamp('snoozed_until', { withTimezone: true }),
+  is_deferred: boolean('is_deferred').default(false),
 })
 
 export const insertNotificationSchema = createInsertSchema(notificationsTable)

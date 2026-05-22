@@ -138,17 +138,17 @@ export const NAV_ITEMS: NavItem[] = [
     group: 'operational',
     order: 11,
   },
+  // Admin Group
   {
     id: 'notifications',
     labelAr: 'الإشعارات',
     labelEn: 'Notifications',
     icon: Bell,
     to: '/notifications',
-    group: 'operational',
-    order: 12,
+    requiredPermission: 'manage_settings',
+    group: 'admin',
+    order: 2,
   },
-
-  // Admin Group
   {
     id: 'settings',
     labelAr: 'الإعدادات',

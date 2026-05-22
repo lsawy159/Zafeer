@@ -5,7 +5,7 @@
  * ظˆط¥ط±ط³ط§ظ„ طھظ†ط¨ظٹظ‡ط§طھ ط¨ط§ظ„ط¨ط±ظٹط¯ ط§ظ„ط¥ظ„ظƒطھط±ظˆظ†ظٹ ظ„ظ„طھظ†ط¨ظٹظ‡ط§طھ ط§ظ„ط¹ط§ط¬ظ„ط© ظˆط§ظ„ظ‡ط§ظ…ط©
  *
  * @module comprehensiveExpiryAlertService
- * @author SAW Tracker System
+ * @author ZaFeer System
  */
 
 import { supabase } from '../lib/supabase'
