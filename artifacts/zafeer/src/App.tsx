@@ -9,11 +9,14 @@ import AuthLoading from './components/AuthLoading'
 import { useFontMode, useThemeMode } from './hooks/useUiPreferences'
 import { AppShell } from './components/layout/AppShell'
 import { ErrorBoundary } from './components/ErrorBoundary'
+import { MaintenanceScreenWithPolling } from './components/settings/backup/MaintenanceScreen'
+import { useMaintenanceMode } from './hooks/useMaintenanceMode'
 import './App.css'
 
 // Protected route layout with AppShell
 function ProtectedRouteLayout() {
   const { session, user } = useAuth()
+  const maintenance = useMaintenanceMode(user?.id)
 
   return (
     <AuthLoading
@@ -27,9 +30,14 @@ function ProtectedRouteLayout() {
       }
     >
       {session && user ? (
-        <AppShell>
-          <Outlet />
-        </AppShell>
+        <>
+          {maintenance.active && maintenance.executorId !== user.id && (
+            <MaintenanceScreenWithPolling currentUserId={user.id} />
+          )}
+          <AppShell>
+            <Outlet />
+          </AppShell>
+        </>
       ) : session ? (
         <PageLoader
           title="جاري تحميل بيانات المستخدم"

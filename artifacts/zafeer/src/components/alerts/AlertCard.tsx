@@ -212,18 +212,6 @@ export function AlertCard({
 
       {/* Footer actions */}
       <div className="flex items-center gap-2 border-t border-slate-100 px-4 py-2.5">
-        <button
-          onClick={() => void runAction('view', () => onShowCompanyCard(alert.company.id))}
-          disabled={isBusy}
-          className="flex flex-1 items-center justify-center gap-1.5 rounded-xl bg-primary py-2 text-[12px] font-semibold text-slate-900 transition hover:bg-primary/90 disabled:opacity-50"
-        >
-          {actionLoading === 'view' ? (
-            <Loader2 className="h-3.5 w-3.5 animate-spin" />
-          ) : (
-            <ExternalLink className="h-3.5 w-3.5" />
-          )}
-          عرض المؤسسة
-        </button>
 
         {!isRead && (
           <button

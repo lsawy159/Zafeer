@@ -13,6 +13,7 @@ export interface BackupRecord {
   completed_at: string | null
   error_message?: string | null
   tables_included?: string[]
+  table_record_counts?: Record<string, number>
 }
 
 export interface BackupSettings {
@@ -113,62 +114,14 @@ export async function fetchBackupSettings(): Promise<BackupSettings> {
 
 export async function saveBackupSettings(settings: BackupSettings): Promise<void> {
   const rows = [
-    {
-      setting_key: 'backup_schedule_enabled',
-      setting_value: JSON.stringify(settings.schedule_enabled),
-      category: 'backup',
-      description: 'تفعيل النسخ الاحتياطي التلقائي',
-      setting_type: 'boolean',
-    },
-    {
-      setting_key: 'backup_frequency',
-      setting_value: JSON.stringify(settings.frequency),
-      category: 'backup',
-      description: 'تكرار النسخ الاحتياطي',
-      setting_type: 'select',
-    },
-    {
-      setting_key: 'backup_schedule_hour',
-      setting_value: JSON.stringify(settings.schedule_hour),
-      category: 'backup',
-      description: 'ساعة التشغيل (0-23)',
-      setting_type: 'number',
-    },
-    {
-      setting_key: 'backup_schedule_day',
-      setting_value: JSON.stringify(settings.schedule_day),
-      category: 'backup',
-      description: 'يوم الأسبوع للنسخ الأسبوعي (0=الأحد)',
-      setting_type: 'number',
-    },
-    {
-      setting_key: 'backup_retention_days',
-      setting_value: JSON.stringify(settings.retention_days),
-      category: 'backup',
-      description: 'عدد أيام الاحتفاظ بالنسخ الاحتياطية',
-      setting_type: 'number',
-    },
-    {
-      setting_key: 'backup_delivery_mode',
-      setting_value: JSON.stringify(settings.delivery_mode),
-      category: 'backup',
-      description: 'طريقة تسليم النسخ الاحتياطية (محلي فقط/محلي + بريد)',
-      setting_type: 'select',
-    },
-    {
-      setting_key: 'backup_email_notifications_enabled',
-      setting_value: JSON.stringify(settings.email_notifications_enabled),
-      category: 'backup',
-      description: 'تفعيل إرسال إشعارات النسخ الاحتياطي عبر البريد الإلكتروني',
-      setting_type: 'boolean',
-    },
-    {
-      setting_key: 'backup_email_recipients',
-      setting_value: JSON.stringify(settings.email_recipients),
-      category: 'backup',
-      description: 'قائمة بريد المستقبلين لإشعارات النسخ الاحتياطي',
-      setting_type: 'json',
-    },
+    { setting_key: 'backup_schedule_enabled',           setting_value: JSON.stringify(settings.schedule_enabled) },
+    { setting_key: 'backup_frequency',                  setting_value: JSON.stringify(settings.frequency) },
+    { setting_key: 'backup_schedule_hour',              setting_value: JSON.stringify(settings.schedule_hour) },
+    { setting_key: 'backup_schedule_day',               setting_value: JSON.stringify(settings.schedule_day) },
+    { setting_key: 'backup_retention_days',             setting_value: JSON.stringify(settings.retention_days) },
+    { setting_key: 'backup_delivery_mode',              setting_value: JSON.stringify(settings.delivery_mode) },
+    { setting_key: 'backup_email_notifications_enabled', setting_value: JSON.stringify(settings.email_notifications_enabled) },
+    { setting_key: 'backup_email_recipients',           setting_value: JSON.stringify(settings.email_recipients) },
   ]
 
   const { error } = await supabase
@@ -184,7 +137,7 @@ export async function saveBackupSettings(settings: BackupSettings): Promise<void
 
 export async function triggerManualBackup(): Promise<BackupRecord | null> {
   const { data, error } = await supabase.functions.invoke('automated-backup', {
-    body: { backup_type: 'full', triggered_by: 'manual' },
+    body: { backup_type: 'full' },
   })
 
   if (error) throw error
@@ -197,7 +150,7 @@ export async function triggerManualBackup(): Promise<BackupRecord | null> {
   const { data: latest, error: latestErr } = await supabase
     .from('backup_history')
     .select(
-      'id, backup_type, triggered_by, file_path, file_size, compression_ratio, status, started_at, completed_at, error_message, tables_included'
+      'id, backup_type, triggered_by, file_path, file_size, compression_ratio, status, started_at, completed_at, error_message, tables_included, table_record_counts'
     )
     .order('started_at', { ascending: false })
     .limit(1)
@@ -217,6 +170,16 @@ export async function getBackupDownloadUrl(filePath: string): Promise<string | n
     return null
   }
   return data?.signedUrl ?? null
+}
+
+export async function sendBackupByEmail(backupId: string, recipientEmail: string): Promise<void> {
+  const { data, error } = await supabase.functions.invoke('send-backup-email', {
+    body: { backup_id: backupId, recipient_email: recipientEmail },
+  })
+  if (error) throw error
+  if (data && typeof data === 'object' && 'error' in data) {
+    throw new Error(String(data.error))
+  }
 }
 
 /** @deprecated use triggerManualBackup */
