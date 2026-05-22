@@ -24,8 +24,6 @@ const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 // Maximum recipients per email
 const MAX_RECIPIENTS = 100
 
-const DIGEST_ADMIN_EMAIL = 'ahmad.alsawy159@gmail.com'
-
 function resolveQueueMode(): 'normal' | 'digest-only' {
   const viteMode = (import.meta as unknown as { env?: Record<string, string> }).env
     ?.VITE_EMAIL_QUEUE_MODE
@@ -66,13 +64,12 @@ function validateQueueModeConstraint(options: EnqueueEmailOptions): {
       return { allowed: true }
     }
 
-    const adminOnly = options.toEmails.length === 1 && options.toEmails[0] === DIGEST_ADMIN_EMAIL
+    const singleRecipient = options.toEmails.length === 1
 
-    if (!isDigest || !adminOnly) {
+    if (!isDigest || !singleRecipient) {
       return {
         allowed: false,
-        error:
-          `Email queue is in digest-only mode. Only a single Daily Digest to ${DIGEST_ADMIN_EMAIL} is allowed.`,
+        error: 'Email queue is in digest-only mode. Only a single Daily Digest email is allowed.',
       }
     }
   }

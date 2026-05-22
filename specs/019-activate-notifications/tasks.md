@@ -15,9 +15,9 @@
 
 **Purpose**: التأكد من توفر المتطلبات قبل البدء في التنفيذ
 
-- [ ] T001 التحقق من وجود env vars: `RESEND_API_KEY` و `RESEND_FROM_EMAIL` في Supabase project settings
-- [ ] T002 [P] التحقق من وجود extension `pg_cron` مُفعَّل في Supabase (SQL: `SELECT * FROM pg_extension WHERE extname = 'pg_cron'`)
-- [ ] T003 [P] التحقق من وجود function `generate_expiry_notifications()` في DB الإنتاج **وأنها تدعم ON CONFLICT (UPSERT)**: `SELECT proname, prosrc FROM pg_proc WHERE proname = 'generate_expiry_notifications'` — إذا كانت INSERT فقط → T037 يُضيف ON CONFLICT clause
+- [X] T001 التحقق من وجود env vars: `RESEND_API_KEY` و `RESEND_FROM_EMAIL` في Supabase project settings
+- [X] T002 [P] التحقق من وجود extension `pg_cron` مُفعَّل في Supabase (SQL: `SELECT * FROM pg_extension WHERE extname = 'pg_cron'`)
+- [X] T003 [P] التحقق من وجود function `generate_expiry_notifications()` في DB الإنتاج **وأنها تدعم ON CONFLICT (UPSERT)**: `SELECT proname, prosrc FROM pg_proc WHERE proname = 'generate_expiry_notifications'` — إذا كانت INSERT فقط → T037 يُضيف ON CONFLICT clause
 
 **Checkpoint**: env vars موجودة، pg_cron مفعَّل، RPC موجودة → يمكن البدء في Phase 2
 
@@ -31,9 +31,9 @@
 
 - ~~T004~~ (محذوف — notification_mutes خارج النطاق)
 - ~~T005~~ (محذوف — notification_mutes خارج النطاق)
-- [ ] T006 [P] إنشاء migration لـ seed إعداد `admin_email` في `system_settings` (قيمة فارغة، ON CONFLICT DO NOTHING) في `supabase/migrations/`
-- [ ] T007 استبدال `PRIMARY_ADMIN_EMAIL` الثابت في `artifacts/zafeer/src/lib/notificationTypes.ts` بـ async function تقرأ من `system_settings` key `admin_email`، fallback: لا إرسال + log warning
-- [ ] T008 استبدال `DIGEST_ADMIN_EMAIL` الثابت في `artifacts/zafeer/src/lib/emailQueueService.ts` باستخدام نفس helper function من T007 — **بعد T007 (تسلسلي)**
+- [X] T006 [P] إنشاء migration لـ seed إعداد `admin_email` في `system_settings` (قيمة فارغة، ON CONFLICT DO NOTHING) في `supabase/migrations/`
+- [X] T007 استبدال `PRIMARY_ADMIN_EMAIL` الثابت في `artifacts/zafeer/src/lib/notificationTypes.ts` بـ async function تقرأ من `system_settings` key `admin_email`، fallback: لا إرسال + log warning
+- [X] T008 استبدال `DIGEST_ADMIN_EMAIL` الثابت في `artifacts/zafeer/src/lib/emailQueueService.ts` باستخدام نفس helper function من T007 — **بعد T007 (تسلسلي)**
 
 **Checkpoint**: DB migration يمر، typecheck يمر، hardcoded emails محذوفة
 
@@ -47,13 +47,13 @@
 
 ### Implementation for User Story 1
 
-- [ ] T009 [US1] إنشاء ملف `supabase/functions/daily-notification-run/index.ts` بالهيكل الأساسي (CORS, auth check, supabase client) — نمط مماثل لـ `send-backup-email/index.ts`
-- [ ] T010 [US1] تنفيذ دالة `isQuietHours(start, end, timezone)` في نفس الملف: تقرأ `quiet_hours_start` و `quiet_hours_end` من `system_settings`، تعامل مع العبور عبر منتصف الليل، timezone = `Asia/Riyadh` — لا استثناء لأي مستوى تنبيه (urgent_notifications bypass محذوف)
-- [ ] T011 [US1] تنفيذ منطق استدعاء `generate_expiry_notifications()` RPC في `daily-notification-run/index.ts` وجلب نتائجها من جدول `notifications`
-- [ ] T012 [US1] تصفية الإشعارات المؤجلة (`snoozed_until > NOW() OR is_deferred = true`) من نتائج الـ RPC في `daily-notification-run/index.ts` قبل بناء الإيميل
-- [ ] T013 [US1] تنفيذ بناء HTML email digest في `daily-notification-run/index.ts` (نمط مماثل لـ `sendEmailNotifications` في `comprehensiveExpiryAlertService.ts` — RTL، عربي، جداول)
-- [ ] T014 [US1] تنفيذ إرسال الإيميل عبر Resend + upsert `expiry_digest_last_sent` في `system_settings` في `daily-notification-run/index.ts`
-- [ ] T015 [US1] إضافة pg_cron job لتشغيل `daily-notification-run` يومياً الساعة 08:31 بتوقيت Asia/Riyadh في `supabase/migrations/` (migration جديد)
+- [X] T009 [US1] إنشاء ملف `supabase/functions/daily-notification-run/index.ts` بالهيكل الأساسي (CORS, auth check, supabase client) — نمط مماثل لـ `send-backup-email/index.ts`
+- [X] T010 [US1] تنفيذ دالة `isQuietHours(start, end, timezone)` في نفس الملف: تقرأ `quiet_hours_start` و `quiet_hours_end` من `system_settings`، تعامل مع العبور عبر منتصف الليل، timezone = `Asia/Riyadh` — لا استثناء لأي مستوى تنبيه (urgent_notifications bypass محذوف)
+- [X] T011 [US1] تنفيذ منطق استدعاء `generate_expiry_notifications()` RPC في `daily-notification-run/index.ts` وجلب نتائجها من جدول `notifications`
+- [X] T012 [US1] تصفية الإشعارات المؤجلة (`snoozed_until > NOW() OR is_deferred = true`) من نتائج الـ RPC في `daily-notification-run/index.ts` قبل بناء الإيميل
+- [X] T013 [US1] تنفيذ بناء HTML email digest في `daily-notification-run/index.ts` (نمط مماثل لـ `sendEmailNotifications` في `comprehensiveExpiryAlertService.ts` — RTL، عربي، جداول)
+- [X] T014 [US1] تنفيذ إرسال الإيميل عبر Resend + upsert `expiry_digest_last_sent` في `system_settings` في `daily-notification-run/index.ts`
+- [X] T015 [US1] إضافة pg_cron job لتشغيل `daily-notification-run` يومياً الساعة 08:31 بتوقيت Asia/Riyadh في `supabase/migrations/` (migration جديد)
 
 **Checkpoint**: استدعاء Edge Function يدوياً يرسل إيميل ✓، استدعاء في ساعات الصمت يعيد `skipped: true` ✓
 
@@ -67,9 +67,9 @@
 
 ### Implementation for User Story 2
 
-- [ ] T016 [US2] التحقق من أن `generate_expiry_notifications()` RPC تُولِّد records في جدول `notifications` بحقل `priority` صحيح — إذا كانت تُولِّد بشكل صحيح لا تعديل مطلوب
-- [ ] T017 [P] [US2] مراجعة صفحة `artifacts/zafeer/src/pages/Notifications.tsx`: التحقق من أن الإشعارات تُصنَّف بصرياً (عاجل=أحمر، تحذير=برتقالي، تنبيه=أصفر) — تعديل إذا لزم
-- [ ] T018 [US2] التحقق من أن الإشعارات المُولَّدة خلال ساعات الصمت تظهر في الصفحة عند فتح التطبيق بعد 08:30 (لا حاجة لمنطق إضافي — الـ RPC تكتب في notifications table وتُقرأ عند الفتح)
+- [X] T016 [US2] التحقق من أن `generate_expiry_notifications()` RPC تُولِّد records في جدول `notifications` بحقل `priority` صحيح — إذا كانت تُولِّد بشكل صحيح لا تعديل مطلوب
+- [X] T017 [P] [US2] مراجعة صفحة `artifacts/zafeer/src/pages/Notifications.tsx`: التحقق من أن الإشعارات تُصنَّف بصرياً (عاجل=أحمر، تحذير=برتقالي، تنبيه=أصفر) — تعديل إذا لزم
+- [X] T018 [US2] التحقق من أن الإشعارات المُولَّدة خلال ساعات الصمت تظهر في الصفحة عند فتح التطبيق بعد 08:30 (لا حاجة لمنطق إضافي — الـ RPC تكتب في notifications table وتُقرأ عند الفتح)
 
 **Checkpoint**: فتح Notifications page يُظهر الإشعارات بألوان/أيقونات مختلفة لكل مستوى ✓
 
@@ -90,8 +90,8 @@
 
 ### Implementation for User Story 4
 
-- [ ] T024 [US4] حذف `residence_expiry_days` و `contract_expiry_days` من `NOTIFICATIONS_SETTINGS` array في `artifacts/zafeer/src/pages/settings/settingsConfig.ts` (سطور ~78-95)
-- [ ] T025 [US4] التحقق من أن إعدادات `quiet_hours_start` و `quiet_hours_end` المحفوظة في `system_settings` تُقرأ فعلياً من Edge Function (مرتبطة بـ T010) — `urgent_notifications` محذوف من المنطق
+- [X] T024 [US4] حذف `residence_expiry_days` و `contract_expiry_days` من `NOTIFICATIONS_SETTINGS` array في `artifacts/zafeer/src/pages/settings/settingsConfig.ts` (سطور ~78-95)
+- [X] T025 [US4] التحقق من أن إعدادات `quiet_hours_start` و `quiet_hours_end` المحفوظة في `system_settings` تُقرأ فعلياً من Edge Function (مرتبطة بـ T010) — `urgent_notifications` محذوف من المنطق
 
 **Checkpoint**: حذف الحقلين، typecheck يمر، صفحة الإعدادات لا تُظهر الحقلين المحذوفين ✓
 
@@ -101,11 +101,11 @@
 
 **Purpose**: مكونات ذات قيمة مضافة لا تتعلق بقصة بعينها
 
-- [ ] T026 إنشاء `supabase/functions/_shared/alert-helpers.ts`: helper functions مُشتَركة بين Edge Functions (`daysUntil`, `getSeverityLevel`, `getEntitySeverity`, `isEntityActive`, `buildDeferredSheet`) — تُستورَد في T030/T031
-- [ ] T026b إنشاء `supabase/functions/process-email-queue/index.ts`: معالج طابور الإيميلات المعلّقة عبر Resend مع atomic claim `FOR UPDATE SKIP LOCKED`، فلترة `WHERE status='pending'`، حد `retry_count < 3` لمنع loop اللانهائي على فشل دائم (انظر contracts/edge-functions.md)
-- [ ] T027 [P] إضافة pg_cron job لتشغيل `process-email-queue` كل ساعة في migration جديد
-- [ ] T028 [P] إصلاح comment `@author SAW Tracker System` → `@author ZaFeer System` في `artifacts/zafeer/src/services/comprehensiveExpiryAlertService.ts` (boy-scout rule — Principle VI)
-- [ ] T029 تشغيل `pnpm run typecheck` والتحقق من 0 errors بعد جميع التغييرات
+- [X] T026 إنشاء `supabase/functions/_shared/alert-helpers.ts`: helper functions مُشتَركة بين Edge Functions (`daysUntil`, `getSeverityLevel`, `getEntitySeverity`, `isEntityActive`, `buildDeferredSheet`) — تُستورَد في T030/T031
+- [X] T026b إنشاء `supabase/functions/process-email-queue/index.ts`: معالج طابور الإيميلات المعلّقة عبر Resend مع atomic claim `FOR UPDATE SKIP LOCKED`، فلترة `WHERE status='pending'`، حد `retry_count < 3` لمنع loop اللانهائي على فشل دائم (انظر contracts/edge-functions.md)
+- [X] T027 [P] إضافة pg_cron job لتشغيل `process-email-queue` كل ساعة في migration جديد
+- [X] T028 [P] إصلاح comment `@author SAW Tracker System` → `@author ZaFeer System` في `artifacts/zafeer/src/services/comprehensiveExpiryAlertService.ts` (boy-scout rule — Principle VI)
+- [X] T029 تشغيل `pnpm run typecheck` والتحقق من 0 errors بعد جميع التغييرات
 
 ---
 
@@ -117,10 +117,10 @@
 
 ### Implementation for User Story 5
 
-- [ ] T030 [US5] إنشاء `supabase/functions/send-alert-report/index.ts`: auth check (admin JWT)، قراءة notification_thresholds + admin_email، جلب notifications + employees + companies، بناء 3 CSVs (موظفون نشطون + مؤسسات نشطة + مؤجلات) عبر helper functions من `_shared/alert-helpers.ts`، ضغط ZIP عبر JSZip (UTF-8 BOM)، إرسال Resend مع المرفق، upsert csv_report_last_sent — ⚠️ **Resend حد المرفقات 40MB**: للشركات الكبيرة قد يتجاوز الـ ZIP الحد — سجّل حجم الملف قبل الإرسال + أضف error handling واضح إذا تجاوز 35MB
-- [ ] T031 [US5] تحديث `supabase/functions/daily-notification-run/index.ts`: إضافة منطق توليد CSV وإرفاقه مع إيميل الملخص اليومي (نفس helper functions مُشتركة من T030)
-- [ ] T032 [US5] تحديث `artifacts/zafeer/src/pages/Notifications.tsx`: إضافة تبويب "تقرير CSV" مع زر "إرسال التقرير الآن" + عرض آخر تاريخ إرسال من `system_settings.csv_report_last_sent` + حالة التحميل/النتيجة + تحذير `admin_email` فارغ للمسؤول (admin) فقط
-- [ ] T032b [P] [US5] تحديث صفحة الإعدادات (`artifacts/zafeer/src/pages/settings/`): إضافة تحذير "إيميل المسؤول غير مضبوط" للمسؤول (admin) فقط — متوافق مع FR-023 (يظهر في صفحتَي الإشعارات والإعدادات)
+- [X] T030 [US5] إنشاء `supabase/functions/send-alert-report/index.ts`: auth check (admin JWT)، قراءة notification_thresholds + admin_email، جلب notifications + employees + companies، بناء 3 CSVs (موظفون نشطون + مؤسسات نشطة + مؤجلات) عبر helper functions من `_shared/alert-helpers.ts`، ضغط ZIP عبر JSZip (UTF-8 BOM)، إرسال Resend مع المرفق، upsert csv_report_last_sent — ⚠️ **Resend حد المرفقات 40MB**: للشركات الكبيرة قد يتجاوز الـ ZIP الحد — سجّل حجم الملف قبل الإرسال + أضف error handling واضح إذا تجاوز 35MB
+- [X] T031 [US5] تحديث `supabase/functions/daily-notification-run/index.ts`: إضافة منطق توليد CSV وإرفاقه مع إيميل الملخص اليومي (نفس helper functions مُشتركة من T030)
+- [X] T032 [US5] تحديث `artifacts/zafeer/src/pages/Notifications.tsx`: إضافة تبويب "تقرير CSV" مع زر "إرسال التقرير الآن" + عرض آخر تاريخ إرسال من `system_settings.csv_report_last_sent` + حالة التحميل/النتيجة + تحذير `admin_email` فارغ للمسؤول (admin) فقط
+- [X] T032b [P] [US5] تحديث صفحة الإعدادات (`artifacts/zafeer/src/pages/settings/`): إضافة تحذير "إيميل المسؤول غير مضبوط" للمسؤول (admin) فقط — متوافق مع FR-023 (يظهر في صفحتَي الإشعارات والإعدادات)
 
 **Checkpoint**: ضغط الزر → وصول ZIP بالإيميل ✓، الدورة اليومية ترسل ZIP تلقائياً ✓، تحذير admin_email يظهر في الصفحتين للأدمن فقط ✓
 
@@ -134,13 +134,13 @@
 
 ### Implementation for User Story 6
 
-- [ ] T033 [US6] إنشاء migration SQL يضيف `snoozed_until` و `is_deferred` لجدول `notifications` في `supabase/migrations/` + UNIQUE constraint على `(entity_type, entity_id, notification_type)` للـ UPSERT — ⚠️ **قبل إضافة الـ UNIQUE constraint يجب حذف الـ duplicates الحالية**: `DELETE FROM notifications WHERE id NOT IN (SELECT MAX(id) FROM notifications GROUP BY entity_type, entity_id, notification_type)` (انظر data-model.md — Migration 2)
-- [ ] T033b [US6] تحديث `lib/db/src/schema/notifications.ts`: إضافة `snoozed_until` (TIMESTAMPTZ nullable) و `is_deferred` (BOOLEAN default false) للـ Drizzle schema يدوياً — **مطلوب لـ typecheck يمر** (Constitution III)
-- [ ] T033c [US6] التحقق من وجود RLS UPDATE policy على جدول `notifications` للـ admin role: `SELECT policyname, cmd FROM pg_policies WHERE tablename='notifications' AND cmd='UPDATE'` — إضافة policy إذا غابت (Constitution IV) — لازم ينتهي قبل T035
-- [ ] T034 [US6] تحديث `artifacts/zafeer/src/pages/Notifications.tsx`: تصفية التبويب النشط لاستثناء الإشعارات المؤجلة (`WHERE (snoozed_until IS NULL OR snoozed_until <= NOW()) AND is_deferred = false`) — T012 تغطي تصفية الإيميل في Edge Function بالفعل
-- [ ] T035 [P] [US6] إنشاء `artifacts/zafeer/src/components/notifications/SnoozeModal.tsx`: نموذج تأجيل — خيار تاريخ مستقبلي أو "حتى يُفعَّل يدوياً" — يحدّث `snoozed_until` / `is_deferred` عبر Supabase client
-- [ ] T036 [US6] تحديث `artifacts/zafeer/src/pages/Notifications.tsx`: إضافة تبويب "المؤجلة" (يعرض الإشعارات ذات `snoozed_until IS NOT NULL OR is_deferred = true`) + زر "تفعيل الآن" + زر "تعديل التاريخ" + `SnoozeModal` على الإشعارات النشطة — **بعد T034** (نفس الملف)
-- [ ] T037 [P] [US6] التحقق من أن `generate_expiry_notifications()` RPC تعمل بـ UPSERT (ON CONFLICT) يحافظ على `snoozed_until` و `is_deferred` عند إعادة التوليد اليومي — إذا كانت تعمل INSERT فقط → إضافة ON CONFLICT clause
+- [X] T033 [US6] إنشاء migration SQL يضيف `snoozed_until` و `is_deferred` لجدول `notifications` في `supabase/migrations/` + UNIQUE constraint على `(entity_type, entity_id, type)` للـ UPSERT — ⚠️ **قبل إضافة الـ UNIQUE constraint يجب حذف الـ duplicates الحالية**: تم عبر DISTINCT ON + DELETE (applied to DB ✓)
+- [X] T033b [US6] تحديث `lib/db/src/schema/notifications.ts`: إضافة `snoozed_until` (TIMESTAMPTZ nullable) و `is_deferred` (BOOLEAN default false) للـ Drizzle schema يدوياً — **مطلوب لـ typecheck يمر** (Constitution III)
+- [X] T033c [US6] التحقق من وجود RLS UPDATE policy على جدول `notifications` للـ admin role — `notifications_admin_write` (cmd=ALL) تغطي UPDATE ✓ لا تعديل مطلوب
+- [X] T034 [US6] تحديث `artifacts/zafeer/src/pages/Notifications.tsx`: تصفية التبويب النشط لاستثناء الإشعارات المؤجلة (`WHERE (snoozed_until IS NULL OR snoozed_until <= NOW()) AND is_deferred = false`)
+- [X] T035 [P] [US6] إنشاء `artifacts/zafeer/src/components/notifications/SnoozeModal.tsx`: نموذج تأجيل — خيار تاريخ مستقبلي أو "حتى يُفعَّل يدوياً" — يحدّث `snoozed_until` / `is_deferred` عبر Supabase client
+- [X] T036 [US6] تحديث `artifacts/zafeer/src/pages/Notifications.tsx`: إضافة تبويب "المؤجلة" + زر "تفعيل الآن" + زر "تعديل التأجيل" + `SnoozeModal` على الإشعارات النشطة
+- [X] T037 [P] [US6] إعادة كتابة `generate_expiry_notifications()` RPC بـ UPSERT (ON CONFLICT DO UPDATE) يحافظ على `snoozed_until` و `is_deferred` — migration 005 ✓
 
 **Checkpoint**: تأجيل إشعار → يختفي من "النشطة" ويظهر في "المؤجلة" ✓، لا يُذكر في الإيميل ✓، "تفعيل الآن" يعيده فوراً ✓
 
