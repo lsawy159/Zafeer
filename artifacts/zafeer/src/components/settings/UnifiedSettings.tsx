@@ -200,24 +200,15 @@ export default function UnifiedSettings({ isReadOnly = false }: { isReadOnly?: b
 
   const loadSettings = async () => {
     try {
-      // تحميل إعدادات التنبيهات (للموظفين)
       const { data: notificationData } = await supabase
         .from('system_settings')
         .select('setting_value')
         .eq('setting_key', 'notification_thresholds')
         .maybeSingle()
 
-      // تحميل إعدادات الحالات (للمؤسسات)
-      const { data: statusData } = await supabase
-        .from('system_settings')
-        .select('setting_value')
-        .eq('setting_key', 'status_thresholds')
-        .maybeSingle()
-
       const mergedSettings = {
         ...DEFAULT_SETTINGS,
         ...(notificationData?.setting_value || {}),
-        ...(statusData?.setting_value || {}),
       }
 
       setSettings(mergedSettings)
@@ -260,19 +251,6 @@ export default function UnifiedSettings({ isReadOnly = false }: { isReadOnly?: b
         moqeem_subscription_medium_days: settings.moqeem_subscription_medium_days,
       }
 
-      // حفظ إعدادات الحالات (للتوافق مع الكود القديم)
-      const statusSettings = {
-        commercial_reg_urgent_days: settings.commercial_reg_urgent_days,
-        commercial_reg_high_days: settings.commercial_reg_high_days,
-        commercial_reg_medium_days: settings.commercial_reg_medium_days,
-        power_subscription_urgent_days: settings.power_subscription_urgent_days,
-        power_subscription_high_days: settings.power_subscription_high_days,
-        power_subscription_medium_days: settings.power_subscription_medium_days,
-        moqeem_subscription_urgent_days: settings.moqeem_subscription_urgent_days,
-        moqeem_subscription_high_days: settings.moqeem_subscription_high_days,
-        moqeem_subscription_medium_days: settings.moqeem_subscription_medium_days,
-      }
-
       // حفظ البيانات باستخدام INSERT OR UPDATE
       // محاولة الحفظ مع إعادة محاولة في حالة الفشل
       const { error: notificationError } = await supabase
@@ -287,20 +265,8 @@ export default function UnifiedSettings({ isReadOnly = false }: { isReadOnly?: b
         )
         .select()
 
-      const { error: statusError } = await supabase
-        .from('system_settings')
-        .upsert(
-          {
-            setting_key: 'status_thresholds',
-            setting_value: statusSettings,
-            updated_at: new Date().toISOString(),
-          },
-          { onConflict: 'setting_key' }
-        )
-        .select()
-
-      if (notificationError || statusError) {
-        throw notificationError || statusError
+      if (notificationError) {
+        throw notificationError
       }
 
       // إبطال جميع الكاش

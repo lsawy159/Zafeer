@@ -1,16 +1,16 @@
 <!--
 SYNC IMPACT REPORT
 ==================
-Version change: 1.1.0 → 1.2.0
-Bump rationale: MINOR — أُضيف Principle VII جديد (Internal System Architecture — Users vs Employees).
-المبدأ يُقنّن قاعدة معمارية صارمة: employees = data records فقط، لا login، لا RLS بناءً على auth.uid()
-مقابل employees. صادر من توضيح مالك المشروع 2026-05-15.
+Version change: 1.2.0 → 1.3.0
+Bump rationale: MINOR — أُضيف Principle VIII جديد (Notification Threshold Single Source).
+المبدأ يثبت أن إعدادات أيام التنبيهات من `system_settings.notification_thresholds` هي المصدر الوحيد
+للتنبيهات والإشعارات والتقارير وـ RPCs الخاصة بانتهاء الصلاحيات.
 
 Modified principles: لا شيء — إضافة فقط.
 
 Added sections:
-  - Principle VII: Internal System Architecture — Users vs Employees (NON-NEGOTIABLE)
-    يحظر أي employee-scoping في RLS + يحدد أن RLS يُبنى على users.role + users.permissions فقط.
+  - Principle VIII: Notification Threshold Single Source (NON-NEGOTIABLE)
+    يمنع اختلاف عدد الأيام أو طريقة العد بين صفحة التنبيهات وصفحة الإشعارات.
 
 Removed sections: لا شيء.
 
@@ -126,6 +126,18 @@ Admin (`role = 'admin'`) MUST retain unrestricted access to all tables at all ti
 
 Rationale: conflating the two tables leads to incorrect RLS designs that either expose all employee data or attempt to scope data to "the employee themselves" — both are architectural errors in a centralized management system.
 
+### VIII. Notification Threshold Single Source (NON-NEGOTIABLE)
+
+All expiry severity calculations MUST use `system_settings.notification_thresholds` as the single source of truth.
+This applies to `/alerts`, `/notifications`, `generate_expiry_notifications()`, daily notification digests, CSV alert reports, and status color helpers.
+
+The alert settings page in System Settings is the only user-facing place allowed to edit expiry day thresholds.
+New code MUST NOT introduce separate hardcoded alert-day settings such as `status_thresholds` or page-local threshold constants when `notification_thresholds` can provide the value.
+
+Notification totals shown to users MUST match the alert-page counting model: active expiry notifications are counted by unique affected entity and highest active severity, not by raw notification rows when one employee or company has multiple expiring documents.
+
+Rationale: users expect alerts and notifications to describe the same operational reality. Separate day sources or row-count semantics make the UI disagree with itself and hide urgent work.
+
 ## Security Requirements
 
 - The Express API MUST validate all inputs with Zod schemas before processing.
@@ -152,4 +164,4 @@ All spec/plan/task documents MUST reference constitution principles by name when
 Complexity deviations from any MUST rule MUST be documented in `plan.md` under "Complexity Tracking" with justification.
 Principle VI (Brand Identity) violations in any new code or new commit MUST block merge regardless of CI status.
 
-**Version**: 1.2.0 | **Ratified**: 2026-05-07 | **Last Amended**: 2026-05-15
+**Version**: 1.3.0 | **Ratified**: 2026-05-07 | **Last Amended**: 2026-05-23

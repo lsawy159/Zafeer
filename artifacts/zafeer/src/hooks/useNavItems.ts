@@ -9,6 +9,7 @@ import {
   ArrowDownUp,
   SearchIcon,
   Bell,
+  BellRing,
   Wallet,
   RefreshCcw,
   FileText,
@@ -72,6 +73,13 @@ export function useNavItems() {
           alertsStats.total > 0
             ? { count: alertsStats.total, color: alertsStats.urgent > 0 ? 'red' : 'blue' }
             : null,
+      },
+      {
+        path: '/notifications',
+        icon: BellRing,
+        label: 'الإشعارات',
+        permission: { section: 'adminSettings' as const, action: 'view' },
+        badge: null,
       },
       {
         path: '/advanced-search',
