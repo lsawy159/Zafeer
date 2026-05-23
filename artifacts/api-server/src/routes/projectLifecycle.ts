@@ -69,7 +69,7 @@ router.delete("/admin/projects/:id", requireAdmin, async (req: AuthRequest, res)
   // Check for active employees
   const { data: activeEmployees, error: empError } = await supabaseAdmin
     .from("employees")
-    .select("id", { count: "exact", head: true })
+    .select("id")
     .eq("project_id", projectId)
     .is("is_deleted", null)
     .or("is_deleted.eq.false");
