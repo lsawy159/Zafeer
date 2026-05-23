@@ -39,6 +39,7 @@ export default function Projects() {
   const [showDeleteModal, setShowDeleteModal] = useState(false)
   const [showDetailModal, setShowDetailModal] = useState(false)
   const [selectedProject, setSelectedProject] = useState<Project | null>(null)
+  const [extractCount, setExtractCount] = useState(0)
 
   // Filter states
   const [searchTerm, setSearchTerm] = useState('')
@@ -173,8 +174,24 @@ export default function Projects() {
     setShowEditModal(true)
   }
 
-  const handleDeleteProject = (project: Project) => {
+  const handleDeleteProject = async (project: Project) => {
     setSelectedProject(project)
+
+    // Fetch extract count for this project
+    try {
+      const { data: extracts, error } = await supabase
+        .from('extract_invoices')
+        .select('id')
+        .eq('project_id', project.id)
+
+      if (!error && extracts) {
+        setExtractCount(extracts.length)
+      }
+    } catch (err) {
+      console.error('Error fetching extracts:', err)
+      setExtractCount(0)
+    }
+
     setShowDeleteModal(true)
   }
 
@@ -409,18 +426,40 @@ export default function Projects() {
               onClick={handleModalClose}
             >
               <div className="bg-surface rounded-lg shadow-xl max-w-md w-full p-6" onClick={(event) => event.stopPropagation()}>
-                <h3 className="text-lg font-bold text-neutral-900 mb-4">تأكيد الحذف</h3>
-                <p className="text-neutral-600 mb-6">
-                  هل أنت متأكد من حذف المشروع "{selectedProject.name}"؟
-                  <br />
-                  <span className="text-sm text-red-600">لا يمكن التراجع عن هذا الإجراء</span>
-                </p>
+                <h3 className="text-lg font-bold text-neutral-900 mb-4">تأكيد حذف المشروع</h3>
+                <div className="space-y-4 mb-6">
+                  <p className="text-neutral-700">
+                    هل أنت متأكد من حذف المشروع <span className="font-semibold">"{selectedProject.name}"</span>؟
+                  </p>
+
+                  {extractCount > 0 && (
+                    <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                      <p className="text-sm text-blue-900">
+                        🔍 يوجد <span className="font-semibold">{extractCount}</span> مستخلص{extractCount > 1 ? 'ات' : ''} متعلق{extractCount > 1 ? 'ة' : ''} بهذا المشروع
+                      </p>
+                      <p className="text-xs text-blue-800 mt-2">
+                        ✓ المستخلصات سيتم الاحتفاظ بها كسجل تاريخي ولن تُحذف
+                      </p>
+                    </div>
+                  )}
+
+                  <div className="bg-amber-50 border border-amber-200 rounded-lg p-3">
+                    <p className="text-xs text-amber-900">
+                      ⚠️ سيتم إزالة المشروع من قائمة المشاريع التشغيلية فقط، بينما ستبقى جميع السجلات المالية والتاريخية محفوظة
+                    </p>
+                  </div>
+
+                  <p className="text-sm text-red-600 font-medium">
+                    ⚠️ لا يمكن التراجع عن هذا الإجراء
+                  </p>
+                </div>
+
                 <div className="flex items-center justify-end gap-3">
                   <Button onClick={handleModalClose} variant="secondary">
                     إلغاء
                   </Button>
                   <Button onClick={handleDeleteConfirm} variant="destructive">
-                    حذف
+                    حذف المشروع
                   </Button>
                 </div>
               </div>
