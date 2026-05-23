@@ -87,12 +87,12 @@
 **Independent Test**: حذف مستخلص من القائمة أو التفاصيل يزيله هو وأسطره فقط، وتعديل مستخلص قائم يظل ممكنًا ضمن نطاقه الداخلي دون تغيير المشروع/الفترة/النسخة
 
 - [X] T028 [US3] تنفيذ delete extract داخل `artifacts/api-server/src/routes/projectLifecycle.ts` بحذف `extract_invoices` وترك cascade للأسطر مع تسجيل `activity_log` بعد validation وrate limiting وserver-side `extracts.delete` check
-- [ ] T029 [US3] تعديل `artifacts/zafeer/src/hooks/useExtracts.ts` لإضافة hook يعتمد على generated admin delete extract mutation ويقوم بـ invalidation لـ `['extracts']` و`['extract', id]`
-- [ ] T030 [P] [US3] تعديل `artifacts/zafeer/src/pages/Extracts.tsx` لإضافة إجراء حذف واضح للمستخلص في القائمة مع إخفائه إلا للـ admin صاحب `extracts.delete`
-- [ ] T031 [US3] تعديل `artifacts/zafeer/src/pages/extracts/ExtractDetail.tsx` لإضافة زر حذف للمستخلص الكامل مع confirm dialog وإخفائه إلا للـ admin صاحب `extracts.delete`
-- [ ] T032 [US3] تعديل `artifacts/zafeer/src/hooks/useExtractLines.ts` و`artifacts/zafeer/src/pages/extracts/ExtractDetail.tsx` لاستخدام generated admin extract-line mutations بدل أي direct Supabase insert/update/delete على `extract_invoice_lines`، مع server-side وUI gate لصلاحية `extracts.edit` وتوضيح أن التعديل لا يغير `project_id` أو `period_month` أو `version`
-- [ ] T033 [US3] إضافة تسجيل `activity_log` لمسارات إضافة/تعديل/حذف أسطر المستخلص داخل `artifacts/api-server/src/routes/projectLifecycle.ts` ضمن نفس transaction/flow الخاص بالـ admin mutation
-- [ ] T034 [P] [US3] مراجعة queries في `artifacts/zafeer/src/hooks/useExtracts.ts` و`artifacts/zafeer/src/pages/extracts/ExtractDetail.tsx` للتأكد أن إدارة المستخلص لا تنكسر عندما يكون المشروع `is_deleted = true`
+- [X] T029 [US3] تعديل `artifacts/zafeer/src/hooks/useExtracts.ts` لإضافة hook يعتمد على generated admin delete extract mutation ويقوم بـ invalidation لـ `['extracts']` و`['extract', id]`
+- [X] T030 [P] [US3] تعديل `artifacts/zafeer/src/pages/Extracts.tsx` لإضافة إجراء حذف واضح للمستخلص في القائمة مع إخفائه إلا للـ admin صاحب `extracts.delete`
+- [X] T031 [US3] تعديل `artifacts/zafeer/src/pages/extracts/ExtractDetail.tsx` لإضافة زر حذف للمستخلص الكامل مع confirm dialog وإخفائه إلا للـ admin صاحب `extracts.delete`
+- [X] T032 [US3] تعديل `artifacts/zafeer/src/hooks/useExtractLines.ts` و`artifacts/zafeer/src/pages/extracts/ExtractDetail.tsx` لاستخدام generated admin extract-line mutations بدل أي direct Supabase insert/update/delete على `extract_invoice_lines`، مع server-side وUI gate لصلاحية `extracts.edit` وتوضيح أن التعديل لا يغير `project_id` أو `period_month` أو `version`
+- [X] T033 [US3] إضافة تسجيل `activity_log` لمسارات إضافة/تعديل/حذف أسطر المستخلص داخل `artifacts/api-server/src/routes/projectLifecycle.ts` ضمن نفس transaction/flow الخاص بالـ admin mutation
+- [X] T034 [P] [US3] مراجعة queries في `artifacts/zafeer/src/hooks/useExtracts.ts` و`artifacts/zafeer/src/pages/extracts/ExtractDetail.tsx` للتأكد أن إدارة المستخلص لا تنكسر عندما يكون المشروع `is_deleted = true`
 
 **Checkpoint**: المستخلصات قابلة للحذف الكامل والتعديل المنضبط دون التأثير على الرواتب أو الهوية الأساسية للمستخلص
 
@@ -102,9 +102,9 @@
 
 **Purpose**: توحيد الرسائل والتحقق النهائي عبر كل المسارات
 
-- [ ] T035 [P] تحديث أي messages أو dialogs أو toasts عربية متعلقة بحذف المشروع/المستخلص في `artifacts/zafeer/src/pages/Projects.tsx` و`artifacts/zafeer/src/pages/Extracts.tsx` و`artifacts/zafeer/src/pages/extracts/ExtractDetail.tsx`
-- [ ] T036 [P] مراجعة `artifacts/zafeer/src/components/projects/ProjectModal.tsx` لضمان أن إخفاء المشاريع soft-deleted لا يكسر uniqueness أو إعادة الإنشاء التشغيلية
-- [ ] T037 تشغيل `pnpm --filter @workspace/api-spec run lint` و`pnpm --filter @workspace/api-server run typecheck` و`pnpm --filter @workspace/zafeer run typecheck` و`pnpm -r run build` للتحقق من العقود والنوعيات وshared-lib build gate بعد التعديلات
+- [X] T035 [P] تحديث أي messages أو dialogs أو toasts عربية متعلقة بحذف المشروع/المستخلص في `artifacts/zafeer/src/pages/Projects.tsx` و`artifacts/zafeer/src/pages/Extracts.tsx` و`artifacts/zafeer/src/pages/extracts/ExtractDetail.tsx`
+- [X] T036 [P] مراجعة `artifacts/zafeer/src/components/projects/ProjectModal.tsx` لضمان أن إخفاء المشاريع soft-deleted لا يكسر uniqueness أو إعادة الإنشاء التشغيلية
+- [X] T037 تشغيل `pnpm --filter @workspace/api-spec run lint` و`pnpm --filter @workspace/api-server run typecheck` و`pnpm --filter @workspace/zafeer run typecheck` و`pnpm -r run build` للتحقق من العقود والنوعيات وshared-lib build gate بعد التعديلات
 - [ ] T038 تنفيذ smoke walkthrough يدوي وفق `specs/021-project-extract-lifecycle/quickstart.md`: حذف مشروع منتهي، رفض حذف مشروع عليه موظفون نشطون، رفض حذف مشروع بدون `projects.delete` من السيرفر، حذف مستخلص، تعديل سطر مستخلص بصلاحية `extracts.edit`، رفض تعديل/حذف المستخلص بدون الصلاحية المناسبة من السيرفر، التأكد من عدم وجود frontend Supabase mutation مباشر على `extract_invoice_lines`، والتأكد من بقاء العرض التاريخي للمستخلصات والرواتب مع مطابقة عدد المستخلصات والرواتب التاريخية قبل حذف المشروع وبعده
 
 ---
