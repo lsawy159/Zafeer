@@ -75,8 +75,16 @@ function classifyError(err: unknown): { type: string; message_ar: string } {
     return { type: 'admin_not_in_backup', message_ar: 'حسابك غير موجود في هذه النسخة. اختر نسخة أحدث من تاريخ إنشاء حسابك.' }
   if (msg.includes('INCOMPLETE_CHUNKS'))
     return { type: 'upload_incomplete', message_ar: 'فشل رفع بيانات النسخة بالكامل. تحقق من الاتصال وحاول مجدداً.' }
+  if (msg.includes('missing_staging') || msg.includes('RESTORE_STAGING_NOT_FOUND'))
+    return { type: 'missing_staging', message_ar: 'لم يتم العثور على بيانات staging لهذه الاستعادة.' }
+  if (msg.includes('invalid_restore_history') || msg.includes('RESTORE_HISTORY_NOT_FOUND'))
+    return { type: 'invalid_restore_history', message_ar: 'سجل الاستعادة مفقود.' }
+  if (msg.includes('restore_failed'))
+    return { type: 'restore_failed', message_ar: 'فشلت عملية الاستعادة داخل القاعدة. راجع سجل الحالة.' }
   if (msg.includes('CONCURRENT_OPERATION') || msg.includes('55P03'))
     return { type: 'concurrent_op', message_ar: 'عملية نسخ أو استعادة أخرى جارية. انتظر انتهاءها وحاول مجدداً.' }
+  if (msg.includes('unauthorized') || msg.includes('AUTH_REQUIRED') || msg.includes('ADMIN_ROLE_REQUIRED'))
+    return { type: 'unauthorized', message_ar: 'لا تملك صلاحية الاستعادة.' }
   return { type: 'unexpected', message_ar: `حدث خطأ غير متوقع في النظام. الكود: ${msg.slice(0, 80)}` }
 }
 
@@ -224,6 +232,10 @@ Deno.serve(async (req: Request) => {
   const admin = createClient(SUPABASE_URL, SERVICE_ROLE_KEY, {
     auth: { autoRefreshToken: false, persistSession: false },
   })
+  const userClient = createClient(SUPABASE_URL, ANON_KEY, {
+    global: { headers: { Authorization: authHeader! } },
+    auth: { autoRefreshToken: false, persistSession: false },
+  })
 
   // Admin check
   const { data: userRow, error: userErr } = await admin
@@ -284,6 +296,7 @@ Deno.serve(async (req: Request) => {
   }
 
   const restoreId: string = restoreRow.id
+  let lockAcquired = false
 
   const updateStatus = (status: string, extra: Record<string, unknown> = {}) =>
     admin.from('restore_history').update({ status, ...extra }).eq('id', restoreId)
@@ -308,6 +321,23 @@ Deno.serve(async (req: Request) => {
   let sessionId: string | undefined
 
   try {
+    const { data: locked, error: lockErr } = await userClient.rpc('try_backup_lock')
+    if (lockErr) {
+      throw new Error(`Failed to acquire restore lock: ${lockErr.message}`)
+    }
+    if (!locked) {
+      await updateStatus('failed', {
+        completed_at: new Date().toISOString(),
+        error_message: 'CONCURRENT_OPERATION',
+      })
+      return jsonResponse({
+        success: false,
+        restore_id: restoreId,
+        error_type: 'concurrent_op',
+        error_message_ar: 'عملية استعادة أخرى جارية. انتظر انتهائها وحاول مجدداً.',
+      }, 409)
+    }
+    lockAcquired = true
     // Create pre-restore snapshot (inline — no HTTP call to avoid advisory lock conflict)
     const snapshot = await createSnapshot(admin, userId)
     snapshotId = snapshot.snapshotId
@@ -376,18 +406,17 @@ Deno.serve(async (req: Request) => {
 
     // Execute restore using USER JWT client (auth.uid() must return userId inside RPC)
     await updateStatus('restoring_data')
-
-    const userClient = createClient(SUPABASE_URL, ANON_KEY, {
-      global: { headers: { Authorization: authHeader! } },
-      auth: { autoRefreshToken: false, persistSession: false },
-    })
-
-    const { error: rpcErr } = await userClient.rpc('admin_restore_backup', {
-      p_backup_id: backup_id,
+    const { data: rpcData, error: rpcErr } = await userClient.rpc('admin_restore_backup', {
       p_session_id: sessionId,
+      p_restore_history_id: restoreId,
     })
 
     if (rpcErr) throw new Error(rpcErr.message)
+    if (!rpcData?.success) {
+      throw new Error(
+        `${rpcData?.error_type ?? 'restore_failed'}: ${rpcData?.error_message ?? 'RESTORE_FAILED'}`,
+      )
+    }
 
     // Success
     await stopMaintenance()
@@ -396,7 +425,8 @@ Deno.serve(async (req: Request) => {
       .update({
         status: 'completed',
         completed_at: new Date().toISOString(),
-        tables_restored: TABLES_TO_EXPORT.length,
+        tables_restored: rpcData?.tables_restored ?? TABLES_TO_EXPORT.length,
+        records_restored: rpcData?.records_restored ?? null,
       })
       .eq('id', restoreId)
 
@@ -425,6 +455,9 @@ Deno.serve(async (req: Request) => {
     // Always clean up staging data
     if (sessionId) {
       await admin.from('restore_staging').delete().eq('session_id', sessionId)
+    }
+    if (lockAcquired) {
+      await userClient.rpc('release_backup_lock')
     }
   }
 })
