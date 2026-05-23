@@ -642,7 +642,13 @@ components:
         attendanceDays:
           type: number
           minimum: 0
-      required: [attendanceDays]
+        totalDaysInMonth:
+          type: number
+          minimum: 1
+        monthlyRate:
+          type: number
+          minimum: 0
+      required: [attendanceDays, totalDaysInMonth, monthlyRate]
 
     ExtractLineMutationResponse:
       type: object

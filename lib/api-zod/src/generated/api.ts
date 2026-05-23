@@ -160,9 +160,14 @@ export const UpdateAdminExtractLineParams = zod.object({
 export const updateAdminExtractLineBodyAttendanceDaysMin = 0;
 
 
+export const updateAdminExtractLineBodyMonthlyRateMin = 0;
+
+
 
 export const UpdateAdminExtractLineBody = zod.object({
-  "attendanceDays": zod.number().min(updateAdminExtractLineBodyAttendanceDaysMin)
+  "attendanceDays": zod.number().min(updateAdminExtractLineBodyAttendanceDaysMin),
+  "totalDaysInMonth": zod.number().min(1),
+  "monthlyRate": zod.number().min(updateAdminExtractLineBodyMonthlyRateMin)
 })
 
 export const UpdateAdminExtractLineResponse = zod.object({

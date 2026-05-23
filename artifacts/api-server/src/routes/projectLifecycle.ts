@@ -191,7 +191,110 @@ router.post("/admin/extracts/:id/lines", requireAdmin, async (req: AuthRequest, 
     return;
   }
 
-  res.status(501).json({ error: "Not implemented in foundational phase" });
+  const extractId = parsedParams.data.id;
+  const { employeeId, attendanceDays } = parsedBody.data;
+
+  // Get extract and validate
+  const { data: extract, error: extractError } = await supabaseAdmin
+    .from("extract_invoices")
+    .select("id, project_id, total_days_in_month")
+    .eq("id", extractId)
+    .maybeSingle();
+
+  if (extractError || !extract) {
+    res.status(404).json({ error: "Extract not found" });
+    return;
+  }
+
+  // Get employee data for snapshot
+  const { data: employee, error: empError } = await supabaseAdmin
+    .from("employees")
+    .select("id, name, profession, residence_number")
+    .eq("id", employeeId)
+    .maybeSingle();
+
+  if (empError || !employee) {
+    res.status(400).json({ error: "Employee not found" });
+    return;
+  }
+
+  const profession = employee.profession?.trim() ?? "";
+  if (!profession) {
+    res.status(400).json({ error: "Employee has no profession" });
+    return;
+  }
+
+  // Get monthly rate for the profession in this project
+  const { data: rateRow, error: rateError } = await supabaseAdmin
+    .from("project_job_title_rates")
+    .select("monthly_rate")
+    .eq("project_id", extract.project_id)
+    .ilike("profession", profession)
+    .maybeSingle();
+
+  if (rateError || !rateRow) {
+    res
+      .status(400)
+      .json({ error: `No rate found for profession "${profession}" in this project` });
+    return;
+  }
+
+  const monthlyRate = Number(rateRow.monthly_rate);
+  // Calculate amount: (monthlyRate / totalDaysInMonth) * attendanceDays
+  const amount = (monthlyRate / extract.total_days_in_month) * attendanceDays;
+
+  // Insert extract line
+  const { data: newLine, error: insertError } = await supabaseAdmin
+    .from("extract_invoice_lines")
+    .insert({
+      invoice_id: extractId,
+      employee_id: employee.id,
+      employee_name_snapshot: employee.name,
+      residence_number_snapshot: employee.residence_number ?? 0,
+      profession_snapshot: profession,
+      monthly_rate_snapshot: monthlyRate,
+      attendance_days: attendanceDays,
+      total_days_in_month: extract.total_days_in_month,
+      amount,
+    })
+    .select();
+
+  if (insertError || !newLine || newLine.length === 0) {
+    res.status(500).json({ error: "Failed to insert extract line" });
+    return;
+  }
+
+  // Recalculate extract totals
+  const { error: recalcError } = await supabaseAdmin.rpc(
+    "recalculate_extract_totals",
+    { p_invoice_id: extractId }
+  );
+
+  if (recalcError) {
+    console.error("Failed to recalculate totals:", recalcError);
+    // Don't fail the response, just log
+  }
+
+  // Log activity
+  const { error: logError } = await supabaseAdmin
+    .from("activity_log")
+    .insert({
+      user_id: req.userId,
+      entity_type: "extract_line",
+      entity_id: newLine[0].id,
+      action: "create",
+      details: {
+        extract_id: extractId,
+        employee_id: employee.id,
+        amount,
+      },
+    });
+
+  if (logError) {
+    console.error("Failed to log activity:", logError);
+  }
+
+  res.status(201).json(newLine[0]);
 });
 
 router.patch("/admin/extract-lines/:lineId", requireAdmin, async (req: AuthRequest, res) => {
@@ -212,7 +315,68 @@ router.patch("/admin/extract-lines/:lineId", requireAdmin, async (req: AuthReque
     return;
   }
 
-  res.status(501).json({ error: "Not implemented in foundational phase" });
+  const lineId = parsedParams.data.lineId;
+  const { attendanceDays, totalDaysInMonth, monthlyRate } = parsedBody.data;
+
+  // Get extract line to find invoice_id
+  const { data: line, error: lineError } = await supabaseAdmin
+    .from("extract_invoice_lines")
+    .select("id, invoice_id")
+    .eq("id", lineId)
+    .maybeSingle();
+
+  if (lineError || !line) {
+    res.status(404).json({ error: "Extract line not found" });
+    return;
+  }
+
+  // Calculate new amount
+  const amount = (monthlyRate / totalDaysInMonth) * attendanceDays;
+
+  // Update line
+  const { error: updateError } = await supabaseAdmin
+    .from("extract_invoice_lines")
+    .update({
+      attendance_days: attendanceDays,
+      total_days_in_month: totalDaysInMonth,
+      amount,
+    })
+    .eq("id", lineId);
+
+  if (updateError) {
+    res.status(500).json({ error: "Failed to update extract line" });
+    return;
+  }
+
+  // Recalculate extract totals
+  const { error: recalcError } = await supabaseAdmin.rpc(
+    "recalculate_extract_totals",
+    { p_invoice_id: line.invoice_id }
+  );
+
+  if (recalcError) {
+    console.error("Failed to recalculate totals:", recalcError);
+  }
+
+  // Log activity
+  const { error: logError } = await supabaseAdmin
+    .from("activity_log")
+    .insert({
+      user_id: req.userId,
+      entity_type: "extract_line",
+      entity_id: lineId,
+      action: "update",
+      details: {
+        attendance_days: attendanceDays,
+        amount,
+      },
+    });
+
+  if (logError) {
+    console.error("Failed to log activity:", logError);
+  }
+
+  res.status(200).json({ success: true });
 });
 
 router.delete("/admin/extract-lines/:lineId", requireAdmin, async (req: AuthRequest, res) => {
@@ -227,7 +391,59 @@ router.delete("/admin/extract-lines/:lineId", requireAdmin, async (req: AuthRequ
     return;
   }
 
-  res.status(501).json({ error: "Not implemented in foundational phase" });
+  const lineId = parsed.data.lineId;
+
+  // Get extract line to find invoice_id
+  const { data: line, error: lineError } = await supabaseAdmin
+    .from("extract_invoice_lines")
+    .select("id, invoice_id")
+    .eq("id", lineId)
+    .maybeSingle();
+
+  if (lineError || !line) {
+    res.status(404).json({ error: "Extract line not found" });
+    return;
+  }
+
+  // Delete line
+  const { error: deleteError } = await supabaseAdmin
+    .from("extract_invoice_lines")
+    .delete()
+    .eq("id", lineId);
+
+  if (deleteError) {
+    res.status(500).json({ error: "Failed to delete extract line" });
+    return;
+  }
+
+  // Recalculate extract totals
+  const { error: recalcError } = await supabaseAdmin.rpc(
+    "recalculate_extract_totals",
+    { p_invoice_id: line.invoice_id }
+  );
+
+  if (recalcError) {
+    console.error("Failed to recalculate totals:", recalcError);
+  }
+
+  // Log activity
+  const { error: logError } = await supabaseAdmin
+    .from("activity_log")
+    .insert({
+      user_id: req.userId,
+      entity_type: "extract_line",
+      entity_id: lineId,
+      action: "delete",
+      details: {
+        invoice_id: line.invoice_id,
+      },
+    });
+
+  if (logError) {
+    console.error("Failed to log activity:", logError);
+  }
+
+  res.status(200).json({ success: true });
 });
 
 export default router;

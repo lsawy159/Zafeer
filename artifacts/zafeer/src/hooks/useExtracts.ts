@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { supabase } from '@/lib/supabase'
 import { logger } from '@/utils/logger'
 import { useAuth } from '@/contexts/AuthContext'
+import { useDeleteAdminExtract } from '@workspace/api-client-react'
 import type { MatchedEmployee } from '@/utils/extractCalculations'
 
 export interface ExtractInvoice {
@@ -173,6 +174,26 @@ export function useDuplicateExtract() {
     onSuccess: (newInvoiceId) => {
       queryClient.invalidateQueries({ queryKey: ['extracts'] })
       navigate(`/extracts/${newInvoiceId}`)
+    },
+  })
+}
+
+export function useDeleteExtract() {
+  const queryClient = useQueryClient()
+  const navigate = useNavigate()
+  const baseMutation = useDeleteAdminExtract()
+
+  return useMutation({
+    mutationFn: async (extractId: string) => {
+      return baseMutation.mutateAsync({ id: extractId })
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['extracts'] })
+      queryClient.removeQueries({ queryKey: ['extract'] })
+      navigate('/extracts')
+    },
+    onError: (error) => {
+      logger.error('Error deleting extract:', error)
     },
   })
 }

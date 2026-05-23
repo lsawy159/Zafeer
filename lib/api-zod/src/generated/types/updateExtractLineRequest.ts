@@ -9,4 +9,8 @@
 export interface UpdateExtractLineRequest {
   /** @minimum 0 */
   attendanceDays: number;
+  /** @minimum 1 */
+  totalDaysInMonth: number;
+  /** @minimum 0 */
+  monthlyRate: number;
 }
