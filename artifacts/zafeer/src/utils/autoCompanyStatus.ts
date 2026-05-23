@@ -32,7 +32,7 @@ export function invalidateStatusThresholdsCache() {
   statusCacheTimestamp = 0
 }
 
-// Get status thresholds from database settings with caching (async)
+// Get company status thresholds from the single notification thresholds setting.
 export async function getStatusThresholds() {
   // Check if cache is valid
   const now = Date.now()
@@ -44,12 +44,15 @@ export async function getStatusThresholds() {
     const { data, error } = await supabase
       .from('system_settings')
       .select('setting_value')
-      .eq('setting_key', 'status_thresholds')
+      .eq('setting_key', 'notification_thresholds')
       .maybeSingle()
 
-    if (error || !data || !data.setting_value) {
-      logger.debug('Using default status thresholds')
-      // Cache the defaults
+    if (error) {
+      throw error
+    }
+
+    if (!data?.setting_value) {
+      logger.debug('Using default notification thresholds for company status')
       statusThresholdsCache = DEFAULT_STATUS_THRESHOLDS
       statusCacheTimestamp = now
       return DEFAULT_STATUS_THRESHOLDS

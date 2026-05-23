@@ -1,10 +1,15 @@
-﻿import { useState, useEffect, useCallback } from 'react'
-import { supabase, Notification, Company } from '@/lib/supabase'
+import { useState, useEffect, useCallback } from 'react'
+import { supabase, Notification, Company, Employee } from '@/lib/supabase'
 import { SnoozeModal } from '@/components/notifications/SnoozeModal'
 import CompanyDetailModal from '@/components/companies/CompanyDetailModal'
 import Layout from '@/components/layout/Layout'
 import { useAuth } from '@/contexts/AuthContext'
 import { usePermissions } from '@/utils/permissions'
+import { generateCompanyAlertsSync } from '@/utils/alerts'
+import {
+  enrichEmployeeAlertsWithCompanyData,
+  generateEmployeeAlerts,
+} from '@/utils/employeeAlerts'
 import {
   Bell,
   AlertTriangle,
@@ -41,6 +46,65 @@ import {
 type FilterType = 'all' | 'unread' | 'read'
 type PriorityFilter = 'all' | 'urgent' | 'high' | 'medium' | 'low'
 type ActiveTab = 'notifications' | 'csv-report' | 'deferred'
+
+type ExpiryNotificationRow = {
+  type: string
+  title: string
+  message: string
+  entity_type: 'company' | 'employee'
+  entity_id: string
+  priority: Notification['priority']
+  days_remaining?: number
+  target_date?: string
+  is_archived: boolean
+}
+
+const EXPIRY_NOTIFICATION_TYPES = [
+  'commercial_registration_expiry',
+  'power_subscription_expiry',
+  'moqeem_subscription_expiry',
+  'contract_expiry',
+  'residence_expiry',
+  'health_insurance_expiry',
+  'hired_worker_contract_expiry',
+]
+
+const CHUNK_SIZE = 400
+
+function getNotificationKey(row: Pick<ExpiryNotificationRow, 'entity_type' | 'entity_id' | 'type'>) {
+  return `${row.entity_type}:${row.entity_id}:${row.type}`
+}
+
+function toNotificationPriority(priority: 'urgent' | 'high' | 'medium' | 'low'): Notification['priority'] {
+  return priority === 'urgent' ? 'critical' : priority
+}
+
+function chunkArray<T>(items: T[], size: number): T[][] {
+  const chunks: T[][] = []
+  for (let i = 0; i < items.length; i += size) {
+    chunks.push(items.slice(i, i + size))
+  }
+  return chunks
+}
+
+function isDeferredNotification(notification: Notification) {
+  return (
+    notification.is_deferred === true ||
+    (!!notification.snoozed_until && new Date(notification.snoozed_until) > new Date())
+  )
+}
+
+function isExpiryNotification(notification: Notification) {
+  return EXPIRY_NOTIFICATION_TYPES.includes(notification.type)
+}
+
+function isUrgentOrHighNotification(notification: Notification) {
+  return ['critical', 'urgent', 'high'].includes(notification.priority)
+}
+
+function countUniqueNotificationEntities(items: Notification[]) {
+  return new Set(items.map((item) => `${item.entity_type}:${item.entity_id}`)).size
+}
 
 export default function Notifications() {
   const { user } = useAuth()
@@ -132,10 +196,17 @@ export default function Notifications() {
   }
 
   useEffect(() => {
-    loadNotifications()
+    syncExpiryNotificationsFromAlerts()
+      .catch((error) => {
+        console.error('Error syncing expiry notifications:', error)
+        toast.error('فشل مزامنة الإشعارات مع التنبيهات')
+      })
+      .finally(() => {
+        loadNotifications()
+      })
     loadCsvSettings()
 
-    // ط§ظ„ط§ط´طھط±ط§ظƒ ظپظٹ ط§ظ„طھط­ط¯ظٹط«ط§طھ ط§ظ„ظپظˆط±ظٹط©
+    // الاشتراك في التحديثات الفورية
     const channel = supabase
       .channel('notifications-page')
       .on(
@@ -170,24 +241,119 @@ export default function Notifications() {
       setNotifications(data || [])
     } catch (error) {
       console.error('Error loading notifications:', error)
-      toast.error('ظپط´ظ„ طھط­ظ…ظٹظ„ ط§ظ„طھظ†ط¨ظٹظ‡ط§طھ')
+      toast.error('فشل تحميل التنبيهات')
     } finally {
       setLoading(false)
     }
   }
 
+  const syncExpiryNotificationsFromAlerts = async (showToast = false) => {
+    const { data: employeesData, error: employeesError } = await supabase
+      .from('employees')
+      .select(
+        'id,company_id,name,profession,nationality,birth_date,phone,passport_number,residence_number,joining_date,contract_expiry,residence_expiry,project_name,bank_account,residence_image_url,salary,health_insurance_expiry,additional_fields,created_at,updated_at,notes,hired_worker_contract_expiry,project_id,is_deleted,deleted_at'
+      )
+
+    if (employeesError) throw employeesError
+
+    const { data: companiesData, error: companiesError } = await supabase
+      .from('companies')
+      .select(
+        'id,name,unified_number,labor_subscription_number,commercial_registration_expiry,social_insurance_expiry,ending_subscription_power_date,ending_subscription_moqeem_date,ending_subscription_insurance_date,commercial_registration_status,social_insurance_status,current_employees,max_employees,additional_fields,created_at,updated_at,notes,exemptions,social_insurance_number,company_type,employee_count'
+      )
+
+    if (companiesError) throw companiesError
+
+    const employees = (employeesData ?? []) as Employee[]
+    const companies = (companiesData ?? []) as Company[]
+    const companyAlerts = await generateCompanyAlertsSync(companies)
+    const employeeAlerts = enrichEmployeeAlertsWithCompanyData(
+      await generateEmployeeAlerts(employees, companies),
+      companies
+    )
+
+    const generatedRows: ExpiryNotificationRow[] = [
+      ...companyAlerts.map((alert) => ({
+        type: alert.type,
+        title: alert.title,
+        message: alert.message,
+        entity_type: 'company' as const,
+        entity_id: alert.company.id,
+        priority: toNotificationPriority(alert.priority),
+        days_remaining: alert.days_remaining,
+        target_date: alert.expiry_date,
+        is_archived: false,
+      })),
+      ...employeeAlerts.map((alert) => ({
+        type: alert.type,
+        title: alert.title,
+        message: alert.message,
+        entity_type: 'employee' as const,
+        entity_id: alert.employee.id,
+        priority: toNotificationPriority(alert.priority),
+        days_remaining: alert.days_remaining,
+        target_date: alert.expiry_date,
+        is_archived: false,
+      })),
+    ]
+
+    const { data: existingRows, error: existingError } = await supabase
+      .from('notifications')
+      .select('id,type,entity_type,entity_id')
+      .eq('is_archived', false)
+      .in('type', EXPIRY_NOTIFICATION_TYPES)
+
+    if (existingError) throw existingError
+
+    for (const rows of chunkArray(generatedRows, CHUNK_SIZE)) {
+      const { error } = await supabase
+        .from('notifications')
+        .upsert(rows, { onConflict: 'entity_type,entity_id,type' })
+      if (error) throw error
+    }
+
+    const generatedKeys = new Set(generatedRows.map(getNotificationKey))
+    const staleIds = (existingRows ?? [])
+      .filter((row) => {
+        const key = getNotificationKey({
+          entity_type: row.entity_type as 'company' | 'employee',
+          entity_id: String(row.entity_id),
+          type: row.type,
+        })
+        return !generatedKeys.has(key)
+      })
+      .map((row) => row.id)
+
+    for (const ids of chunkArray(staleIds, CHUNK_SIZE)) {
+      const { error } = await supabase
+        .from('notifications')
+        .update({ is_archived: true })
+        .in('id', ids)
+      if (error) throw error
+    }
+
+    const displayCount = new Set(
+      generatedRows
+        .filter((row) => ['critical', 'urgent', 'high'].includes(row.priority))
+        .map((row) => `${row.entity_type}:${row.entity_id}`)
+    ).size
+
+    if (showToast) {
+      toast.success(`تم توليد ${displayCount} إشعار حسب إعدادات التنبيهات`)
+    }
+
+    return displayCount
+  }
+
   const handleGenerateNotifications = async () => {
     setGenerating(true)
     try {
-      const { data, error } = await supabase.rpc('generate_expiry_notifications')
-
-      if (error) throw error
-
-      toast.success(`طھظ… طھظˆظ„ظٹط¯ ${data?.length || 0} طھظ†ط¨ظٹظ‡ ط¬ط¯ظٹط¯`)
-      loadNotifications()
+      const generatedCount = await syncExpiryNotificationsFromAlerts(false)
+      toast.success(`تم توليد ${generatedCount} تنبيه جديد`)
+      await loadNotifications()
     } catch (error) {
       console.error('Error generating notifications:', error)
-      toast.error('ظپط´ظ„ طھظˆظ„ظٹط¯ ط§ظ„طھظ†ط¨ظٹظ‡ط§طھ')
+      toast.error('فشل توليد التنبيهات')
     } finally {
       setGenerating(false)
     }
@@ -202,9 +368,9 @@ export default function Notifications() {
 
       if (error) throw error
       loadNotifications()
-      toast.success('طھظ… طھط­ط¯ظٹط¯ ط§ظ„طھظ†ط¨ظٹظ‡ ظƒظ…ظ‚ط±ظˆط،')
+      toast.success('تم تحديد التنبيه كمقروء')
     } catch {
-      toast.error('ظپط´ظ„ طھط­ط¯ظٹط« ط§ظ„طھظ†ط¨ظٹظ‡')
+      toast.error('فشل تحديث التنبيه')
     }
   }
 
@@ -218,9 +384,9 @@ export default function Notifications() {
 
       if (error) throw error
       loadNotifications()
-      toast.success('طھظ… طھط­ط¯ظٹط¯ ط¬ظ…ظٹط¹ ط§ظ„طھظ†ط¨ظٹظ‡ط§طھ ظƒظ…ظ‚ط±ظˆط،ط©')
+      toast.success('تم تحديد جميع التنبيهات كمقروءة')
     } catch {
-      toast.error('ظپط´ظ„ طھط­ط¯ظٹط« ط§ظ„طھظ†ط¨ظٹظ‡ط§طھ')
+      toast.error('فشل تحديث التنبيهات')
     }
   }
 
@@ -233,9 +399,9 @@ export default function Notifications() {
 
       if (error) throw error
       loadNotifications()
-      toast.success('طھظ… طھط­ط¯ظٹط¯ ط§ظ„طھظ†ط¨ظٹظ‡ ظƒط؛ظٹط± ظ…ظ‚ط±ظˆط،')
+      toast.success('تم تحديد التنبيه كغير مقروء')
     } catch {
-      toast.error('ظپط´ظ„ طھط­ط¯ظٹط« ط§ظ„طھظ†ط¨ظٹظ‡')
+      toast.error('فشل تحديث التنبيه')
     }
   }
 
@@ -249,9 +415,9 @@ export default function Notifications() {
 
       if (error) throw error
       loadNotifications()
-      toast.success('طھظ… طھط­ط¯ظٹط¯ ط¬ظ…ظٹط¹ ط§ظ„طھظ†ط¨ظٹظ‡ط§طھ ظƒط؛ظٹط± ظ…ظ‚ط±ظˆط،ط©')
+      toast.success('تم تحديد جميع التنبيهات كغير مقروءة')
     } catch {
-      toast.error('ظپط´ظ„ طھط­ط¯ظٹط« ط§ظ„طھظ†ط¨ظٹظ‡ط§طھ')
+      toast.error('فشل تحديث التنبيهات')
     }
   }
 
@@ -271,11 +437,11 @@ export default function Notifications() {
 
       if (error) throw error
       loadNotifications()
-      toast.success('طھظ… ط­ط°ظپ ط§ظ„طھظ†ط¨ظٹظ‡')
+      toast.success('تم حذف التنبيه')
       setShowConfirmDeleteOne(false)
       setNotificationToDelete(null)
     } catch {
-      toast.error('ظپط´ظ„ ط­ط°ظپ ط§ظ„طھظ†ط¨ظٹظ‡')
+      toast.error('فشل حذف التنبيه')
     }
   }
 
@@ -292,10 +458,10 @@ export default function Notifications() {
 
       if (error) throw error
       loadNotifications()
-      toast.success('طھظ… ط­ط°ظپ ط¬ظ…ظٹط¹ ط§ظ„طھظ†ط¨ظٹظ‡ط§طھ')
+      toast.success('تم حذف جميع التنبيهات')
       setShowConfirmDeleteAll(false)
     } catch {
-      toast.error('ظپط´ظ„ ط­ط°ظپ ط§ظ„طھظ†ط¨ظٹظ‡ط§طھ')
+      toast.error('فشل حذف التنبيهات')
     }
   }
 
@@ -318,13 +484,19 @@ export default function Notifications() {
 
   const getPriorityLabel = (priority: string) => {
     const labels: Record<string, string> = {
-      critical: 'عاجل',
-      urgent: 'عاجل',
-      high: 'تحذير',
-      medium: 'تنبيه',
+      critical: 'طارئ',
+      urgent: 'طارئ',
+      high: 'عاجل',
+      medium: 'متوسط',
       low: 'منخفض',
     }
-    return labels[priority] ?? priority
+    return ({
+      critical: 'طارئ',
+      urgent: 'طارئ',
+      high: 'عاجل',
+      medium: 'متوسط',
+      low: 'منخفض',
+    } as Record<string, string>)[priority] ?? labels[priority] ?? priority
   }
 
   const handleActivateNow = async (notificationId: number) => {
@@ -341,19 +513,21 @@ export default function Notifications() {
     }
   }
 
-  const deferredNotifications = notifications.filter((n) => {
-    return n.is_deferred === true || (!!n.snoozed_until && new Date(n.snoozed_until) > new Date())
-  })
+  const deferredNotifications = notifications.filter(isDeferredNotification)
 
   const filteredNotifications = notifications.filter((notification) => {
     // استثناء المؤجلة والمنتظرة snooze من التبويب النشط
-    if (notification.is_deferred) return false
-    if (notification.snoozed_until && new Date(notification.snoozed_until) > new Date()) return false
+    if (isDeferredNotification(notification)) return false
 
     if (filterType === 'read' && !notification.is_read) return false
     if (filterType === 'unread' && notification.is_read) return false
 
-    if (priorityFilter !== 'all' && notification.priority !== priorityFilter) return false
+    if (priorityFilter === 'urgent' && !['critical', 'urgent'].includes(notification.priority)) {
+      return false
+    }
+    if (priorityFilter !== 'all' && priorityFilter !== 'urgent' && notification.priority !== priorityFilter) {
+      return false
+    }
 
     if (searchTerm) {
       const search = searchTerm.toLowerCase()
@@ -366,14 +540,42 @@ export default function Notifications() {
     return true
   })
 
-  const unreadCount = notifications.filter((n) => !n.is_read).length
-  const readCount = notifications.filter((n) => n.is_read).length
+  const activeCountableNotifications = notifications.filter(
+    (notification) =>
+      !isDeferredNotification(notification) &&
+      isExpiryNotification(notification) &&
+      isUrgentOrHighNotification(notification)
+  )
+  const unreadCount = countUniqueNotificationEntities(
+    activeCountableNotifications.filter((notification) => !notification.is_read)
+  )
+  const readCount = countUniqueNotificationEntities(
+    activeCountableNotifications.filter((notification) => notification.is_read)
+  )
   const stats = {
-    total: notifications.length,
+    total: countUniqueNotificationEntities(activeCountableNotifications),
     unread: unreadCount,
-    urgent: notifications.filter((n) => (n.priority === 'critical' || n.priority === 'urgent') && !n.is_read).length,
-    high: notifications.filter((n) => n.priority === 'high' && !n.is_read).length,
-    medium: notifications.filter((n) => n.priority === 'medium' && !n.is_read).length,
+    urgent: countUniqueNotificationEntities(
+      activeCountableNotifications.filter(
+        (notification) =>
+          (notification.priority === 'critical' || notification.priority === 'urgent') &&
+          !notification.is_read
+      )
+    ),
+    high: countUniqueNotificationEntities(
+      activeCountableNotifications.filter(
+        (notification) => notification.priority === 'high' && !notification.is_read
+      )
+    ),
+    medium: countUniqueNotificationEntities(
+      notifications.filter(
+        (notification) =>
+          !isDeferredNotification(notification) &&
+          isExpiryNotification(notification) &&
+          notification.priority === 'medium' &&
+          !notification.is_read
+      )
+    ),
   }
 
   if (!user || !canView('adminSettings')) {
@@ -400,17 +602,17 @@ export default function Notifications() {
               <Bell className="w-6 h-6 text-info-600" />
             </div>
             <div>
-              <h1 className="text-3xl font-bold text-neutral-900">ط§ظ„طھظ†ط¨ظٹظ‡ط§طھ</h1>
+              <h1 className="text-3xl font-bold text-neutral-900">التنبيهات</h1>
               <p className="text-neutral-600 mt-1">
                 {unreadCount > 0
-                  ? `ظ„ط¯ظٹظƒ ${unreadCount} طھظ†ط¨ظٹظ‡ ط؛ظٹط± ظ…ظ‚ط±ظˆط،`
-                  : 'ط¬ظ…ظٹط¹ ط§ظ„طھظ†ط¨ظٹظ‡ط§طھ ظ…ظ‚ط±ظˆط،ط©'}
+                  ? `لديك ${unreadCount} تنبيه غير مقروء`
+                  : 'جميع التنبيهات مقروءة'}
               </p>
             </div>
           </div>
           <Button onClick={handleGenerateNotifications} disabled={generating}>
             <RefreshCw className={`w-5 h-5 ${generating ? 'animate-spin' : ''}`} />
-            {generating ? 'ط¬ط§ط±ظٹ ط§ظ„طھظˆظ„ظٹط¯...' : 'طھظˆظ„ظٹط¯ طھظ†ط¨ظٹظ‡ط§طھ ط¬ط¯ظٹط¯ط©'}
+            {generating ? 'جاري التوليد...' : 'توليد تنبيهات جديدة'}
           </Button>
         </div>
 
@@ -521,23 +723,23 @@ export default function Notifications() {
         <div className="grid grid-cols-1 md:grid-cols-5 gap-4 mb-6">
           <div className="app-panel p-4">
             <div className="text-2xl font-bold text-neutral-900">{stats.total}</div>
-            <div className="text-sm text-neutral-600">ط¥ط¬ظ…ط§ظ„ظٹ ط§ظ„طھظ†ط¨ظٹظ‡ط§طھ</div>
+            <div className="text-sm text-neutral-600">إجمالي التنبيهات</div>
           </div>
           <div className="bg-blue-50 rounded-xl shadow-sm border border-blue-200 p-4">
             <div className="text-2xl font-bold text-info-600">{stats.unread}</div>
-            <div className="text-sm text-info-700">ط؛ظٹط± ظ…ظ‚ط±ظˆط،</div>
+            <div className="text-sm text-info-700">غير مقروء</div>
           </div>
           <div className="bg-red-50 rounded-xl shadow-sm border border-red-200 p-4">
             <div className="text-2xl font-bold text-red-600">{stats.urgent}</div>
-            <div className="text-sm text-red-700">ط¹ط§ط¬ظ„</div>
+            <div className="text-sm text-red-700">طارئ</div>
           </div>
           <div className="bg-orange-50 rounded-xl shadow-sm border border-orange-200 p-4">
             <div className="text-2xl font-bold text-warning-600">{stats.high}</div>
-            <div className="text-sm text-warning-700">ط¹ط§ط¬ظ„</div>
+            <div className="text-sm text-warning-700">عاجل</div>
           </div>
           <div className="bg-yellow-50 rounded-xl shadow-sm border border-yellow-200 p-4">
             <div className="text-2xl font-bold text-yellow-600">{stats.medium}</div>
-            <div className="text-sm text-yellow-700">ظ…طھظˆط³ط·</div>
+            <div className="text-sm text-yellow-700">متوسط</div>
           </div>
         </div>
 
@@ -550,7 +752,7 @@ export default function Notifications() {
                 <Search className="absolute right-3 top-1/2 transform -translate-y-1/2 text-neutral-400 w-5 h-5" />
                 <Input
                   type="text"
-                  placeholder="ط§ظ„ط¨ط­ط« ظپظٹ ط§ظ„طھظ†ط¨ظٹظ‡ط§طھ..."
+                  placeholder="البحث في التنبيهات..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                   className="pl-4 pr-10"
@@ -565,12 +767,12 @@ export default function Notifications() {
                 onValueChange={(value) => setFilterType(value as FilterType)}
               >
                 <SelectTrigger>
-                  <SelectValue placeholder="ط­ط§ظ„ط© ط§ظ„ظ‚ط±ط§ط،ط©" />
+                  <SelectValue placeholder="حالة القراءة" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">ط¬ظ…ظٹط¹ ط§ظ„طھظ†ط¨ظٹظ‡ط§طھ</SelectItem>
-                  <SelectItem value="unread">ط؛ظٹط± ظ…ظ‚ط±ظˆط،</SelectItem>
-                  <SelectItem value="read">ظ…ظ‚ط±ظˆط،</SelectItem>
+                  <SelectItem value="all">جميع التنبيهات</SelectItem>
+                  <SelectItem value="unread">غير مقروء</SelectItem>
+                  <SelectItem value="read">مقروء</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -582,14 +784,14 @@ export default function Notifications() {
                 onValueChange={(value) => setPriorityFilter(value as PriorityFilter)}
               >
                 <SelectTrigger>
-                  <SelectValue placeholder="ط§ظ„ط£ظˆظ„ظˆظٹط©" />
+                  <SelectValue placeholder="الأولوية" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">ط¬ظ…ظٹط¹ ط§ظ„ط£ظˆظ„ظˆظٹط§طھ</SelectItem>
-                  <SelectItem value="urgent">ط¹ط§ط¬ظ„ ظپظ‚ط·</SelectItem>
-                  <SelectItem value="high">ط¹ط§ط¬ظ„ ظپظ‚ط·</SelectItem>
-                  <SelectItem value="medium">ظ…طھظˆط³ط· ظپظ‚ط·</SelectItem>
-                  <SelectItem value="low">ظ…ظ†ط®ظپط¶ ظپظ‚ط·</SelectItem>
+                  <SelectItem value="all">جميع الأولويات</SelectItem>
+                  <SelectItem value="urgent">طارئ فقط</SelectItem>
+                  <SelectItem value="high">عاجل فقط</SelectItem>
+                  <SelectItem value="medium">متوسط فقط</SelectItem>
+                  <SelectItem value="low">منخفض فقط</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -600,19 +802,19 @@ export default function Notifications() {
             {unreadCount > 0 && (
               <Button onClick={handleMarkAllAsRead} variant="default" size="sm">
                 <Check className="w-4 h-4" />
-                طھط­ط¯ظٹط¯ ط§ظ„ظƒظ„ ظƒظ…ظ‚ط±ظˆط،
+                تحديد الكل كمقروء
               </Button>
             )}
             {readCount > 0 && (
               <Button onClick={handleMarkAllAsUnread} variant="secondary" size="sm">
                 <Mail className="w-4 h-4" />
-                طھط­ط¯ظٹط¯ ط§ظ„ظƒظ„ ظƒط؛ظٹط± ظ…ظ‚ط±ظˆط،
+                تحديد الكل كغير مقروء
               </Button>
             )}
             {notifications.length > 0 && (
               <Button onClick={handleDeleteAll} variant="destructive" size="sm">
                 <Trash2 className="w-4 h-4" />
-                ط­ط°ظپ ط§ظ„ظƒظ„
+                حذف الكل
               </Button>
             )}
           </div>
@@ -627,12 +829,12 @@ export default function Notifications() {
           <div className="bg-surface rounded-xl shadow-sm border border-neutral-200 p-12 text-center">
             <Bell className="w-16 h-16 mx-auto mb-4 text-neutral-300" />
             <h3 className="text-lg font-medium text-neutral-900 mb-2">
-              ظ„ط§ طھظˆط¬ط¯ طھظ†ط¨ظٹظ‡ط§طھ
+              لا توجد تنبيهات
             </h3>
             <p className="text-neutral-600">
               {notifications.length === 0
-                ? 'ظ„ظ… ظٹطھظ… طھظˆظ„ظٹط¯ ط£ظٹ طھظ†ط¨ظٹظ‡ط§طھ ط¨ط¹ط¯. ط§ط¶ط؛ط· ط¹ظ„ظ‰ "طھظˆظ„ظٹط¯ طھظ†ط¨ظٹظ‡ط§طھ ط¬ط¯ظٹط¯ط©" ط£ط¹ظ„ط§ظ‡.'
-                : 'ظ„ط§ طھظˆط¬ط¯ ظ†طھط§ط¦ط¬ طھط·ط§ط¨ظ‚ ط§ظ„ظپظ„ط§طھط± ط§ظ„ظ…ط­ط¯ط¯ط©'}
+                ? 'لم يتم توليد أي تنبيهات بعد. اضغط على "توليد تنبيهات جديدة" أعلاه.'
+                : 'لا توجد نتائج تطابق الفلاتر المحددة'}
             </p>
           </div>
         ) : (
@@ -683,8 +885,8 @@ export default function Notifications() {
                           }`}
                         >
                           {notification.days_remaining < 0
-                            ? `ظ…ظ†طھظ‡ظٹ ظ…ظ†ط° ${String(Math.abs(notification.days_remaining))} ظٹظˆظ…`
-                            : `ط¨ط§ظ‚ظٹ ${String(notification.days_remaining)} ظٹظˆظ…`}
+                            ? `منتهي منذ ${String(Math.abs(notification.days_remaining))} يوم`
+                            : `باقي ${String(notification.days_remaining)} يوم`}
                         </span>
                       )}
 
@@ -698,7 +900,7 @@ export default function Notifications() {
                       {notification.target_date && (
                         <span className="text-sm text-neutral-500">
                           <HijriDateDisplay date={notification.target_date}>
-                            ط§ظ„طھط§ط±ظٹط® ط§ظ„ظ…ط³طھظ‡ط¯ظپ:{' '}
+                            التاريخ المستهدف:{' '}
                             {formatDateShortWithHijri(notification.target_date)}
                           </HijriDateDisplay>
                         </span>
@@ -714,7 +916,7 @@ export default function Notifications() {
                           size="sm"
                         >
                           <Check className="w-4 h-4" />
-                          طھط­ط¯ظٹط¯ ظƒظ…ظ‚ط±ظˆط،
+                          تحديد كمقروء
                         </Button>
                       ) : (
                         <Button
@@ -723,7 +925,7 @@ export default function Notifications() {
                           size="sm"
                         >
                           <Mail className="w-4 h-4" />
-                          طھط­ط¯ظٹط¯ ظƒط؛ظٹط± ظ…ظ‚ط±ظˆط،
+                          تحديد كغير مقروء
                         </Button>
                       )}
                       {notification.entity_type === 'company' && notification.entity_id && (
@@ -848,10 +1050,10 @@ export default function Notifications() {
             setNotificationToDelete(null)
           }}
           onConfirm={handleConfirmDeleteOne}
-          title="ط­ط°ظپ ط§ظ„طھظ†ط¨ظٹظ‡"
-          message={`ظ‡ظ„ ط£ظ†طھ ظ…طھط£ظƒط¯ ظ…ظ† ط­ط°ظپ ظ‡ط°ط§ ط§ظ„طھظ†ط¨ظٹظ‡: "${notificationToDelete?.title}"طں`}
-          confirmText="ط­ط°ظپ"
-          cancelText="ط¥ظ„ط؛ط§ط،"
+          title="حذف التنبيه"
+          message={`هل أنت متأكد من حذف هذا التنبيه: "${notificationToDelete?.title}"؟`}
+          confirmText="حذف"
+          cancelText="إلغاء"
           isDangerous={true}
           icon="alert"
         />
@@ -860,10 +1062,10 @@ export default function Notifications() {
           isOpen={showConfirmDeleteAll}
           onClose={() => setShowConfirmDeleteAll(false)}
           onConfirm={handleConfirmDeleteAll}
-          title="ط­ط°ظپ ط¬ظ…ظٹط¹ ط§ظ„طھظ†ط¨ظٹظ‡ط§طھ"
-          message="ظ‡ظ„ ط£ظ†طھ ظ…طھط£ظƒط¯ ظ…ظ† ط­ط°ظپ ط¬ظ…ظٹط¹ ط§ظ„طھظ†ط¨ظٹظ‡ط§طھطں ظ‡ط°ط§ ط§ظ„ط¥ط¬ط±ط§ط، ظ„ط§ ظٹظ…ظƒظ† ط§ظ„طھط±ط§ط¬ط¹ ط¹ظ†ظ‡."
-          confirmText="ط­ط°ظپ"
-          cancelText="ط¥ظ„ط؛ط§ط،"
+          title="حذف جميع التنبيهات"
+          message="هل أنت متأكد من حذف جميع التنبيهات؟ هذا الإجراء لا يمكن التراجع عنه."
+          confirmText="حذف"
+          cancelText="إلغاء"
           isDangerous={true}
           icon="alert"
         />
