@@ -14,6 +14,7 @@ import { PageHeader } from '@/components/ui/PageHeader'
 import { FilterBar } from '@/components/ui/FilterBar'
 import { SearchInput } from '@/components/ui/SearchInput'
 import { Button } from '@/components/ui/Button'
+import { useDeleteAdminProject, ConflictResponse } from '@workspace/api-client-react'
 
 type SortField = 'name' | 'created_at' | 'status' | 'employee_count' | 'total_salaries'
 type SortDirection = 'asc' | 'desc'
@@ -52,18 +53,21 @@ export default function Projects() {
     try {
       setLoading(true)
 
-      // جلب جميع المشاريع
+      // جلب المشاريع غير المحذوفة فقط
       const { data: projectsData, error: projectsError } = await supabase
         .from('projects')
         .select('id,name,description,status,created_at,updated_at')
+        .eq('is_deleted', false)
         .order('name')
 
       if (projectsError) throw projectsError
 
-      // جلب جميع الموظفين مع معلومات المشروع
+      // جلب الموظفين النشطين فقط
       const { data: employees, error: employeesError } = await supabase
         .from('employees')
         .select('project_id, salary')
+        .is('is_deleted', null)
+        .or('is_deleted.eq.false')
 
       if (employeesError) throw employeesError
 
@@ -181,46 +185,39 @@ export default function Projects() {
     setShowDetailModal(true)
   }
 
+  const deleteProjectMutation = useDeleteAdminProject()
+
   const handleDeleteConfirm = async () => {
     if (!selectedProject) return
 
     try {
-      // التحقق من وجود موظفين مرتبطين بالمشروع
-      const { data: employees, error: checkError } = await supabase
-        .from('employees')
-        .select('id')
-        .eq('project_id', selectedProject.id)
-        .limit(1)
+      setLoading(true)
+      const response = await deleteProjectMutation.mutateAsync({ id: selectedProject.id })
 
-      if (checkError) throw checkError
-
-      if (employees && employees.length > 0) {
-        toast.error('لا يمكن حذف المشروع لأنه يحتوي على موظفين مرتبطين به')
-        return
+      if (response && typeof response === 'object' && 'success' in response) {
+        toast.success('تم حذف المشروع بنجاح')
+        loadProjects()
+        setShowDeleteModal(false)
+        setSelectedProject(null)
+      } else {
+        toast.error('حدث خطأ أثناء حذف المشروع')
       }
-
-      const { error } = await supabase.from('projects').delete().eq('id', selectedProject.id)
-
-      if (error) throw error
-
-      // Log activity
-      await supabase.from('activity_log').insert({
-        action: 'حذف مشروع',
-        entity_type: 'project',
-        entity_id: selectedProject.id,
-        details: {
-          project_name: selectedProject.name,
-        },
-      })
-
-      toast.success('تم حذف المشروع بنجاح')
-      loadProjects()
-      setShowDeleteModal(false)
-      setSelectedProject(null)
     } catch (error) {
       console.error('Error deleting project:', error)
-      const errorMessage = error instanceof Error ? error.message : 'حدث خطأ أثناء حذف المشروع'
-      toast.error(errorMessage)
+
+      // Handle 409 conflict (active employees)
+      if (error && typeof error === 'object' && 'error' in error) {
+        const errorData = error as ConflictResponse
+        if (errorData.error?.includes('active employees')) {
+          toast.error('لا يمكن حذف المشروع لأنه يحتوي على موظفين نشطين')
+        } else {
+          toast.error(errorData.error || 'حدث خطأ أثناء حذف المشروع')
+        }
+      } else {
+        toast.error('حدث خطأ أثناء حذف المشروع')
+      }
+    } finally {
+      setLoading(false)
     }
   }
 

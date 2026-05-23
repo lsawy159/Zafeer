@@ -1609,8 +1609,8 @@ export default function ImportTab({
           .from('companies')
           .select('id, name, unified_number')
 
-        // Get projects for lookup
-        const { data: projects } = await supabase.from('projects').select('id, name')
+        // Get projects for lookup (exclude deleted)
+        const { data: projects } = await supabase.from('projects').select('id, name').eq('is_deleted', false)
 
         // Load existing employees from database with their IDs for update operations
         const { data: existingEmployees } = await supabase

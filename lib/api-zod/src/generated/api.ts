@@ -100,3 +100,91 @@ export const DeleteAdminUserResponse = zod.object({
 })
 
 
+/**
+ * @summary Soft delete a project
+ */
+export const DeleteAdminProjectParams = zod.object({
+  "id": zod.coerce.string().uuid()
+})
+
+export const DeleteAdminProjectResponse = zod.object({
+  "success": zod.boolean(),
+  "projectId": zod.string().uuid()
+})
+
+
+/**
+ * @summary Delete extract invoice
+ */
+export const DeleteAdminExtractParams = zod.object({
+  "id": zod.coerce.string().uuid()
+})
+
+export const DeleteAdminExtractResponse = zod.object({
+  "success": zod.boolean(),
+  "extractId": zod.string().uuid()
+})
+
+
+/**
+ * @summary Add extract line
+ */
+export const AddAdminExtractLineParams = zod.object({
+  "id": zod.coerce.string().uuid()
+})
+
+export const addAdminExtractLineBodyAttendanceDaysMin = 0;
+
+
+
+export const AddAdminExtractLineBody = zod.object({
+  "employeeId": zod.string().uuid(),
+  "attendanceDays": zod.number().min(addAdminExtractLineBodyAttendanceDaysMin)
+})
+
+export const AddAdminExtractLineResponse = zod.object({
+  "success": zod.boolean(),
+  "invoiceId": zod.string().uuid(),
+  "lineId": zod.string().uuid(),
+  "totalAmount": zod.number()
+})
+
+
+/**
+ * @summary Update extract line
+ */
+export const UpdateAdminExtractLineParams = zod.object({
+  "lineId": zod.coerce.string().uuid()
+})
+
+export const updateAdminExtractLineBodyAttendanceDaysMin = 0;
+
+
+
+export const UpdateAdminExtractLineBody = zod.object({
+  "attendanceDays": zod.number().min(updateAdminExtractLineBodyAttendanceDaysMin)
+})
+
+export const UpdateAdminExtractLineResponse = zod.object({
+  "success": zod.boolean(),
+  "invoiceId": zod.string().uuid(),
+  "lineId": zod.string().uuid(),
+  "totalAmount": zod.number()
+})
+
+
+/**
+ * @summary Delete extract line
+ */
+export const DeleteAdminExtractLineParams = zod.object({
+  "lineId": zod.coerce.string().uuid()
+})
+
+export const DeleteAdminExtractLineResponse = zod.object({
+  "success": zod.boolean(),
+  "invoiceId": zod.string().uuid(),
+  "lineId": zod.string().uuid(),
+  "totalAmount": zod.number()
+})
+
+

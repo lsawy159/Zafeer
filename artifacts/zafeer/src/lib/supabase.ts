@@ -64,6 +64,8 @@ export interface Project {
   name: string
   description?: string
   status?: 'active' | 'inactive' | 'completed'
+  is_deleted?: boolean
+  deleted_at?: string | null
   created_at: string
   updated_at: string
 }

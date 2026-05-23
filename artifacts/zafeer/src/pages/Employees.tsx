@@ -61,6 +61,58 @@ import {
 import { BulkDeleteModal } from './employees/BulkDeleteModal'
 import { BulkDateModal } from './employees/BulkDateModal'
 
+const DELETE_BATCH_SIZE = 50
+
+function chunkArray<T>(items: T[], size: number): T[][] {
+  const chunks: T[][] = []
+  for (let i = 0; i < items.length; i += size) {
+    chunks.push(items.slice(i, i + size))
+  }
+  return chunks
+}
+
+async function softDeleteEmployees(employeeIds: string[]): Promise<number> {
+  let deletedCount = 0
+
+  for (const batch of chunkArray(employeeIds, DELETE_BATCH_SIZE)) {
+    const { data, error } = await supabase.rpc('soft_delete_employees', {
+      p_employee_ids: batch,
+    })
+
+    if (error) throw error
+    deletedCount += typeof data === 'number' ? data : batch.length
+  }
+
+  return deletedCount
+}
+
+async function fetchObligationHeaders(employeeIds: string[]): Promise<ObligationHeaderInfo[]> {
+  const allHeaders: ObligationHeaderInfo[] = []
+
+  for (const batch of chunkArray(employeeIds, DELETE_BATCH_SIZE)) {
+    const { data, error } = await supabase
+      .from('employee_obligation_headers')
+      .select('id, employee_id, obligation_type, title, total_amount, currency_code, status')
+      .in('employee_id', batch)
+
+    if (error) throw error
+    allHeaders.push(...((data ?? []) as ObligationHeaderInfo[]))
+  }
+
+  return allHeaders
+}
+
+async function deleteObligationHeaders(headerIds: string[]): Promise<void> {
+  for (const batch of chunkArray(headerIds, DELETE_BATCH_SIZE)) {
+    const { error } = await supabase
+      .from('employee_obligation_headers')
+      .delete()
+      .in('id', batch)
+
+    if (error) throw error
+  }
+}
+
 export default function Employees() {
   const { canView, canCreate, canEdit, canDelete } = usePermissions()
   const location = useLocation()
@@ -331,17 +383,17 @@ export default function Employees() {
     setEmployeeToDelete(employee)
 
     // فحص الالتزامات المرتبطة بالموظف
-    const { data: headers, error: fetchError } = await supabase
-      .from('employee_obligation_headers')
-      .select('id, employee_id, obligation_type, title, total_amount, currency_code, status')
-      .eq('employee_id', employee.id)
-
-    if (fetchError) {
+    let headers: ObligationHeaderInfo[] = []
+    try {
+      headers = await fetchObligationHeaders([employee.id])
+    } catch (fetchError) {
       logger.error('Error fetching obligations:', fetchError)
+      toast.error('تعذر فحص السجلات المرتبطة بالموظف')
+      return
     }
 
-    if (headers && headers.length > 0) {
-      setCascadeObligations(headers as ObligationHeaderInfo[])
+    if (headers.length > 0) {
+      setCascadeObligations(headers)
       setCascadeEmployeeIds([employee.id])
       setCascadeIsBulk(false)
       setShowCascadeDeleteModal(true)
@@ -354,12 +406,7 @@ export default function Employees() {
     if (!employeeToDelete) return
 
     try {
-      const { error } = await supabase.from('employees').delete().eq('id', employeeToDelete.id)
-
-      if (error) {
-        logger.error('Delete error:', error)
-        throw error
-      }
+      await softDeleteEmployees([employeeToDelete.id])
 
       // Log activity
       await logActivity(employeeToDelete.id, 'حذف موظف', {
@@ -400,19 +447,11 @@ export default function Employees() {
       // عند حذف الرأس، قاعدة البيانات تحذف البنود تلقائياً بـ CASCADE في نفس الـ transaction.
       // الـ trigger يتحقق في نهاية الـ transaction لكن الرأس حُذف فعلاً فيعود بـ IF NOT FOUND THEN RETURN.
       if (headerIds.length > 0) {
-        const { error: headersError } = await supabase
-          .from('employee_obligation_headers')
-          .delete()
-          .in('id', headerIds)
-        if (headersError) throw headersError
+        await deleteObligationHeaders(headerIds)
       }
 
       // 2. حذف الموظفين
-      const { error: empError } = await supabase
-        .from('employees')
-        .delete()
-        .in('id', cascadeEmployeeIds)
-      if (empError) throw empError
+      const deletedEmployees = await softDeleteEmployees(cascadeEmployeeIds)
 
       // تسجيل النشاط
       if (!cascadeIsBulk && employeeToDelete) {
@@ -424,7 +463,7 @@ export default function Employees() {
       }
 
       const successMsg = cascadeIsBulk
-        ? `تم حذف ${cascadeEmployeeIds.length} موظف مع ${headerIds.length} التزام مرتبط بنجاح`
+        ? `تم حذف ${deletedEmployees} موظف مع ${headerIds.length} التزام مرتبط بنجاح`
         : `تم حذف الموظف "${employeeToDelete?.name}" مع ${headerIds.length} التزام مرتبط بنجاح`
       toast.success(successMsg)
 
@@ -484,18 +523,18 @@ export default function Employees() {
     const employeeIds = Array.from(selectedEmployees)
 
     // فحص الالتزامات المرتبطة بجميع الموظفين المحددين
-    const { data: obligationHeaders, error: obligFetchError } = await supabase
-      .from('employee_obligation_headers')
-      .select('id, employee_id, obligation_type, title, total_amount, currency_code, status')
-      .in('employee_id', employeeIds)
-
-    if (obligFetchError) {
+    let obligationHeaders: ObligationHeaderInfo[] = []
+    try {
+      obligationHeaders = await fetchObligationHeaders(employeeIds)
+    } catch (obligFetchError) {
       logger.error('Error fetching obligations for bulk delete:', obligFetchError)
+      toast.error('تعذر فحص السجلات المرتبطة بالموظفين المحددين')
+      return
     }
 
-    if (obligationHeaders && obligationHeaders.length > 0) {
+    if (obligationHeaders.length > 0) {
       // يوجد التزامات — عرض مودال الحذف المتسلسل
-      setCascadeObligations(obligationHeaders as ObligationHeaderInfo[])
+      setCascadeObligations(obligationHeaders)
       setCascadeEmployeeIds(employeeIds)
       setCascadeIsBulk(true)
       setShowCascadeDeleteModal(true)
@@ -508,25 +547,17 @@ export default function Employees() {
     try {
       const selectedEmployeesData = employees.filter((emp) => employeeIds.includes(emp.id))
 
-      const batchSize = 50
       let totalDeleted = 0
       const failedBatches: string[] = []
-      const totalBatches = Math.ceil(employeeIds.length / batchSize)
+      const employeeBatches = chunkArray(employeeIds, DELETE_BATCH_SIZE)
 
-      for (let i = 0; i < employeeIds.length; i += batchSize) {
-        const batch = employeeIds.slice(i, i + batchSize)
-        const currentBatch = Math.floor(i / batchSize) + 1
+      for (let i = 0; i < employeeBatches.length; i += 1) {
+        const batch = employeeBatches[i]
+        const currentBatch = i + 1
 
         try {
-          const { error } = await supabase.from('employees').delete().in('id', batch)
-
-          if (error) {
-            logger.error(`Error deleting batch ${currentBatch}/${totalBatches}:`, error)
-            failedBatches.push(...batch)
-            continue
-          }
-
-          totalDeleted += batch.length
+          const deletedInBatch = await softDeleteEmployees(batch)
+          totalDeleted += deletedInBatch
 
           if (selectedEmployeesData.length <= 100) {
             const batchEmployees = selectedEmployeesData.filter((emp) => batch.includes(emp.id))
@@ -542,7 +573,7 @@ export default function Employees() {
             }
           }
         } catch (batchError) {
-          logger.error(`Error in batch ${currentBatch}/${totalBatches}:`, batchError)
+          logger.error(`Error deleting batch ${currentBatch}/${employeeBatches.length}:`, batchError)
           failedBatches.push(...batch)
         }
       }

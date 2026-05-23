@@ -134,7 +134,9 @@ export function useDeleteEmployee() {
 
   return useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await supabase.from('employees').delete().eq('id', id)
+      const { error } = await supabase.rpc('soft_delete_employees', {
+        p_employee_ids: [id],
+      })
 
       if (error) {
         logger.error('Error deleting employee:', error)
@@ -143,6 +145,7 @@ export function useDeleteEmployee() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['employees'] })
+      queryClient.invalidateQueries({ queryKey: EMPLOYEES_PAGE_QUERY_KEY })
       queryClient.invalidateQueries({ queryKey: ['companies'] })
     },
   })

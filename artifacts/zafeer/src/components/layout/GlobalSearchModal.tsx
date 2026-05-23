@@ -95,6 +95,7 @@ async function fetchProjects(): Promise<ProjectRow[]> {
   const { data, error } = await supabase
     .from('projects')
     .select('id, name, description, status')
+    .eq('is_deleted', false)
     .order('name').limit(500)
   if (error) { console.error('[GlobalSearch] projects:', error.message); return [] }
   return (data || []) as ProjectRow[]

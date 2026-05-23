@@ -20,16 +20,23 @@ import type {
 } from '@tanstack/react-query';
 
 import type {
+  AddExtractLineRequest,
   BadRequestResponse,
+  ConflictResponse,
   CreateAdminUser201,
   CreateUserRequest,
   DeleteAdminUser200,
+  DeleteExtractResponse,
+  DeleteProjectResponse,
+  ExtractLineMutationResponse,
   ForbiddenResponse,
   HealthStatus,
   ListAdminUsers200,
   NotFoundResponse,
+  TooManyRequestsResponse,
   UnauthorizedResponse,
   UpdateAdminUser200,
+  UpdateExtractLineRequest,
   UpdateUserRequest
 } from './api.schemas';
 
@@ -410,5 +417,359 @@ export const useDeleteAdminUser = <TError = UnauthorizedResponse | ForbiddenResp
         TContext
       > => {
       return useMutation(getDeleteAdminUserMutationOptions(options));
+    }
+
+export const getDeleteAdminProjectUrl = (id: string,) => {
+
+
+
+
+  return `/api/admin/projects/${id}`
+}
+
+/**
+ * @summary Soft delete a project
+ */
+export const deleteAdminProject = async (id: string, options?: RequestInit): Promise<DeleteProjectResponse> => {
+
+  return customFetch<DeleteProjectResponse>(getDeleteAdminProjectUrl(id),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+);}
+
+
+
+
+export const getDeleteAdminProjectMutationOptions = <TError = UnauthorizedResponse | ForbiddenResponse | NotFoundResponse | ConflictResponse | TooManyRequestsResponse,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteAdminProject>>, TError,{id: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof deleteAdminProject>>, TError,{id: string}, TContext> => {
+
+const mutationKey = ['deleteAdminProject'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof deleteAdminProject>>, {id: string}> = (props) => {
+          const {id} = props ?? {};
+
+          return  deleteAdminProject(id,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type DeleteAdminProjectMutationResult = NonNullable<Awaited<ReturnType<typeof deleteAdminProject>>>
+
+    export type DeleteAdminProjectMutationError = UnauthorizedResponse | ForbiddenResponse | NotFoundResponse | ConflictResponse | TooManyRequestsResponse
+
+    /**
+ * @summary Soft delete a project
+ */
+export const useDeleteAdminProject = <TError = UnauthorizedResponse | ForbiddenResponse | NotFoundResponse | ConflictResponse | TooManyRequestsResponse,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteAdminProject>>, TError,{id: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof deleteAdminProject>>,
+        TError,
+        {id: string},
+        TContext
+      > => {
+      return useMutation(getDeleteAdminProjectMutationOptions(options));
+    }
+
+export const getDeleteAdminExtractUrl = (id: string,) => {
+
+
+
+
+  return `/api/admin/extracts/${id}`
+}
+
+/**
+ * @summary Delete extract invoice
+ */
+export const deleteAdminExtract = async (id: string, options?: RequestInit): Promise<DeleteExtractResponse> => {
+
+  return customFetch<DeleteExtractResponse>(getDeleteAdminExtractUrl(id),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+);}
+
+
+
+
+export const getDeleteAdminExtractMutationOptions = <TError = UnauthorizedResponse | ForbiddenResponse | NotFoundResponse | TooManyRequestsResponse,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteAdminExtract>>, TError,{id: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof deleteAdminExtract>>, TError,{id: string}, TContext> => {
+
+const mutationKey = ['deleteAdminExtract'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof deleteAdminExtract>>, {id: string}> = (props) => {
+          const {id} = props ?? {};
+
+          return  deleteAdminExtract(id,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type DeleteAdminExtractMutationResult = NonNullable<Awaited<ReturnType<typeof deleteAdminExtract>>>
+
+    export type DeleteAdminExtractMutationError = UnauthorizedResponse | ForbiddenResponse | NotFoundResponse | TooManyRequestsResponse
+
+    /**
+ * @summary Delete extract invoice
+ */
+export const useDeleteAdminExtract = <TError = UnauthorizedResponse | ForbiddenResponse | NotFoundResponse | TooManyRequestsResponse,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteAdminExtract>>, TError,{id: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof deleteAdminExtract>>,
+        TError,
+        {id: string},
+        TContext
+      > => {
+      return useMutation(getDeleteAdminExtractMutationOptions(options));
+    }
+
+export const getAddAdminExtractLineUrl = (id: string,) => {
+
+
+
+
+  return `/api/admin/extracts/${id}/lines`
+}
+
+/**
+ * @summary Add extract line
+ */
+export const addAdminExtractLine = async (id: string,
+    addExtractLineRequest: AddExtractLineRequest, options?: RequestInit): Promise<ExtractLineMutationResponse> => {
+
+  return customFetch<ExtractLineMutationResponse>(getAddAdminExtractLineUrl(id),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      addExtractLineRequest,)
+  }
+);}
+
+
+
+
+export const getAddAdminExtractLineMutationOptions = <TError = UnauthorizedResponse | ForbiddenResponse | NotFoundResponse | ConflictResponse | TooManyRequestsResponse,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof addAdminExtractLine>>, TError,{id: string;data: AddExtractLineRequest}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof addAdminExtractLine>>, TError,{id: string;data: AddExtractLineRequest}, TContext> => {
+
+const mutationKey = ['addAdminExtractLine'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof addAdminExtractLine>>, {id: string;data: AddExtractLineRequest}> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  addAdminExtractLine(id,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type AddAdminExtractLineMutationResult = NonNullable<Awaited<ReturnType<typeof addAdminExtractLine>>>
+    export type AddAdminExtractLineMutationBody = AddExtractLineRequest
+    export type AddAdminExtractLineMutationError = UnauthorizedResponse | ForbiddenResponse | NotFoundResponse | ConflictResponse | TooManyRequestsResponse
+
+    /**
+ * @summary Add extract line
+ */
+export const useAddAdminExtractLine = <TError = UnauthorizedResponse | ForbiddenResponse | NotFoundResponse | ConflictResponse | TooManyRequestsResponse,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof addAdminExtractLine>>, TError,{id: string;data: AddExtractLineRequest}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof addAdminExtractLine>>,
+        TError,
+        {id: string;data: AddExtractLineRequest},
+        TContext
+      > => {
+      return useMutation(getAddAdminExtractLineMutationOptions(options));
+    }
+
+export const getUpdateAdminExtractLineUrl = (lineId: string,) => {
+
+
+
+
+  return `/api/admin/extract-lines/${lineId}`
+}
+
+/**
+ * @summary Update extract line
+ */
+export const updateAdminExtractLine = async (lineId: string,
+    updateExtractLineRequest: UpdateExtractLineRequest, options?: RequestInit): Promise<ExtractLineMutationResponse> => {
+
+  return customFetch<ExtractLineMutationResponse>(getUpdateAdminExtractLineUrl(lineId),
+  {
+    ...options,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      updateExtractLineRequest,)
+  }
+);}
+
+
+
+
+export const getUpdateAdminExtractLineMutationOptions = <TError = UnauthorizedResponse | ForbiddenResponse | NotFoundResponse | ConflictResponse | TooManyRequestsResponse,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateAdminExtractLine>>, TError,{lineId: string;data: UpdateExtractLineRequest}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updateAdminExtractLine>>, TError,{lineId: string;data: UpdateExtractLineRequest}, TContext> => {
+
+const mutationKey = ['updateAdminExtractLine'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateAdminExtractLine>>, {lineId: string;data: UpdateExtractLineRequest}> = (props) => {
+          const {lineId,data} = props ?? {};
+
+          return  updateAdminExtractLine(lineId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdateAdminExtractLineMutationResult = NonNullable<Awaited<ReturnType<typeof updateAdminExtractLine>>>
+    export type UpdateAdminExtractLineMutationBody = UpdateExtractLineRequest
+    export type UpdateAdminExtractLineMutationError = UnauthorizedResponse | ForbiddenResponse | NotFoundResponse | ConflictResponse | TooManyRequestsResponse
+
+    /**
+ * @summary Update extract line
+ */
+export const useUpdateAdminExtractLine = <TError = UnauthorizedResponse | ForbiddenResponse | NotFoundResponse | ConflictResponse | TooManyRequestsResponse,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateAdminExtractLine>>, TError,{lineId: string;data: UpdateExtractLineRequest}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof updateAdminExtractLine>>,
+        TError,
+        {lineId: string;data: UpdateExtractLineRequest},
+        TContext
+      > => {
+      return useMutation(getUpdateAdminExtractLineMutationOptions(options));
+    }
+
+export const getDeleteAdminExtractLineUrl = (lineId: string,) => {
+
+
+
+
+  return `/api/admin/extract-lines/${lineId}`
+}
+
+/**
+ * @summary Delete extract line
+ */
+export const deleteAdminExtractLine = async (lineId: string, options?: RequestInit): Promise<ExtractLineMutationResponse> => {
+
+  return customFetch<ExtractLineMutationResponse>(getDeleteAdminExtractLineUrl(lineId),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+);}
+
+
+
+
+export const getDeleteAdminExtractLineMutationOptions = <TError = UnauthorizedResponse | ForbiddenResponse | NotFoundResponse | ConflictResponse | TooManyRequestsResponse,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteAdminExtractLine>>, TError,{lineId: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof deleteAdminExtractLine>>, TError,{lineId: string}, TContext> => {
+
+const mutationKey = ['deleteAdminExtractLine'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof deleteAdminExtractLine>>, {lineId: string}> = (props) => {
+          const {lineId} = props ?? {};
+
+          return  deleteAdminExtractLine(lineId,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type DeleteAdminExtractLineMutationResult = NonNullable<Awaited<ReturnType<typeof deleteAdminExtractLine>>>
+
+    export type DeleteAdminExtractLineMutationError = UnauthorizedResponse | ForbiddenResponse | NotFoundResponse | ConflictResponse | TooManyRequestsResponse
+
+    /**
+ * @summary Delete extract line
+ */
+export const useDeleteAdminExtractLine = <TError = UnauthorizedResponse | ForbiddenResponse | NotFoundResponse | ConflictResponse | TooManyRequestsResponse,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteAdminExtractLine>>, TError,{lineId: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof deleteAdminExtractLine>>,
+        TError,
+        {lineId: string},
+        TContext
+      > => {
+      return useMutation(getDeleteAdminExtractLineMutationOptions(options));
     }
 

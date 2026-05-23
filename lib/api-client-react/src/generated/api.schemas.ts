@@ -125,8 +125,38 @@ export interface Project {
   name: string;
   description?: string | null;
   status: ProjectStatus;
+  is_deleted: boolean;
+  deleted_at?: string | null;
   created_at: string;
   updated_at: string;
+}
+
+export interface DeleteProjectResponse {
+  success: true;
+  projectId: string;
+}
+
+export interface DeleteExtractResponse {
+  success: true;
+  extractId: string;
+}
+
+export interface AddExtractLineRequest {
+  employeeId: string;
+  /** @minimum 0 */
+  attendanceDays: number;
+}
+
+export interface UpdateExtractLineRequest {
+  /** @minimum 0 */
+  attendanceDays: number;
+}
+
+export interface ExtractLineMutationResponse {
+  success: true;
+  invoiceId: string;
+  lineId: string;
+  totalAmount: number;
 }
 
 export type ObligationType = typeof ObligationType[keyof typeof ObligationType];
@@ -167,6 +197,16 @@ export type ForbiddenResponse = ErrorResponse;
  * Resource not found
  */
 export type NotFoundResponse = ErrorResponse;
+
+/**
+ * Conflict with current resource state
+ */
+export type ConflictResponse = ErrorResponse;
+
+/**
+ * Too many requests
+ */
+export type TooManyRequestsResponse = ErrorResponse;
 
 export type ListAdminUsers200 = {
   users: UserProfile[];
