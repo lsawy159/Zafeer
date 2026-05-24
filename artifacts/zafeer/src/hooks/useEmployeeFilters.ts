@@ -50,14 +50,14 @@ export function useEmployeeFilters({ employees, colorThresholds }: UseEmployeeFi
         const matchesSearch =
           !searchTerm ||
           emp.name.toLowerCase().includes(searchLower) ||
-          emp.residence_number.toString().toLowerCase().includes(searchLower) ||
+          (emp.residence_number ?? '').toString().toLowerCase().includes(searchLower) ||
           (emp.passport_number && emp.passport_number.toLowerCase().includes(searchLower)) ||
           (emp.profession && emp.profession.toLowerCase().includes(searchLower)) ||
           (emp.nationality && emp.nationality.toLowerCase().includes(searchLower))
 
         const matchesResidenceNumber =
           !residenceNumberSearch ||
-          emp.residence_number.toString().toLowerCase().includes(residenceNumberSearch.toLowerCase())
+          (emp.residence_number ?? '').toString().toLowerCase().includes(residenceNumberSearch.toLowerCase())
 
         const matchesCompany = !companyFilter || emp.company?.name === companyFilter
         const matchesNationality = !nationalityFilter || emp.nationality === nationalityFilter
@@ -128,8 +128,31 @@ export function useEmployeeFilters({ employees, colorThresholds }: UseEmployeeFi
     ]
   )
 
-  const sortedAndFilteredEmployees = useMemo(() => {
+   const sortedAndFilteredEmployees = useMemo(() => {
     return [...filteredEmployees].sort((a, b) => {
+      // Special handling for project field to use resolved name for null checks
+      if (sortField === 'project') {
+        const aName = (a.project?.name || a.project_name || null)
+        const bName = (b.project?.name || b.project_name || null)
+        if (aName == null && bName == null) return 0
+        if (aName == null) return 1
+        if (bName == null) return -1
+        const aValue = aName.toLowerCase()
+        const bValue = bName.toLowerCase()
+        if (sortDirection === 'asc') {
+          return aValue > bValue ? 1 : aValue < bValue ? -1 : 0
+        } else {
+          return aValue < bValue ? 1 : aValue > bValue ? -1 : 0
+        }
+      }
+
+      const aVal = a[sortField]
+      const bVal = b[sortField]
+
+      if (aVal == null && bVal == null) return 0
+      if (aVal == null) return 1
+      if (bVal == null) return -1
+
       let aValue: string | number
       let bValue: string | number
 
@@ -150,25 +173,21 @@ export function useEmployeeFilters({ employees, colorThresholds }: UseEmployeeFi
           aValue = (a.company?.name || '').toLowerCase()
           bValue = (b.company?.name || '').toLowerCase()
           break
-        case 'project':
-          aValue = (a.project?.name || a.project_name || '').toLowerCase()
-          bValue = (b.project?.name || b.project_name || '').toLowerCase()
-          break
         case 'contract_expiry':
-          aValue = a.contract_expiry ? new Date(a.contract_expiry).getTime() : 0
-          bValue = b.contract_expiry ? new Date(b.contract_expiry).getTime() : 0
+          aValue = new Date(aVal as string).getTime()
+          bValue = new Date(bVal as string).getTime()
           break
         case 'hired_worker_contract_expiry':
-          aValue = a.hired_worker_contract_expiry ? new Date(a.hired_worker_contract_expiry).getTime() : 0
-          bValue = b.hired_worker_contract_expiry ? new Date(b.hired_worker_contract_expiry).getTime() : 0
+          aValue = new Date(aVal as string).getTime()
+          bValue = new Date(bVal as string).getTime()
           break
         case 'residence_expiry':
-          aValue = a.residence_expiry ? new Date(a.residence_expiry).getTime() : 0
-          bValue = b.residence_expiry ? new Date(b.residence_expiry).getTime() : 0
+          aValue = new Date(aVal as string).getTime()
+          bValue = new Date(bVal as string).getTime()
           break
         case 'health_insurance_expiry':
-          aValue = a.health_insurance_expiry ? new Date(a.health_insurance_expiry).getTime() : 0
-          bValue = b.health_insurance_expiry ? new Date(b.health_insurance_expiry).getTime() : 0
+          aValue = new Date(aVal as string).getTime()
+          bValue = new Date(bVal as string).getTime()
           break
         default:
           aValue = a.name.toLowerCase()
