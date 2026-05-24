@@ -211,24 +211,30 @@ export default function Projects() {
       setLoading(true)
       const response = await deleteProjectMutation.mutateAsync({ id: selectedProject.id })
 
-      if (response && typeof response === 'object' && 'success' in response) {
+      if (response && typeof response === 'object' && 'success' in response && response.success === true) {
         toast.success('تم حذف المشروع بنجاح')
         loadProjects()
         setShowDeleteModal(false)
         setSelectedProject(null)
       } else {
-        toast.error('حدث خطأ أثناء حذف المشروع')
+        toast.error('فشل حذف المشروع - رد خادم غير متوقع')
+        console.error('Unexpected response format:', response)
       }
     } catch (error) {
       console.error('Error deleting project:', error)
 
-      // Handle 409 conflict (active employees)
-      if (error && typeof error === 'object' && 'error' in error) {
-        const errorData = error as ConflictResponse
-        if (errorData.error?.includes('active employees')) {
+      if (error instanceof Error) {
+        const errorMsg = error.message
+        const status = 'status' in error && typeof error.status === 'number' ? error.status : undefined
+
+        if (errorMsg.includes('active employees')) {
           toast.error('لا يمكن حذف المشروع لأنه يحتوي على موظفين نشطين')
+        } else if (status === 401 || status === 403 || errorMsg.includes('401') || errorMsg.includes('403')) {
+          toast.error('ليس لديك صلاحية لحذف المشروع')
+        } else if (status === 404 || errorMsg.includes('404')) {
+          toast.error('المشروع غير موجود')
         } else {
-          toast.error(errorData.error || 'حدث خطأ أثناء حذف المشروع')
+          toast.error(`خطأ: ${errorMsg}`)
         }
       } else {
         toast.error('حدث خطأ أثناء حذف المشروع')

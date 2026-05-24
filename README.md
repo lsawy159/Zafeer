@@ -29,13 +29,12 @@ lib/
   ├── api-zod/            # Zod schemas مولَّدة من OpenAPI
   └── db/                 # Drizzle ORM schema (25 جدول)
 
-e2e/                      # Playwright E2E tests
-playwright-tests/         # Playwright tests (مجموعة ثانية)
+tests/rls/                # RLS role-switching test suite
+ملفات غير ضرورية/         # Local archive for retired/nonessential files (gitignored)
 specs/                    # Feature specs (spec-kit workflow)
 supabase/
   ├── migrations/         # ~60+ migration SQL (schema + RLS)
   └── functions/          # Edge Functions
-tests/rls/                # RLS role-switching test suite
 ```
 
 ---

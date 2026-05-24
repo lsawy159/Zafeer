@@ -19,12 +19,17 @@ router.use("/admin", adminRateLimiter);
 async function userHasPermission(userId: string, permission: string): Promise<boolean> {
   const { data, error } = await supabaseAdmin
     .from("users")
-    .select("permissions")
+    .select("permissions, role")
     .eq("id", userId)
     .maybeSingle();
 
   if (error || !data) {
     return false;
+  }
+
+  // Admin role has all permissions (mirrors RLS user_has_permission function)
+  if (data.role === "admin") {
+    return true;
   }
 
   const permissions = data.permissions;
