@@ -10,6 +10,8 @@ CLAUDE.local.md
 # ===== الفولدر اللي فيه الملفات غير الضرورية =====
 ملفات غير ضرورية/
 ملفات-غير-ضرورية/
+/playwright-tests/
+/e2e/
 
 # ===== Build & compiled output =====
 dist

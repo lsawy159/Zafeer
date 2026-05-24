@@ -14,11 +14,20 @@ import {
 } from 'lucide-react'
 import { saveAs } from 'file-saver'
 import { loadXlsx } from '@/utils/lazyXlsx'
-import { useExtract, useMarkExported, useDuplicateExtract } from '@/hooks/useExtracts'
+import { useExtract, useMarkExported, useDuplicateExtract, useDeleteExtract } from '@/hooks/useExtracts'
 import { useUpdateExtractLine, useDeleteExtractLine } from '@/hooks/useExtractLines'
 import { usePermissions } from '@/utils/permissions'
 import { validateAttendanceDays } from '@/utils/extractCalculations'
 import AddLineModal from '@/components/extracts/AddLineModal'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from '@/components/ui/Dialog'
+import { Button } from '@/components/ui/Button'
 import type { ExtractInvoiceLine } from '@/hooks/useExtracts'
 
 function formatPeriodMonth(raw: string): string {
@@ -129,10 +138,12 @@ export default function ExtractDetail() {
   const [showAddModal, setShowAddModal] = useState(false)
   const [deletingLineId, setDeletingLineId] = useState<string | null>(null)
   const [isExporting, setIsExporting] = useState(false)
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
 
   const { data: extract, isLoading } = useExtract(id)
   const markExported = useMarkExported()
   const duplicateExtract = useDuplicateExtract()
+  const deleteExtractMutation = useDeleteExtract()
   const deleteLineMutation = useDeleteExtractLine(id ?? '')
 
   if (!id) return null
@@ -231,6 +242,19 @@ export default function ExtractDetail() {
     })
   }
 
+  const handleConfirmDelete = () => {
+    if (id) {
+      deleteExtractMutation.mutate(id, {
+        onSuccess: () => {
+          toast.success('تم حذف المستخلص')
+        },
+        onError: () => {
+          toast.error('فشل حذف المستخلص')
+        },
+      })
+    }
+  }
+
   return (
     <Layout>
     <div className="max-w-4xl mx-auto py-6 px-4 space-y-5" dir="rtl">
@@ -283,6 +307,17 @@ export default function ExtractDetail() {
             >
               <Download className="h-4 w-4" />
               {isExporting ? 'جاري التصدير...' : isDraft ? 'تصدير Excel' : 'إعادة تصدير'}
+            </button>
+          )}
+
+          {permissions.canDelete('extracts') && (
+            <button
+              onClick={() => setDeleteDialogOpen(true)}
+              disabled={deleteExtractMutation.isPending}
+              className="flex items-center gap-1.5 px-3 py-1.5 border border-red-200 rounded-lg text-sm text-red-600 hover:bg-red-50 transition disabled:opacity-50"
+            >
+              <Trash2 className="h-4 w-4" />
+              حذف المستخلص
             </button>
           )}
         </div>
@@ -445,6 +480,33 @@ export default function ExtractDetail() {
           onClose={() => setShowAddModal(false)}
         />
       )}
+
+      {/* Delete confirmation dialog */}
+      <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <DialogContent dir="rtl">
+          <DialogHeader>
+            <DialogTitle>حذف المستخلص</DialogTitle>
+            <DialogDescription>
+              هل أنت متأكد من رغبتك في حذف هذا المستخلص الخاص بـ {extract.projects?.name}؟ لا يمكن استرجاع البيانات المحذوفة.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setDeleteDialogOpen(false)}
+            >
+              إلغاء
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={handleConfirmDelete}
+              disabled={deleteExtractMutation.isPending}
+            >
+              {deleteExtractMutation.isPending ? 'جاري الحذف...' : 'حذف'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
     </Layout>
   )

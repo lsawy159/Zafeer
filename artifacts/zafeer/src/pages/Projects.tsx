@@ -14,6 +14,7 @@ import { PageHeader } from '@/components/ui/PageHeader'
 import { FilterBar } from '@/components/ui/FilterBar'
 import { SearchInput } from '@/components/ui/SearchInput'
 import { Button } from '@/components/ui/Button'
+import { useDeleteAdminProject, ConflictResponse } from '@workspace/api-client-react'
 
 type SortField = 'name' | 'created_at' | 'status' | 'employee_count' | 'total_salaries'
 type SortDirection = 'asc' | 'desc'
@@ -38,6 +39,7 @@ export default function Projects() {
   const [showDeleteModal, setShowDeleteModal] = useState(false)
   const [showDetailModal, setShowDetailModal] = useState(false)
   const [selectedProject, setSelectedProject] = useState<Project | null>(null)
+  const [extractCount, setExtractCount] = useState(0)
 
   // Filter states
   const [searchTerm, setSearchTerm] = useState('')
@@ -52,18 +54,21 @@ export default function Projects() {
     try {
       setLoading(true)
 
-      // جلب جميع المشاريع
+      // جلب المشاريع غير المحذوفة فقط
       const { data: projectsData, error: projectsError } = await supabase
         .from('projects')
         .select('id,name,description,status,created_at,updated_at')
+        .eq('is_deleted', false)
         .order('name')
 
       if (projectsError) throw projectsError
 
-      // جلب جميع الموظفين مع معلومات المشروع
+      // جلب الموظفين النشطين فقط
       const { data: employees, error: employeesError } = await supabase
         .from('employees')
         .select('project_id, salary')
+        .is('is_deleted', null)
+        .or('is_deleted.eq.false')
 
       if (employeesError) throw employeesError
 
@@ -169,8 +174,24 @@ export default function Projects() {
     setShowEditModal(true)
   }
 
-  const handleDeleteProject = (project: Project) => {
+  const handleDeleteProject = async (project: Project) => {
     setSelectedProject(project)
+
+    // Fetch extract count for this project
+    try {
+      const { data: extracts, error } = await supabase
+        .from('extract_invoices')
+        .select('id')
+        .eq('project_id', project.id)
+
+      if (!error && extracts) {
+        setExtractCount(extracts.length)
+      }
+    } catch (err) {
+      console.error('Error fetching extracts:', err)
+      setExtractCount(0)
+    }
+
     setShowDeleteModal(true)
   }
 
@@ -181,46 +202,45 @@ export default function Projects() {
     setShowDetailModal(true)
   }
 
+  const deleteProjectMutation = useDeleteAdminProject()
+
   const handleDeleteConfirm = async () => {
     if (!selectedProject) return
 
     try {
-      // التحقق من وجود موظفين مرتبطين بالمشروع
-      const { data: employees, error: checkError } = await supabase
-        .from('employees')
-        .select('id')
-        .eq('project_id', selectedProject.id)
-        .limit(1)
+      setLoading(true)
+      const response = await deleteProjectMutation.mutateAsync({ id: selectedProject.id })
 
-      if (checkError) throw checkError
-
-      if (employees && employees.length > 0) {
-        toast.error('لا يمكن حذف المشروع لأنه يحتوي على موظفين مرتبطين به')
-        return
+      if (response && typeof response === 'object' && 'success' in response && response.success === true) {
+        toast.success('تم حذف المشروع بنجاح')
+        loadProjects()
+        setShowDeleteModal(false)
+        setSelectedProject(null)
+      } else {
+        toast.error('فشل حذف المشروع - رد خادم غير متوقع')
+        console.error('Unexpected response format:', response)
       }
-
-      const { error } = await supabase.from('projects').delete().eq('id', selectedProject.id)
-
-      if (error) throw error
-
-      // Log activity
-      await supabase.from('activity_log').insert({
-        action: 'حذف مشروع',
-        entity_type: 'project',
-        entity_id: selectedProject.id,
-        details: {
-          project_name: selectedProject.name,
-        },
-      })
-
-      toast.success('تم حذف المشروع بنجاح')
-      loadProjects()
-      setShowDeleteModal(false)
-      setSelectedProject(null)
     } catch (error) {
       console.error('Error deleting project:', error)
-      const errorMessage = error instanceof Error ? error.message : 'حدث خطأ أثناء حذف المشروع'
-      toast.error(errorMessage)
+
+      if (error instanceof Error) {
+        const errorMsg = error.message
+        const status = 'status' in error && typeof error.status === 'number' ? error.status : undefined
+
+        if (errorMsg.includes('active employees')) {
+          toast.error('لا يمكن حذف المشروع لأنه يحتوي على موظفين نشطين')
+        } else if (status === 401 || status === 403 || errorMsg.includes('401') || errorMsg.includes('403')) {
+          toast.error('ليس لديك صلاحية لحذف المشروع')
+        } else if (status === 404 || errorMsg.includes('404')) {
+          toast.error('المشروع غير موجود')
+        } else {
+          toast.error(`خطأ: ${errorMsg}`)
+        }
+      } else {
+        toast.error('حدث خطأ أثناء حذف المشروع')
+      }
+    } finally {
+      setLoading(false)
     }
   }
 
@@ -412,18 +432,40 @@ export default function Projects() {
               onClick={handleModalClose}
             >
               <div className="bg-surface rounded-lg shadow-xl max-w-md w-full p-6" onClick={(event) => event.stopPropagation()}>
-                <h3 className="text-lg font-bold text-neutral-900 mb-4">تأكيد الحذف</h3>
-                <p className="text-neutral-600 mb-6">
-                  هل أنت متأكد من حذف المشروع "{selectedProject.name}"؟
-                  <br />
-                  <span className="text-sm text-red-600">لا يمكن التراجع عن هذا الإجراء</span>
-                </p>
+                <h3 className="text-lg font-bold text-neutral-900 mb-4">تأكيد حذف المشروع</h3>
+                <div className="space-y-4 mb-6">
+                  <p className="text-neutral-700">
+                    هل أنت متأكد من حذف المشروع <span className="font-semibold">"{selectedProject.name}"</span>؟
+                  </p>
+
+                  {extractCount > 0 && (
+                    <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                      <p className="text-sm text-blue-900">
+                        🔍 يوجد <span className="font-semibold">{extractCount}</span> مستخلص{extractCount > 1 ? 'ات' : ''} متعلق{extractCount > 1 ? 'ة' : ''} بهذا المشروع
+                      </p>
+                      <p className="text-xs text-blue-800 mt-2">
+                        ✓ المستخلصات سيتم الاحتفاظ بها كسجل تاريخي ولن تُحذف
+                      </p>
+                    </div>
+                  )}
+
+                  <div className="bg-amber-50 border border-amber-200 rounded-lg p-3">
+                    <p className="text-xs text-amber-900">
+                      ⚠️ سيتم إزالة المشروع من قائمة المشاريع التشغيلية فقط، بينما ستبقى جميع السجلات المالية والتاريخية محفوظة
+                    </p>
+                  </div>
+
+                  <p className="text-sm text-red-600 font-medium">
+                    ⚠️ لا يمكن التراجع عن هذا الإجراء
+                  </p>
+                </div>
+
                 <div className="flex items-center justify-end gap-3">
                   <Button onClick={handleModalClose} variant="secondary">
                     إلغاء
                   </Button>
                   <Button onClick={handleDeleteConfirm} variant="destructive">
-                    حذف
+                    حذف المشروع
                   </Button>
                 </div>
               </div>

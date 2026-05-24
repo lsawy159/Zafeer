@@ -24,18 +24,21 @@ export default function ProjectStatistics() {
   const loadStatistics = async () => {
     setLoading(true)
     try {
-      // جلب جميع المشاريع
+      // جلب المشاريع غير المحذوفة فقط
       const { data: projects, error: projectsError } = await supabase
         .from('projects')
         .select('id,name,description,status,created_at,updated_at')
+        .eq('is_deleted', false)
         .order('name')
 
       if (projectsError) throw projectsError
 
-      // جلب جميع الموظفين مع معلومات المشروع
+      // جلب الموظفين النشطين فقط
       const { data: employees, error: employeesError } = await supabase
         .from('employees')
         .select('id, project_id, nationality, profession, salary')
+        .is('is_deleted', null)
+        .or('is_deleted.eq.false')
 
       if (employeesError) throw employeesError
 

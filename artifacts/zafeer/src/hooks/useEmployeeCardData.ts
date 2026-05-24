@@ -46,6 +46,7 @@ export function useEmployeeCardData(): UseEmployeeCardDataResult {
         .from('projects')
         .select('id,name,description,status,created_at,updated_at')
         .eq('status', 'active')
+        .eq('is_deleted', false)
         .order('name')
 
       if (error) throw error

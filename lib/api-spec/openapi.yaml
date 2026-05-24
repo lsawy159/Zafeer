@@ -147,7 +147,171 @@ paths:
         "404":
           $ref: "#/components/responses/NotFound"
 
+  /admin/projects/{id}:
+    parameters:
+      - $ref: "#/components/parameters/ProjectIdParam"
+    delete:
+      operationId: deleteAdminProject
+      tags: [admin-users]
+      summary: Soft delete a project
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Project soft deleted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DeleteProjectResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+
+  /admin/extracts/{id}:
+    parameters:
+      - $ref: "#/components/parameters/ExtractIdParam"
+    delete:
+      operationId: deleteAdminExtract
+      tags: [admin-users]
+      summary: Delete extract invoice
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Extract deleted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DeleteExtractResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+
+  /admin/extracts/{id}/lines:
+    parameters:
+      - $ref: "#/components/parameters/ExtractIdParam"
+    post:
+      operationId: addAdminExtractLine
+      tags: [admin-users]
+      summary: Add extract line
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AddExtractLineRequest"
+      responses:
+        "200":
+          description: Extract line added
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ExtractLineMutationResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+
+  /admin/extract-lines/{lineId}:
+    parameters:
+      - $ref: "#/components/parameters/ExtractLineIdParam"
+    patch:
+      operationId: updateAdminExtractLine
+      tags: [admin-users]
+      summary: Update extract line
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateExtractLineRequest"
+      responses:
+        "200":
+          description: Extract line updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ExtractLineMutationResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+    delete:
+      operationId: deleteAdminExtractLine
+      tags: [admin-users]
+      summary: Delete extract line
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Extract line deleted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ExtractLineMutationResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+
 components:
+  parameters:
+    ProjectIdParam:
+      name: id
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    ExtractIdParam:
+      name: id
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    ExtractLineIdParam:
+      name: lineId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+
   securitySchemes:
     bearerAuth:
       type: http
@@ -175,6 +339,18 @@ components:
             $ref: "#/components/schemas/ErrorResponse"
     NotFound:
       description: Resource not found
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+    Conflict:
+      description: Conflict with current resource state
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+    TooManyRequests:
+      description: Too many requests
       content:
         application/json:
           schema:
@@ -413,13 +589,82 @@ components:
         status:
           type: string
           enum: [active, inactive, completed]
+        is_deleted:
+          type: boolean
+        deleted_at:
+          type: string
+          format: date-time
+          nullable: true
         created_at:
           type: string
           format: date-time
         updated_at:
           type: string
           format: date-time
-      required: [id, name, status, created_at, updated_at]
+      required: [id, name, status, is_deleted, created_at, updated_at]
+
+    DeleteProjectResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          const: true
+        projectId:
+          type: string
+          format: uuid
+      required: [success, projectId]
+
+    DeleteExtractResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          const: true
+        extractId:
+          type: string
+          format: uuid
+      required: [success, extractId]
+
+    AddExtractLineRequest:
+      type: object
+      properties:
+        employeeId:
+          type: string
+          format: uuid
+        attendanceDays:
+          type: number
+          minimum: 0
+      required: [employeeId, attendanceDays]
+
+    UpdateExtractLineRequest:
+      type: object
+      properties:
+        attendanceDays:
+          type: number
+          minimum: 0
+        totalDaysInMonth:
+          type: number
+          minimum: 1
+        monthlyRate:
+          type: number
+          minimum: 0
+      required: [attendanceDays, totalDaysInMonth, monthlyRate]
+
+    ExtractLineMutationResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          const: true
+        invoiceId:
+          type: string
+          format: uuid
+        lineId:
+          type: string
+          format: uuid
+        totalAmount:
+          type: number
+      required: [success, invoiceId, lineId, totalAmount]
 
     ObligationType:
       type: string

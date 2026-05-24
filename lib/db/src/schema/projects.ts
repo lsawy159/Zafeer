@@ -1,5 +1,5 @@
 import {
-  pgTable, uuid, text, bigint, date, timestamp,
+  pgTable, uuid, text, bigint, date, timestamp, boolean,
 } from 'drizzle-orm/pg-core'
 import { createInsertSchema, createSelectSchema } from 'drizzle-zod'
 import { z } from 'zod/v4'
@@ -12,6 +12,8 @@ export const projectsTable = pgTable('projects', {
   name: text('name').notNull(),
   description: text('description'),
   status: text('status').default('active'),
+  is_deleted: boolean('is_deleted').notNull().default(false),
+  deleted_at: timestamp('deleted_at', { withTimezone: true }),
   created_at: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   updated_at: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
 })

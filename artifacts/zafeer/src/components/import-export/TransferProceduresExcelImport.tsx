@@ -40,7 +40,7 @@ export default function TransferProceduresExcelImport({
       setImporting(true)
       const XLSX = await loadXlsx()
       const [projectsRes] = await Promise.all([
-        supabase.from('projects').select('id, name').eq('status', 'active').order('name'),
+        supabase.from('projects').select('id, name').eq('status', 'active').eq('is_deleted', false).order('name'),
       ])
 
       if (projectsRes.error) throw projectsRes.error

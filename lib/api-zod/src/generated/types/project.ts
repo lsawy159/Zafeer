@@ -12,6 +12,8 @@ export interface Project {
   name: string;
   description?: string | null;
   status: ProjectStatus;
+  is_deleted: boolean;
+  deleted_at?: Date | null;
   created_at: Date;
   updated_at: Date;
 }

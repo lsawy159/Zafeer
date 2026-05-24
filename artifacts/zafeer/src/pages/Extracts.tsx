@@ -1,9 +1,19 @@
+import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Plus, FileText, Copy } from 'lucide-react'
-import { useExtracts, useDuplicateExtract } from '@/hooks/useExtracts'
+import { Plus, FileText, Copy, Trash2 } from 'lucide-react'
+import { useExtracts, useDuplicateExtract, useDeleteExtract } from '@/hooks/useExtracts'
 import { usePermissions } from '@/utils/permissions'
 import { toast } from 'sonner'
 import Layout from '@/components/layout/Layout'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from '@/components/ui/Dialog'
+import { Button } from '@/components/ui/Button'
 
 function formatPeriodMonth(raw: string): string {
   const d = new Date(raw)
@@ -27,9 +37,12 @@ function StatusBadge({ status }: { status: 'draft' | 'exported' }) {
 
 export default function Extracts() {
   const navigate = useNavigate()
-  const { canView, canCreate } = usePermissions()
+  const { canView, canCreate, canDelete } = usePermissions()
   const { data: extracts = [], isLoading } = useExtracts()
   const duplicate = useDuplicateExtract()
+  const deleteExtract = useDeleteExtract()
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
+  const [extractToDelete, setExtractToDelete] = useState<string | null>(null)
 
   if (!canView('extracts')) {
     return (
@@ -50,6 +63,27 @@ export default function Extracts() {
       onSuccess: () => toast.success('تم إنشاء نسخة جديدة من المستخلص'),
       onError: () => toast.error('فشل إنشاء النسخة'),
     })
+  }
+
+  const handleDeleteClick = (e: React.MouseEvent, id: string) => {
+    e.stopPropagation()
+    setExtractToDelete(id)
+    setDeleteDialogOpen(true)
+  }
+
+  const handleConfirmDelete = () => {
+    if (extractToDelete) {
+      deleteExtract.mutate(extractToDelete, {
+        onSuccess: () => {
+          toast.success('تم حذف المستخلص')
+          setDeleteDialogOpen(false)
+          setExtractToDelete(null)
+        },
+        onError: () => {
+          toast.error('فشل حذف المستخلص')
+        },
+      })
+    }
   }
 
   return (
@@ -130,7 +164,7 @@ export default function Extracts() {
                     <td className="py-3 px-4 text-center">
                       <StatusBadge status={extract.status} />
                     </td>
-                    <td className="py-3 px-2">
+                    <td className="py-3 px-2 flex items-center gap-1">
                       {canCreate('extracts') && (
                         <button
                           onClick={(e) => handleDuplicate(e, extract.id)}
@@ -141,6 +175,16 @@ export default function Extracts() {
                           <Copy className="h-4 w-4" />
                         </button>
                       )}
+                      {canDelete('extracts') && (
+                        <button
+                          onClick={(e) => handleDeleteClick(e, extract.id)}
+                          disabled={deleteExtract.isPending}
+                          title="حذف المستخلص"
+                          className="text-slate-400 hover:text-red-600 transition disabled:opacity-40"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </button>
+                      )}
                     </td>
                   </tr>
                 ))}
@@ -149,6 +193,33 @@ export default function Extracts() {
           </div>
         )}
       </div>
+
+      {/* Delete Confirmation Dialog */}
+      <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <DialogContent dir="rtl">
+          <DialogHeader>
+            <DialogTitle>حذف المستخلص</DialogTitle>
+            <DialogDescription>
+              هل أنت متأكد من رغبتك في حذف هذا المستخلص؟ لا يمكن استرجاع البيانات المحذوفة.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setDeleteDialogOpen(false)}
+            >
+              إلغاء
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={handleConfirmDelete}
+              disabled={deleteExtract.isPending}
+            >
+              {deleteExtract.isPending ? 'جاري الحذف...' : 'حذف'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
     </Layout>
   )
