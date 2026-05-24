@@ -162,73 +162,29 @@ interface NotificationRow {
   is_deferred?: boolean | null
 }
 
-function priorityLabel(p: string): string {
-  switch (p) {
-    case 'critical': return 'عاجل'
-    case 'high': return 'تحذير'
-    case 'medium': return 'تنبيه'
-    default: return 'تنبيه'
-  }
+type DigestSeverityCounts = {
+  total_entities: number
+  employees_count: number
+  companies_count: number
+  critical: number
+  high: number
+  medium: number
+  attachment_available: boolean
 }
 
-function priorityColor(p: string): string {
-  switch (p) {
-    case 'critical': return '#dc2626'
-    case 'high': return '#ea580c'
-    default: return '#ca8a04'
-  }
-}
-
-function typeLabel(t: string): string {
-  const map: Record<string, string> = {
-    residence_expiry: 'إقامة',
-    contract_expiry: 'عقد عمل',
-    health_insurance_expiry: 'تأمين طبي',
-    commercial_registration_expiry: 'سجل تجاري',
-    power_subscription_expiry: 'اشتراك قوى',
-    moqeem_subscription_expiry: 'اشتراك مقيم',
-    hired_worker_contract_expiry: 'عقد أجير',
-  }
-  return map[t] ?? t
-}
-
-function buildDigestHtml(alerts: NotificationRow[], today: string): string {
-  const criticalAlerts = alerts.filter((a) => a.priority === 'critical')
-  const highAlerts = alerts.filter((a) => a.priority === 'high')
-  const mediumAlerts = alerts.filter((a) => a.priority !== 'critical' && a.priority !== 'high')
-
-  function buildSection(title: string, color: string, items: NotificationRow[]): string {
-    if (items.length === 0) return ''
-    const rows = items
-      .map(
-        (a) => `
-        <tr>
-          <td style="padding:8px 12px;border-bottom:1px solid #f3f4f6;color:#374151;font-size:13px;">${typeLabel(a.type)}</td>
-          <td style="padding:8px 12px;border-bottom:1px solid #f3f4f6;color:#374151;font-size:13px;">${a.message ?? a.title}</td>
-          <td style="padding:8px 12px;border-bottom:1px solid #f3f4f6;color:${color};font-weight:600;font-size:13px;white-space:nowrap;">
-            ${a.days_remaining !== null ? (a.days_remaining < 0 ? `منتهية منذ ${Math.abs(a.days_remaining)} يوم` : `${a.days_remaining} يوم`) : '—'}
-          </td>
-        </tr>`
-      )
-      .join('')
-
-    return `
-      <div style="margin-bottom:20px;">
-        <h3 style="margin:0 0 8px;color:${color};font-size:15px;border-right:4px solid ${color};padding-right:8px;">${title} (${items.length})</h3>
-        <table style="width:100%;border-collapse:collapse;background:#fff;border-radius:8px;overflow:hidden;border:1px solid #e5e7eb;">
-          <thead>
-            <tr style="background:#f9fafb;">
-              <th style="padding:8px 12px;text-align:right;color:#6b7280;font-size:12px;font-weight:600;">النوع</th>
-              <th style="padding:8px 12px;text-align:right;color:#6b7280;font-size:12px;font-weight:600;">التفاصيل</th>
-              <th style="padding:8px 12px;text-align:right;color:#6b7280;font-size:12px;font-weight:600;">الأيام المتبقية</th>
-            </tr>
-          </thead>
-          <tbody>${rows}</tbody>
-        </table>
-      </div>`
-  }
+function buildDigestHtml(counts: DigestSeverityCounts, today: string): string {
+  const badge = (label: string, color: string, count: number) => `
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 12px;border:1px solid #e5e7eb;border-radius:10px;margin:0 0 10px;background:#fff;">
+      <div style="display:flex;align-items:center;gap:10px;">
+        <span style="display:inline-block;width:10px;height:10px;border-radius:9999px;background:${color};"></span>
+        <span style="color:#111827;font-size:14px;font-weight:600;">${label}</span>
+      </div>
+      <span style="color:${color};font-size:14px;font-weight:700;">${count}</span>
+    </div>
+  `
 
   return `<!DOCTYPE html>
+<!-- digest_template_version: 022-summary-only -->
 <html dir="rtl" lang="ar">
 <head>
   <meta charset="UTF-8">
@@ -239,11 +195,18 @@ function buildDigestHtml(alerts: NotificationRow[], today: string): string {
   <div style="max-width:680px;margin:0 auto;background:#fff;border-radius:12px;border:1px solid #e5e7eb;padding:32px;">
     <h2 style="color:#111827;margin:0 0 4px;">ملخص التنبيهات اليومي</h2>
     <p style="color:#6b7280;margin:0 0 4px;font-size:14px;">تاريخ: ${today}</p>
-    <p style="color:#6b7280;margin:0 0 24px;font-size:13px;">إجمالي التنبيهات النشطة: <strong style="color:#111827;">${alerts.length}</strong></p>
+    <p style="color:#6b7280;margin:0 0 16px;font-size:13px;">
+      إجمالي الكيانات ذات تنبيهات نشطة: <strong style="color:#111827;">${counts.total_entities}</strong>
+      <span style="color:#9ca3af;">(موظفون: ${counts.employees_count} - مؤسسات: ${counts.companies_count})</span>
+    </p>
 
-    ${buildSection('⚠️ عاجل', priorityColor('critical'), criticalAlerts)}
-    ${buildSection('⚡ تحذير', priorityColor('high'), highAlerts)}
-    ${buildSection('🔔 تنبيه', priorityColor('medium'), mediumAlerts)}
+    ${badge('عاجل', '#dc2626', counts.critical)}
+    ${badge('تحذير', '#ea580c', counts.high)}
+    ${badge('تنبيه', '#ca8a04', counts.medium)}
+
+    <p style="color:#6b7280;margin:14px 0 0;font-size:13px;">
+      ${counts.attachment_available ? 'مرفق ملف ZIP يحتوي على تفاصيل CSV الكاملة.' : 'تعذر إرفاق ملف التفاصيل (ZIP) في هذا الإرسال.'}
+    </p>
 
     <hr style="border:none;border-top:1px solid #e5e7eb;margin:24px 0;">
     <p style="color:#9ca3af;font-size:12px;margin:0;">
@@ -268,7 +231,7 @@ const DEFAULT_THRESHOLDS: Record<string, number> = {
 async function buildAlertCsvZip(
   admin: ReturnType<typeof createClient>,
   thresholds: Record<string, number>,
-): Promise<Uint8Array | null> {
+): Promise<{ zipBytes: Uint8Array | null; empRows: Record<string, unknown>[]; coRows: Record<string, unknown>[] }> {
   const { data: employees } = await admin
     .from('employees')
     .select('id, residence_number, name, company_id, residence_expiry, contract_expiry, health_insurance_expiry, hired_worker_contract_expiry')
@@ -333,12 +296,13 @@ async function buildAlertCsvZip(
     })
   }
 
-  if (empRows.length === 0 && coRows.length === 0) return null
+  if (empRows.length === 0 && coRows.length === 0) return { zipBytes: null, empRows, coRows }
 
   const zip = new JSZip()
   if (empRows.length > 0) zip.file('employees.csv', arrayToCsv(empRows))
   if (coRows.length > 0) zip.file('companies.csv', arrayToCsv(coRows))
-  return await zip.generateAsync({ type: 'uint8array', compression: 'DEFLATE' })
+  const zipBytes = await zip.generateAsync({ type: 'uint8array', compression: 'DEFLATE' })
+  return { zipBytes, empRows, coRows }
 }
 
 // ─── Main handler ──────────────────────────────────────────────────────────────
@@ -348,6 +312,7 @@ Deno.serve(async (req: Request) => {
   if (req.method !== 'POST') return jsonResponse({ error: 'Method not allowed' }, 405)
 
   try {
+  const TEMPLATE_VERSION = '022-summary-only'
   const SUPABASE_URL = Deno.env.get('SUPABASE_URL')
   const SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')
   const RESEND_API_KEY = Deno.env.get('RESEND_API_KEY')
@@ -363,6 +328,8 @@ Deno.serve(async (req: Request) => {
   const admin = createClient(SUPABASE_URL, SERVICE_ROLE_KEY, {
     auth: { autoRefreshToken: false, persistSession: false },
   })
+
+  console.log('[daily-notification-run] template_version:', TEMPLATE_VERSION)
 
   // 1. Read system settings
   const settings = await readSettings(admin)
@@ -440,8 +407,6 @@ Deno.serve(async (req: Request) => {
     day: 'numeric',
   }).format(new Date())
 
-  const htmlBody = buildDigestHtml(activeAlerts, todayStr)
-
   // 8. Build CSV ZIP attachment (best-effort — skip if fails)
   const digestThresholds: Record<string, number> = { ...DEFAULT_THRESHOLDS }
   const { data: threshRow } = await admin
@@ -453,7 +418,43 @@ Deno.serve(async (req: Request) => {
     Object.assign(digestThresholds, threshRow.setting_value)
   }
 
-  const zipBytes = await buildAlertCsvZip(admin, digestThresholds).catch(() => null)
+  const reportData = await buildAlertCsvZip(admin, digestThresholds).catch(() => null)
+  const zipBytes = reportData?.zipBytes ?? null
+  const empRows = reportData?.empRows ?? []
+  const coRows = reportData?.coRows ?? []
+
+  const severityFromRow = (row: Record<string, unknown>): 'عاجل' | 'تحذير' | 'تنبيه' | null => {
+    const raw = row['مستوى الخطورة']
+    if (raw === 'عاجل' || raw === 'تحذير' || raw === 'تنبيه') return raw
+    return null
+  }
+
+  const entityTotal = empRows.length + coRows.length
+  const severityCounts: DigestSeverityCounts = {
+    total_entities: entityTotal,
+    employees_count: empRows.length,
+    companies_count: coRows.length,
+    critical: 0,
+    high: 0,
+    medium: 0,
+    attachment_available: zipBytes !== null,
+  }
+
+  for (const r of empRows) {
+    const sev = severityFromRow(r)
+    if (sev === 'عاجل') severityCounts.critical++
+    else if (sev === 'تحذير') severityCounts.high++
+    else if (sev === 'تنبيه') severityCounts.medium++
+  }
+  for (const r of coRows) {
+    const sev = severityFromRow(r)
+    if (sev === 'عاجل') severityCounts.critical++
+    else if (sev === 'تحذير') severityCounts.high++
+    else if (sev === 'تنبيه') severityCounts.medium++
+  }
+
+  const htmlBody = buildDigestHtml(severityCounts, todayStr)
+  const subjectTotal = entityTotal > 0 ? entityTotal : activeAlerts.length
   let attachments: { filename: string; content: string }[] | undefined
   if (zipBytes) {
     let zipBinary = ''
@@ -470,7 +471,7 @@ Deno.serve(async (req: Request) => {
   const { error: sendError } = await resend.emails.send({
     from: FROM_EMAIL,
     to: settings.admin_email,
-    subject: `ملخص التنبيهات اليومي — زفير | ${activeAlerts.length} تنبيه`,
+    subject: `ملخص التنبيهات اليومي — زفير | ${subjectTotal} تنبيه (v022)`,
     html: htmlBody,
     ...(attachments ? { attachments } : {}),
   })
@@ -505,10 +506,20 @@ Deno.serve(async (req: Request) => {
   return jsonResponse({
     success: true,
     skipped: false,
-    alerts_count: activeAlerts.length,
+    alerts_count: subjectTotal,
     email_sent: true,
     in_app_generated: true,
     quiet_hours_active: false,
+    template_version: TEMPLATE_VERSION,
+    totals: {
+      total_entities: severityCounts.total_entities,
+      employees_count: severityCounts.employees_count,
+      companies_count: severityCounts.companies_count,
+      critical: severityCounts.critical,
+      high: severityCounts.high,
+      medium: severityCounts.medium,
+    },
+    attachment_available: severityCounts.attachment_available,
   })
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err)
