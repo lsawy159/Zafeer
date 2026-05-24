@@ -35,11 +35,10 @@ minimumReleaseAgeExclude:
   - stripe-replit-sync
 
 packages:
-  - artifacts/*
+  - artifacts/api-server
+  - artifacts/zafeer
   - lib/*
   - lib/integrations/*
-  - scripts
-  - tests/*
 
 catalog:
   '@replit/vite-plugin-cartographer': ^0.5.1

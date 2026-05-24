@@ -67,10 +67,7 @@ supabase db push
 # regenerate API types بعد تعديل openapi.yaml
 pnpm orval
 
-# Playwright E2E
-# e2e/ local-only and gitignored; not part of GitHub CI.
-# If present locally:
-pnpm --dir e2e exec playwright test
+# Playwright E2E local-only. Do not commit browser specs, screenshots, storage state, or credentials.
 
 # Lighthouse محلياً
 npx @lhci/cli autorun

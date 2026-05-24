@@ -21,7 +21,6 @@ artifacts/
   │       │   └── stats/  # StatsDashboard, StatCard, StatsDetailModal
   │       ├── types/      # statsTypes + shared types
   │       └── utils/      # statsCalculator, permissions, autoCompanyStatus, ...
-  └── mockup-sandbox/     # UI playground (غير نشط في الإنتاج)
 
 lib/
   ├── api-client-react/   # React Query hooks مولَّدة من OpenAPI
@@ -29,9 +28,6 @@ lib/
   ├── api-zod/            # Zod schemas مولَّدة من OpenAPI
   └── db/                 # Drizzle ORM schema (25 جدول)
 
-tests/rls/                # RLS role-switching test suite
-ملفات غير ضرورية/         # Local archive for retired/nonessential files (gitignored)
-specs/                    # Feature specs (spec-kit workflow)
 supabase/
   ├── migrations/         # ~60+ migration SQL (schema + RLS)
   └── functions/          # Edge Functions
@@ -83,7 +79,6 @@ pnpm docker:down
 |-----|--------|
 | `pnpm build` | build كل الحزم |
 | `pnpm typecheck` | TypeScript check لكل الـ workspace |
-| `pnpm test:rls` | RLS role-switching tests |
 | `pnpm --filter @workspace/zafeer run dev` | frontend فقط |
 | `pnpm --filter @workspace/zafeer run lint` | ESLint |
 | `pnpm --filter @workspace/zafeer run lint:strict` | ESLint strict mode |
@@ -118,7 +113,6 @@ lib/db Drizzle → مصدر الحقيقة للـ schema
 - **Admin API**: Express 5 (service_role — admin ops فقط)
 - **Schema**: Drizzle ORM (`lib/db/`)
 - **API Spec**: OpenAPI YAML → Zod + React Query hooks (orval)
-- **Tests**: Vitest + Playwright + axe-core + RLS tests
 - **Hosting**: Vercel
 
 ### Supabase
@@ -137,38 +131,9 @@ lib/db Drizzle → مصدر الحقيقة للـ schema
 
 ---
 
-## Spec-Kit Workflow
+## Local Planning Notes
 
-كل feature تمر بـ:
-
-```
-/speckit-specify "feature description"
-  → /speckit-plan
-  → /speckit-tasks
-  → /speckit-implement
-```
-
-التوثيق في `specs/NNN-feature-name/` (spec.md + plan.md + tasks.md + research.md + data-model.md + quickstart.md).
-
-### Specs المكتملة
-
-| Spec | الوصف | الحالة |
-|------|-------|--------|
-| 001 | إصلاح Auth + Roles + Security | ✅ merged |
-| 002 | تصميم ZaFeer (tokens + UI) | ✅ merged |
-| 003 | rename sawtracker → zafeer | ✅ merged (PR #125) |
-| 004 | Database integrity + RLS hardening | ✅ merged |
-| 005 | Force reset AdvancedSearch | ✅ merged |
-| 006 | User management | ✅ merged |
-| 007 | صور إقامة الموظفين | ✅ merged (PR #132) |
-| 008 | إصلاح obligation enums migration | ✅ merged (PR #133) |
-| 009 | مزامنة migrations + typecheck | ✅ merged (PR #134) |
-| 010 | تصدير مسار الإقامة + تأمين الوصول | ✅ merged (PR #135) |
-| 011 | إصلاح تهنيج تبويب التصدير | ✅ merged (PR #136) |
-| 012 | رابط إقامة قابل للنقر في Excel | ✅ merged (PR #136) |
-| 013 | لوحة إحصائيات التقارير | 🔄 PR #137 — بانتظار merge |
-
----
+Planning and assistant-specific files are local-only and are intentionally not tracked in GitHub.
 
 ## Pages الرئيسية
 

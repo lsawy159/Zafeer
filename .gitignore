@@ -2,6 +2,15 @@
 
 # ===== Local AI context (لا يُرفع) =====
 CONTEXT.md
+/AGENTS.md
+/CLAUDE.md
+/.agents/
+/.claude/
+/.codex/
+/.mcp.json
+/.pre-commit-config.yaml
+/skills-lock.json
+/telegram.md
 
 # ===== Local memory system for AI assistants (لا يُرفع) =====
 /memory/
@@ -12,6 +21,11 @@ CLAUDE.local.md
 ملفات-غير-ضرورية/
 /playwright-tests/
 /e2e/
+/specs/
+/.specify/
+/artifacts/mockup-sandbox/
+/scripts/
+/tests/
 
 # ===== Build & compiled output =====
 dist
