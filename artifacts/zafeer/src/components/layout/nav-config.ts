@@ -4,7 +4,6 @@ import {
   Building2,
   Briefcase,
   Truck,
-  Search,
   AlertCircle,
   BarChart3,
   DollarSign,
@@ -83,15 +82,6 @@ export const NAV_ITEMS: NavItem[] = [
     to: '/transfer-procedures',
     group: 'operational',
     order: 5,
-  },
-  {
-    id: 'advanced-search',
-    labelAr: 'بحث متقدم',
-    labelEn: 'Advanced Search',
-    icon: Search,
-    to: '/advanced-search',
-    group: 'operational',
-    order: 6,
   },
   {
     id: 'alerts',

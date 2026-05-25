@@ -2,7 +2,7 @@ import React, { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '@/contexts/AuthContext'
 import { useThemeMode } from '@/hooks/useUiPreferences'
-import { Menu, Moon, Sun, Search, Bell, LogOut, Settings } from 'lucide-react'
+import { Menu, Moon, Sun, Bell, LogOut, Settings } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import {
   DropdownMenu,
@@ -26,10 +26,6 @@ export function Header({ onMenuClick }: HeaderProps) {
   const handleLogout = async () => {
     await signOut()
     navigate('/login')
-  }
-
-  const handleAdvancedSearch = () => {
-    navigate('/advanced-search')
   }
 
   const userInitials = (user?.full_name || user?.username || 'U')
@@ -59,34 +55,8 @@ export function Header({ onMenuClick }: HeaderProps) {
           </h1>
         </div>
 
-        {/* Center: Search (desktop only) */}
-        <div className="hidden lg:flex flex-1 max-w-md mx-8">
-          <Button
-            type="button"
-            variant="secondary"
-            size="sm"
-            onClick={handleAdvancedSearch}
-            className="w-full justify-start text-neutral-500 dark:text-neutral-400"
-          >
-            <Search className="h-4 w-4 me-2" />
-            <span className="text-sm">بحث متقدم...</span>
-          </Button>
-        </div>
-
         {/* Right: Actions + Profile */}
         <div className="flex items-center gap-2">
-          {/* Search Button (mobile) */}
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon"
-            onClick={handleAdvancedSearch}
-            className="lg:hidden"
-            aria-label="بحث متقدم"
-          >
-            <Search className="h-5 w-5" />
-          </Button>
-
           {/* Notifications */}
           <Button
             type="button"

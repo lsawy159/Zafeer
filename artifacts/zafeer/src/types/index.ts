@@ -35,7 +35,6 @@ export type PermissionKey =
   | 'transferProcedures.import'
   | 'transferProcedures.export'
   | 'alerts.view'
-  | 'advancedSearch.view'
   | 'reports.view'
   | 'reports.export'
   | 'payroll.view'
