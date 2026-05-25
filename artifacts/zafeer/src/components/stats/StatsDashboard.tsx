@@ -44,6 +44,7 @@ export default function StatsDashboard() {
   const [thresholdsLoaded, setThresholdsLoaded] = useState(false)
 
   const [modalState, setModalState] = useState<ModalState | null>(null)
+  const [activeTab, setActiveTab] = useState<'companies' | 'employees'>('companies')
 
   // today is stable per mount
   const today = useMemo(() => new Date(), [])
@@ -166,9 +167,31 @@ export default function StatsDashboard() {
 
   return (
     <div className="space-y-6" dir="rtl">
+      <div className="flex gap-1 border-b border-gray-200 mb-2">
+        <button
+          onClick={() => setActiveTab('companies')}
+          className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
+            activeTab === 'companies'
+              ? 'border-blue-500 text-blue-700'
+              : 'border-transparent text-gray-500 hover:text-gray-700'
+          }`}
+        >
+          المؤسسات
+        </button>
+        <button
+          onClick={() => setActiveTab('employees')}
+          className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
+            activeTab === 'employees'
+              ? 'border-blue-500 text-blue-700'
+              : 'border-transparent text-gray-500 hover:text-gray-700'
+          }`}
+        >
+          الموظفون
+        </button>
+      </div>
 
       {/* ── Section A — حالة المؤسسات ────────────────── */}
-      <section>
+      <section className={activeTab === 'companies' ? '' : 'hidden'}>
         <SectionHeader icon={<Building2 size={16} />} title="حالة المؤسسات" />
         <div className="grid grid-cols-3 gap-3">
           <StatCard
@@ -196,7 +219,7 @@ export default function StatsDashboard() {
       </section>
 
       {/* ── Section A' — حالة الموظفين ───────────────── */}
-      <section>
+      <section className={activeTab === 'employees' ? '' : 'hidden'}>
         <SectionHeader icon={<Users size={16} />} title="حالة الموظفين" />
         <div className="grid grid-cols-3 gap-3">
           <StatCard
@@ -224,7 +247,7 @@ export default function StatsDashboard() {
       </section>
 
       {/* ── Section B — تنبيهات المؤسسات ─────────────── */}
-      <section>
+      <section className={activeTab === 'companies' ? '' : 'hidden'}>
         <SectionHeader
           icon={<Bell size={16} />}
           title="تنبيهات المؤسسات"
@@ -260,7 +283,7 @@ export default function StatsDashboard() {
       </section>
 
       {/* ── Section G — وثائق المؤسسات المنتهية ─────── */}
-      <section>
+      <section className={activeTab === 'companies' ? '' : 'hidden'}>
         <SectionHeader icon={<FileX size={16} />} title="وثائق المؤسسات المنتهية" />
         <div className="grid grid-cols-3 gap-3">
           <StatCard
@@ -288,25 +311,25 @@ export default function StatsDashboard() {
       </section>
 
       {/* ── Section F — بيانات المؤسسات الناقصة ─────── */}
-      <section>
+      <section className={activeTab === 'companies' ? '' : 'hidden'}>
         <SectionHeader icon={<FileMinus size={16} />} title="بيانات المؤسسات الناقصة" />
         <div className="grid grid-cols-3 gap-3">
           <StatCard
-            label="سجل تجاري ناقص"
+            label="تاريخ السجل التجاري ناقص"
             count={companyMissing.commercial_reg}
             color="gray"
             loading={dataLoading}
             onClick={() => openCompanyModal('مؤسسات بدون سجل تجاري', predicates.isMissingCommercialReg)}
           />
           <StatCard
-            label="اشتراك قوى ناقص"
+            label="تاريخ اشتراك قوى ناقص"
             count={companyMissing.power_subscription}
             color="gray"
             loading={dataLoading}
             onClick={() => openCompanyModal('مؤسسات بدون اشتراك قوى', predicates.isMissingPowerDate)}
           />
           <StatCard
-            label="اشتراك مقيم ناقص"
+            label="تاريخ اشتراك مقيم ناقص"
             count={companyMissing.moqeem_subscription}
             color="gray"
             loading={dataLoading}
@@ -316,7 +339,7 @@ export default function StatsDashboard() {
       </section>
 
       {/* ── Section C — وثائق الموظفين المنتهية ─────── */}
-      <section>
+      <section className={activeTab === 'employees' ? '' : 'hidden'}>
         <SectionHeader icon={<FileX size={16} />} title="وثائق الموظفين المنتهية" />
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
           <StatCard
@@ -351,17 +374,17 @@ export default function StatsDashboard() {
       </section>
 
       {/* ── Section D — بيانات الموظفين الناقصة ────── */}
-      <section>
+      <section className={activeTab === 'employees' ? '' : 'hidden'}>
         <SectionHeader icon={<FileMinus size={16} />} title="بيانات الموظفين الناقصة" />
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-          <StatCard label="إقامة ناقصة" count={employeeMissing.residence} color="gray" loading={dataLoading}
-            onClick={() => openEmployeeModal('إقامة ناقصة', predicates.isMissingResidenceDate)} />
-          <StatCard label="عقد عمل ناقص" count={employeeMissing.contract} color="gray" loading={dataLoading}
-            onClick={() => openEmployeeModal('عقد عمل ناقص', predicates.isMissingContractDate)} />
-          <StatCard label="عقد أجير ناقص" count={employeeMissing.hired_worker_contract} color="gray" loading={dataLoading}
-            onClick={() => openEmployeeModal('عقد أجير ناقص', predicates.isMissingHiredWorkerContractDate)} />
-          <StatCard label="تأمين صحي ناقص" count={employeeMissing.health_insurance} color="gray" loading={dataLoading}
-            onClick={() => openEmployeeModal('تأمين صحي ناقص', predicates.isMissingHealthInsuranceDate)} />
+          <StatCard label="تاريخ إقامة ناقص" count={employeeMissing.residence} color="gray" loading={dataLoading}
+            onClick={() => openEmployeeModal('تاريخ إقامة ناقص', predicates.isMissingResidenceDate)} />
+          <StatCard label="تاريخ عقد عمل ناقص" count={employeeMissing.contract} color="gray" loading={dataLoading}
+            onClick={() => openEmployeeModal('تاريخ عقد عمل ناقص', predicates.isMissingContractDate)} />
+          <StatCard label="تاريخ عقد أجير ناقص" count={employeeMissing.hired_worker_contract} color="gray" loading={dataLoading}
+            onClick={() => openEmployeeModal('تاريخ عقد أجير ناقص', predicates.isMissingHiredWorkerContractDate)} />
+          <StatCard label="تاريخ تأمين صحي ناقص" count={employeeMissing.health_insurance} color="gray" loading={dataLoading}
+            onClick={() => openEmployeeModal('تاريخ تأمين صحي ناقص', predicates.isMissingHealthInsuranceDate)} />
           <StatCard label="راتب ناقص أو صفر" count={employeeMissing.salary} color="gray" loading={dataLoading}
             onClick={() => openEmployeeModal('راتب ناقص أو صفر', predicates.isMissingSalary)} />
           <StatCard label="مهنة ناقصة" count={employeeMissing.profession} color="gray" loading={dataLoading}
@@ -376,7 +399,7 @@ export default function StatsDashboard() {
       </section>
 
       {/* ── Section E — تنبيهات الموظفين ────────────── */}
-      <section>
+      <section className={activeTab === 'employees' ? '' : 'hidden'}>
         <SectionHeader icon={<AlertTriangle size={16} />} title="تنبيهات الموظفين" subtitle="الموظفون السليمون فقط" />
         <div className="grid grid-cols-3 gap-3">
           <StatCard

@@ -7,6 +7,7 @@ import { classifyCompany, classifyEmployee } from '@/utils/statsCalculator'
 import { type StatsCompanyRow, type StatsEmployeeRow } from '@/types/statsTypes'
 import { formatDateShortWithHijri } from '@/utils/dateFormatter'
 import CompanyDetailModal from '@/components/companies/CompanyDetailModal'
+import CompanyModal from '@/components/companies/CompanyModal'
 import EmployeeCard from '@/components/employees/EmployeeCard'
 import { useQueryClient } from '@tanstack/react-query'
 
@@ -43,6 +44,7 @@ export default function StatsDetailModal({
 }: StatsDetailModalProps) {
   const queryClient = useQueryClient()
   const [selectedCompany, setSelectedCompany] = useState<Company | null>(null)
+  const [editingCompany, setEditingCompany] = useState<Company | null>(null)
   const [selectedEmployee, setSelectedEmployee] = useState<(EmployeeWithRelations & { company: Company }) | null>(null)
   const scrollRef = useRef<HTMLDivElement>(null)
 
@@ -79,18 +81,27 @@ export default function StatsDetailModal({
     queryClient.invalidateQueries({ queryKey: ['employees-all'] })
   }, [queryClient])
 
+  const handleCompanyEdit = useCallback((company: Company) => {
+    setEditingCompany(company)
+  }, [])
+
+  const handleCompanyEditSuccess = useCallback(() => {
+    queryClient.invalidateQueries({ queryKey: ['companies'] })
+    setEditingCompany(null)
+  }, [queryClient])
+
   const modal = (
     <>
       {/* StatsDetailModal backdrop + panel */}
       <div
-        className="fixed inset-0 z-40 bg-black/40 flex items-center justify-center p-4"
+        className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4"
         onClick={handleBackdropClick}
       >
-        <div
-          data-modal-root
-          className="bg-white rounded-xl shadow-2xl w-full max-w-2xl flex flex-col max-h-[80vh]"
-          dir="rtl"
-        >
+      <div
+        data-modal-root
+        className="bg-white rounded-xl shadow-2xl w-full max-w-2xl flex flex-col max-h-[80vh]"
+        dir="rtl"
+      >
           {/* Header */}
           <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200 shrink-0">
             <div className="flex items-center gap-2">
@@ -156,6 +167,7 @@ export default function StatsDetailModal({
         <CompanyDetailModal
           company={selectedCompany}
           onClose={() => setSelectedCompany(null)}
+          onEdit={handleCompanyEdit}
         />
       )}
 
@@ -165,6 +177,15 @@ export default function StatsDetailModal({
           employee={selectedEmployee}
           onClose={() => setSelectedEmployee(null)}
           onUpdate={handleEmployeeUpdate}
+        />
+      )}
+
+      {editingCompany && (
+        <CompanyModal
+          isOpen={true}
+          company={editingCompany}
+          onClose={() => setEditingCompany(null)}
+          onSuccess={handleCompanyEditSuccess}
         />
       )}
     </>
