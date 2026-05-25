@@ -86,7 +86,6 @@ describe('Layout payroll navigation visibility', () => {
         'companies',
         'projects',
         'alerts',
-        'advancedSearch',
         'payroll',
       ].includes(section)
     })
@@ -117,7 +116,6 @@ describe('Layout payroll navigation visibility', () => {
         'companies',
         'projects',
         'alerts',
-        'advancedSearch',
         'reports',
       ].includes(section)
     })

@@ -7,7 +7,6 @@ import {
   Database,
   BarChart3,
   ArrowDownUp,
-  SearchIcon,
   Bell,
   BellRing,
   Wallet,
@@ -79,13 +78,6 @@ export function useNavItems() {
         icon: BellRing,
         label: 'الإشعارات',
         permission: { section: 'adminSettings' as const, action: 'view' },
-        badge: null,
-      },
-      {
-        path: '/advanced-search',
-        icon: SearchIcon,
-        label: 'البحث المتقدم',
-        permission: { section: 'advancedSearch' as const, action: 'view' },
         badge: null,
       },
       {

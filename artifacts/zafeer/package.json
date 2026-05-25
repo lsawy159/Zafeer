@@ -94,7 +94,6 @@
     "@workspace/db": "workspace:*",
     "chart.js": "^4.5.1",
     "file-saver": "^2.0.5",
-    "fuse.js": "^7.3.0",
     "hijri-converter": "^1.1.1",
     "html2canvas": "^1.4.1",
     "jspdf": "^4.2.1",

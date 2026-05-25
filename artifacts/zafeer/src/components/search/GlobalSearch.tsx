@@ -1,6 +1,6 @@
-﻿import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useDebouncedCallback } from 'use-debounce'
-import { Search, X, Clock, Star, Loader2 } from 'lucide-react'
+import { Search, X, Clock, Loader2 } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { useNavigate } from 'react-router-dom'
 import { toast } from 'sonner'
@@ -14,27 +14,18 @@ interface SearchResult {
   metadata?: string
 }
 
-interface SavedSearch {
-  id: string
-  name: string
-  search_query: string
-  search_type: string
-}
-
 export function GlobalSearch() {
   const [isOpen, setIsOpen] = useState(false)
   const [query, setQuery] = useState('')
   const [results, setResults] = useState<SearchResult[]>([])
   const [recentSearches, setRecentSearches] = useState<string[]>([])
-  const [savedSearches, setSavedSearches] = useState<SavedSearch[]>([])
   const [isLoading, setIsLoading] = useState(false)
   const searchRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
   const navigate = useNavigate()
 
-  // Load saved searches and recent searches
+  // Load recent searches
   useEffect(() => {
-    loadSavedSearches()
     loadRecentSearches()
   }, [])
 
@@ -64,16 +55,6 @@ export function GlobalSearch() {
     document.addEventListener('keydown', handleKeyDown)
     return () => document.removeEventListener('keydown', handleKeyDown)
   }, [])
-
-  const loadSavedSearches = async () => {
-    const { data } = await supabase
-      .from('saved_searches')
-      .select('id,name,search_query,search_type,filters')
-      .order('created_at', { ascending: false })
-      .limit(5)
-
-    if (data) setSavedSearches(data as SavedSearch[])
-  }
 
   const loadRecentSearches = () => {
     const stored = localStorage.getItem('recentSearches')
@@ -121,16 +102,16 @@ export function GlobalSearch() {
         type: 'employee' as const,
         title: emp.name,
         subtitle: emp.profession,
-        metadata: `${emp.nationality} - ${(emp as { companies?: { name?: string } }).companies?.name || 'ط¨ط¯ظˆظ† ظ…ط¤ط³ط³ط©'}`,
+        metadata: `${emp.nationality} - ${(emp as { companies?: { name?: string } }).companies?.name || 'بدون مؤسسة'}`,
       }))
 
       const companyResults: SearchResult[] = (companies || []).map((comp) => ({
         id: comp.id,
         type: 'company' as const,
         title: comp.name,
-        subtitle: `ط§ظ„ط±ظ‚ظ… ط§ظ„ظ…ظˆط­ط¯: ${comp.unified_number || 'ط؛ظٹط± ظ…ط­ط¯ط¯'}`,
+        subtitle: `الرقم الموحد: ${comp.unified_number || 'غير محدد'}`,
         metadata: comp.social_insurance_number
-          ? `ط±ظ‚ظ… ط§ط´طھط±ط§ظƒ ط§ظ„طھط£ظ…ظٹظ†ط§طھ: ${comp.social_insurance_number}`
+          ? `رقم اشتراك التأمينات: ${comp.social_insurance_number}`
           : '',
       }))
 
@@ -138,7 +119,7 @@ export function GlobalSearch() {
       saveToRecentSearches(searchQuery)
     } catch (error) {
       logger.error('Search error:', error)
-      toast.error('ط­ط¯ط« ط®ط·ط£ ط£ط«ظ†ط§ط، ط§ظ„ط¨ط­ط«')
+      toast.error('حدث خطأ أثناء البحث')
     } finally {
       setIsLoading(false)
     }
@@ -149,7 +130,7 @@ export function GlobalSearch() {
     async (searchQuery: string) => {
       await performSearch(searchQuery)
     },
-    500 // طھط£ط®ظٹط± 500ms
+    500
   )
 
   const handleSearchChange = (value: string) => {
@@ -165,11 +146,6 @@ export function GlobalSearch() {
     }
     setIsOpen(false)
     setQuery('')
-  }
-
-  const handleSavedSearchClick = (savedSearch: SavedSearch) => {
-    setQuery(savedSearch.search_query)
-    performSearch(savedSearch.search_query)
   }
 
   const clearSearch = () => {
@@ -188,9 +164,9 @@ export function GlobalSearch() {
         className="flex items-center gap-2 px-4 py-2 text-sm text-neutral-600 hover:text-neutral-900 bg-white border border-neutral-300 rounded-lg hover:bg-neutral-50 hover:shadow-[0_2px_4px_-1px_rgba(0,0,0,0.2),0_4px_5px_0_rgba(0,0,0,0.14)] transition-all duration-200 ease-in-out w-64 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2"
       >
         <Search className="w-4 h-4 text-neutral-500" />
-        <span className="flex-1 text-right">ط¨ط­ط« ط´ط§ظ…ظ„...</span>
+        <span className="flex-1 text-right">بحث شامل...</span>
         <kbd className="pointer-events-none inline-flex h-5 select-none items-center gap-1 rounded border border-neutral-300 bg-neutral-50 px-1.5 font-mono text-[10px] font-medium text-neutral-600 shadow-sm">
-          <span className="text-xs">âŒک</span>K
+          <span className="text-xs">⌘</span>K
         </kbd>
       </button>
 
@@ -211,7 +187,7 @@ export function GlobalSearch() {
                   type="text"
                   value={query}
                   onChange={(e) => handleSearchChange(e.target.value)}
-                  placeholder="ط§ط¨ط­ط« ظپظٹ ط§ظ„ظ…ظˆط¸ظپظٹظ† ظˆط§ظ„ظ…ط¤ط³ط³ط§طھ..."
+                  placeholder="ابحث في الموظفين والمؤسسات..."
                   className="w-full pr-10 pl-10 py-2.5 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary transition-all duration-200"
                 />
                 {query && (
@@ -234,7 +210,7 @@ export function GlobalSearch() {
               {results.length > 0 && (
                 <div className="p-2">
                   <div className="text-xs font-semibold text-muted-foreground px-2 py-1">
-                    ظ†طھط§ط¦ط¬ ط§ظ„ط¨ط­ط« ({results.length})
+                    نتائج البحث ({results.length})
                   </div>
                   {results.map((result) => (
                     <button
@@ -252,7 +228,7 @@ export function GlobalSearch() {
                         )}
                       </div>
                       <div className="text-xs bg-primary/10 text-primary px-2 py-0.5 rounded">
-                        {result.type === 'employee' ? 'ظ…ظˆط¸ظپ' : 'ظ…ط¤ط³ط³ط©'}
+                        {result.type === 'employee' ? 'موظف' : 'مؤسسة'}
                       </div>
                     </button>
                   ))}
@@ -263,42 +239,19 @@ export function GlobalSearch() {
               {query && !isLoading && results.length === 0 && (
                 <div className="p-8 text-center text-muted-foreground">
                   <Search className="w-12 h-12 mx-auto mb-3 opacity-20" />
-                  <p>ظ„ط§ طھظˆط¬ط¯ ظ†طھط§ط¦ط¬ ظ„ظ€ "{query}"</p>
+                  <p>لا توجد نتائج لـ "{query}"</p>
                 </div>
               )}
 
-              {/* Recent & Saved Searches */}
+              {/* Recent Searches */}
               {!query && (
                 <div className="p-2">
-                  {/* Saved Searches */}
-                  {savedSearches.length > 0 && (
-                    <div className="mb-4">
-                      <div className="text-xs font-semibold text-muted-foreground px-2 py-1 flex items-center gap-2">
-                        <Star className="w-3 h-3" />
-                        ط§ظ„ط¨ط­ظˆط« ط§ظ„ظ…ط­ظپظˆط¸ط©
-                      </div>
-                      {savedSearches.map((saved) => (
-                        <button
-                          key={saved.id}
-                          onClick={() => handleSavedSearchClick(saved)}
-                          className="w-full text-right px-3 py-2 rounded-md hover:bg-accent transition-colors flex items-center gap-2"
-                        >
-                          <Star className="w-4 h-4 text-yellow-500" />
-                          <span className="flex-1">{saved.name}</span>
-                          <span className="text-xs text-muted-foreground">
-                            {saved.search_query}
-                          </span>
-                        </button>
-                      ))}
-                    </div>
-                  )}
-
                   {/* Recent Searches */}
                   {recentSearches.length > 0 && (
                     <div>
                       <div className="text-xs font-semibold text-muted-foreground px-2 py-1 flex items-center gap-2">
                         <Clock className="w-3 h-3" />
-                        ط¹ظ…ظ„ظٹط§طھ ط§ظ„ط¨ط­ط« ط§ظ„ط£ط®ظٹط±ط©
+                        عمليات البحث الأخيرة
                       </div>
                       {recentSearches.map((recent, idx) => (
                         <button
@@ -312,19 +265,6 @@ export function GlobalSearch() {
                       ))}
                     </div>
                   )}
-
-                  {/* Advanced Search Link */}
-                  <div className="mt-4 pt-4 border-t px-2">
-                    <button
-                      onClick={() => {
-                        navigate('/advanced-search')
-                        setIsOpen(false)
-                      }}
-                      className="w-full text-center py-2 text-sm text-primary hover:underline"
-                    >
-                      ط§ظ„ط¨ط­ط« ط§ظ„ظ…طھظ‚ط¯ظ… ظˆط§ظ„ظپظ„طھط±ط©
-                    </button>
-                  </div>
                 </div>
               )}
             </div>

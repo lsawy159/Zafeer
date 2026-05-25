@@ -227,7 +227,7 @@ export const BundleOptimizationGuide = {
     {
       type: 'lazy-loading',
       description: 'Heavy components like Reports and Charts should load on demand',
-      components: ['Reports', 'AdvancedSearch', 'ImportExport'],
+      components: ['Reports', 'ImportExport'],
     },
     {
       type: 'vendor-splitting',
