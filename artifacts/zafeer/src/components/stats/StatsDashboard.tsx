@@ -1,12 +1,10 @@
 import { useState, useEffect, useMemo } from 'react'
-import { Building2, Users, AlertTriangle, FileX, FileMinus, Bell, Info } from 'lucide-react'
+import { AlertTriangle, FileX, FileMinus, Bell, Info } from 'lucide-react'
 import { useAllCompanies } from '@/hooks/useCompanies'
 import { useAllEmployeesPage } from '@/hooks/useEmployees'
 import { DEFAULT_STATUS_THRESHOLDS, getStatusThresholds } from '@/utils/autoCompanyStatus'
 import { DEFAULT_EMPLOYEE_THRESHOLDS, getEmployeeNotificationThresholdsPublic } from '@/utils/employeeAlerts'
 import {
-  calculateCompanyStats,
-  calculateEmployeeStats,
   calculateCompanyAlertStats,
   calculateCompanyExpiredDocs,
   calculateCompanyMissingData,
@@ -21,13 +19,11 @@ import type {
   StatusThresholds,
   EmployeeThresholds,
   ModalState,
-  CompanyMissingDataResult,
 } from '@/types/statsTypes'
 import type { Company, EmployeeWithRelations } from '@/lib/supabase'
 import StatCard from './StatCard'
 import StatsDetailModal from './StatsDetailModal'
 
-// Detect if thresholds are defaults (not customized in DB)
 function isDefaultStatusThresholds(t: typeof DEFAULT_STATUS_THRESHOLDS): boolean {
   return t === DEFAULT_STATUS_THRESHOLDS
 }
@@ -46,79 +42,66 @@ export default function StatsDashboard() {
   const [modalState, setModalState] = useState<ModalState | null>(null)
   const [activeTab, setActiveTab] = useState<'companies' | 'employees'>('companies')
 
-  // today is stable per mount
   const today = useMemo(() => new Date(), [])
 
   useEffect(() => {
     let cancelled = false
-    Promise.all([
-      getStatusThresholds(),
-      getEmployeeNotificationThresholdsPublic(),
-    ]).then(([st, et]) => {
+    Promise.all([getStatusThresholds(), getEmployeeNotificationThresholdsPublic()]).then(([st, et]) => {
       if (!cancelled) {
         setStatusThresholds(st)
         setEmployeeThresholds(et)
         setThresholdsLoaded(true)
       }
     })
-    return () => { cancelled = true }
+    return () => {
+      cancelled = true
+    }
   }, [])
 
-  // Map to StatsRow types — single pass
-  const statsCompanies = useMemo((): StatsCompanyRow[] =>
-    companies.map(c => ({
-      id: c.id,
-      name: c.name,
-      unified_number: c.unified_number,
-      commercial_registration_expiry: c.commercial_registration_expiry ?? null,
-      ending_subscription_power_date: c.ending_subscription_power_date ?? null,
-      ending_subscription_moqeem_date: c.ending_subscription_moqeem_date ?? null,
-    })),
-  [companies])
+  const statsCompanies = useMemo(
+    (): StatsCompanyRow[] =>
+      companies.map(c => ({
+        id: c.id,
+        name: c.name,
+        unified_number: c.unified_number,
+        commercial_registration_expiry: c.commercial_registration_expiry ?? null,
+        ending_subscription_power_date: c.ending_subscription_power_date ?? null,
+        ending_subscription_moqeem_date: c.ending_subscription_moqeem_date ?? null,
+        labor_subscription_number: c.labor_subscription_number ?? null,
+        social_insurance_number: c.social_insurance_number ?? null,
+      })),
+    [companies]
+  )
 
-  const statsEmployees = useMemo((): StatsEmployeeRow[] =>
-    employees.map(e => ({
-      id: e.id,
-      name: e.name,
-      residence_expiry: e.residence_expiry ?? null,
-      contract_expiry: e.contract_expiry ?? null,
-      hired_worker_contract_expiry: e.hired_worker_contract_expiry ?? null,
-      health_insurance_expiry: e.health_insurance_expiry ?? null,
-      salary: e.salary ?? null,
-      profession: e.profession ?? null,
-      bank_account: e.bank_account ?? null,
-      residence_image_url: e.residence_image_url ?? null,
-      company_unified_number: e.company?.unified_number ?? null,
-      company_name: e.company?.name ?? null,
-      is_deleted: e.is_deleted ?? null,
-    })),
-  [employees])
+  const statsEmployees = useMemo(
+    (): StatsEmployeeRow[] =>
+      employees.map(e => ({
+        id: e.id,
+        name: e.name,
+        residence_expiry: e.residence_expiry ?? null,
+        contract_expiry: e.contract_expiry ?? null,
+        hired_worker_contract_expiry: e.hired_worker_contract_expiry ?? null,
+        health_insurance_expiry: e.health_insurance_expiry ?? null,
+        salary: e.salary ?? null,
+        profession: e.profession ?? null,
+        bank_account: e.bank_account ?? null,
+        residence_image_url: e.residence_image_url ?? null,
+        company_unified_number: e.company?.unified_number ?? null,
+        company_name: e.company?.name ?? null,
+        is_deleted: e.is_deleted ?? null,
+      })),
+    [employees]
+  )
 
-  // ── Section A ─ حالة المؤسسات
-  const companyStats = useMemo(() => calculateCompanyStats(statsCompanies, today), [statsCompanies, today])
-
-  // ── Section A' ─ حالة الموظفين
-  const employeeStats = useMemo(() => calculateEmployeeStats(statsEmployees, today), [statsEmployees, today])
-
-  // ── Section B ─ تنبيهات المؤسسات
   const companyAlerts = useMemo(
     () => calculateCompanyAlertStats(statsCompanies, statusThresholds as StatusThresholds, today),
     [statsCompanies, statusThresholds, today]
   )
 
-  // ── Section G ─ وثائق المؤسسات المنتهية
   const companyExpired = useMemo(() => calculateCompanyExpiredDocs(statsCompanies, today), [statsCompanies, today])
-
-  // ── Section F ─ بيانات المؤسسات الناقصة
   const companyMissing = useMemo(() => calculateCompanyMissingData(statsCompanies), [statsCompanies])
-
-  // ── Section C ─ وثائق الموظفين المنتهية
   const employeeExpired = useMemo(() => calculateEmployeeExpiredDocs(statsEmployees, today), [statsEmployees, today])
-
-  // ── Section D ─ بيانات الموظفين الناقصة
   const employeeMissing = useMemo(() => calculateEmployeeMissingDocs(statsEmployees), [statsEmployees])
-
-  // ── Section E ─ تنبيهات الموظفين
   const employeeAlerts = useMemo(
     () => calculateEmployeeAlertStats(statsEmployees, employeeThresholds as EmployeeThresholds, today),
     [statsEmployees, employeeThresholds, today]
@@ -126,14 +109,12 @@ export default function StatsDashboard() {
 
   const dataLoading = companiesLoading || employeesLoading
 
-  // Helpers for opening modal
   const openCompanyModal = (title: string, predicate: (row: StatsCompanyRow, today: Date) => boolean) =>
     setModalState({ title, type: 'company', companyPredicate: predicate })
 
   const openEmployeeModal = (title: string, predicate: (row: StatsEmployeeRow, today: Date) => boolean) =>
     setModalState({ title, type: 'employee', employeePredicate: predicate })
 
-  // Pre-filter entities for modal — lazy, only when modal opens
   const modalCompanies = useMemo((): Company[] => {
     if (!modalState || modalState.type !== 'company' || !modalState.companyPredicate) return []
     const pred = modalState.companyPredicate
@@ -190,69 +171,12 @@ export default function StatsDashboard() {
         </button>
       </div>
 
-      {/* ── Section A — حالة المؤسسات ────────────────── */}
-      <section className={activeTab === 'companies' ? '' : 'hidden'}>
-        <SectionHeader icon={<Building2 size={16} />} title="حالة المؤسسات" />
-        <div className="grid grid-cols-3 gap-3">
-          <StatCard
-            label="المؤسسات السليمة"
-            count={companyStats.healthy}
-            color="green"
-            loading={dataLoading}
-            onClick={() => openCompanyModal('المؤسسات السليمة', predicates.isHealthyCompany)}
-          />
-          <StatCard
-            label="المؤسسات المتضررة"
-            count={companyStats.damaged}
-            color="red"
-            loading={dataLoading}
-            onClick={() => openCompanyModal('المؤسسات المتضررة', predicates.isDamagedCompany)}
-          />
-          <StatCard
-            label="المؤسسات الناقصة"
-            count={companyStats.missing}
-            color="gray"
-            loading={dataLoading}
-            onClick={() => openCompanyModal('المؤسسات الناقصة', predicates.isMissingCompany)}
-          />
-        </div>
-      </section>
-
-      {/* ── Section A' — حالة الموظفين ───────────────── */}
-      <section className={activeTab === 'employees' ? '' : 'hidden'}>
-        <SectionHeader icon={<Users size={16} />} title="حالة الموظفين" />
-        <div className="grid grid-cols-3 gap-3">
-          <StatCard
-            label="الموظفون السليمون"
-            count={employeeStats.healthy}
-            color="green"
-            loading={dataLoading}
-            onClick={() => openEmployeeModal('الموظفون السليمون', predicates.isHealthyEmployee)}
-          />
-          <StatCard
-            label="الموظفون المتضررون"
-            count={employeeStats.damaged}
-            color="red"
-            loading={dataLoading}
-            onClick={() => openEmployeeModal('الموظفون المتضررون', predicates.isDamagedEmployee)}
-          />
-          <StatCard
-            label="الموظفون الناقصون"
-            count={employeeStats.missing}
-            color="gray"
-            loading={dataLoading}
-            onClick={() => openEmployeeModal('الموظفون الناقصون', predicates.isMissingEmployee)}
-          />
-        </div>
-      </section>
-
-      {/* ── Section B — تنبيهات المؤسسات ─────────────── */}
+      {/* ── Section B ─ تنبيهات المؤسسات ─────────────── */}
       <section className={activeTab === 'companies' ? '' : 'hidden'}>
         <SectionHeader
           icon={<Bell size={16} />}
           title="تنبيهات المؤسسات"
-          subtitle="السليمة فقط"
-          tooltip="تحسب المؤسسات السليمة (لديها جميع التواريخ الثلاثة وكلها غير منتهية) التي ستنتهي قريباً. المؤسسات الناقصة والمتضررة تظهر في أقسام أخرى."
+          tooltip="تشمل كل المؤسسات التي لديها وثيقة ستنتهي قريباً بغض النظر عن حالتها العامة. الوثائق المنتهية فعلاً لا تُحتسب."
         />
         <div className="grid grid-cols-3 gap-3">
           <StatCard
@@ -282,38 +206,38 @@ export default function StatsDashboard() {
         </div>
       </section>
 
-      {/* ── Section G — وثائق المؤسسات المنتهية ─────── */}
+      {/* ── Section G ─ وثائق المؤسسات المنتهية ───────── */}
       <section className={activeTab === 'companies' ? '' : 'hidden'}>
         <SectionHeader icon={<FileX size={16} />} title="وثائق المؤسسات المنتهية" />
         <div className="grid grid-cols-3 gap-3">
           <StatCard
-            label="سجل تجاري منتهٍ"
+            label="سجل تجاري منتهي"
             count={companyExpired.commercial_reg}
             color="red"
             loading={dataLoading}
-            onClick={() => openCompanyModal('سجل تجاري منتهٍ', predicates.hasExpiredCommercialReg)}
+            onClick={() => openCompanyModal('سجل تجاري منتهي', predicates.hasExpiredCommercialReg)}
           />
           <StatCard
-            label="اشتراك قوى منتهٍ"
+            label="اشتراك قوى منتهي"
             count={companyExpired.power_subscription}
             color="red"
             loading={dataLoading}
-            onClick={() => openCompanyModal('اشتراك قوى منتهٍ', predicates.hasExpiredPowerDate)}
+            onClick={() => openCompanyModal('اشتراك قوى منتهي', predicates.hasExpiredPowerDate)}
           />
           <StatCard
-            label="اشتراك مقيم منتهٍ"
+            label="اشتراك مقيم منتهي"
             count={companyExpired.moqeem_subscription}
             color="red"
             loading={dataLoading}
-            onClick={() => openCompanyModal('اشتراك مقيم منتهٍ', predicates.hasExpiredMoqeemDate)}
+            onClick={() => openCompanyModal('اشتراك مقيم منتهي', predicates.hasExpiredMoqeemDate)}
           />
         </div>
       </section>
 
-      {/* ── Section F — بيانات المؤسسات الناقصة ─────── */}
+      {/* ── Section F ─ بيانات المؤسسات الناقصة ─────── */}
       <section className={activeTab === 'companies' ? '' : 'hidden'}>
         <SectionHeader icon={<FileMinus size={16} />} title="بيانات المؤسسات الناقصة" />
-        <div className="grid grid-cols-3 gap-3">
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
           <StatCard
             label="تاريخ السجل التجاري ناقص"
             count={companyMissing.commercial_reg}
@@ -335,19 +259,33 @@ export default function StatsDashboard() {
             loading={dataLoading}
             onClick={() => openCompanyModal('مؤسسات بدون اشتراك مقيم', predicates.isMissingMoqeemDate)}
           />
+          <StatCard
+            label="رقم اشتراك قوى ناقص"
+            count={companyMissing.labor_subscription}
+            color="gray"
+            loading={dataLoading}
+            onClick={() => openCompanyModal('مؤسسات بدون رقم اشتراك قوى', predicates.isMissingLaborSubscription)}
+          />
+          <StatCard
+            label="رقم اشتراك التأمينات ناقص"
+            count={companyMissing.social_insurance}
+            color="gray"
+            loading={dataLoading}
+            onClick={() => openCompanyModal('مؤسسات بدون رقم اشتراك التأمينات', predicates.isMissingInsuranceNumber)}
+          />
         </div>
       </section>
 
-      {/* ── Section C — وثائق الموظفين المنتهية ─────── */}
+      {/* ── Section C ─ وثائق الموظفين المنتهية ───────── */}
       <section className={activeTab === 'employees' ? '' : 'hidden'}>
         <SectionHeader icon={<FileX size={16} />} title="وثائق الموظفين المنتهية" />
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
           <StatCard
-            label="إقامات منتهية"
+            label="إقامة منتهية"
             count={employeeExpired.residence}
             color="red"
             loading={dataLoading}
-            onClick={() => openEmployeeModal('إقامات منتهية', predicates.hasExpiredResidence)}
+            onClick={() => openEmployeeModal('إقامة منتهية', predicates.hasExpiredResidence)}
           />
           <StatCard
             label="عقود منتهية"
@@ -364,43 +302,88 @@ export default function StatsDashboard() {
             onClick={() => openEmployeeModal('عقود أجير منتهية', predicates.hasExpiredHiredWorkerContract)}
           />
           <StatCard
-            label="تأمين صحي منتهٍ"
+            label="تأمين صحي منته"
             count={employeeExpired.health_insurance}
             color="red"
             loading={dataLoading}
-            onClick={() => openEmployeeModal('تأمين صحي منتهٍ', predicates.hasExpiredHealthInsurance)}
+            onClick={() => openEmployeeModal('تأمين صحي منته', predicates.hasExpiredHealthInsurance)}
           />
         </div>
       </section>
 
-      {/* ── Section D — بيانات الموظفين الناقصة ────── */}
+      {/* ── Section D ─ بيانات الموظفين الناقصة ───────── */}
       <section className={activeTab === 'employees' ? '' : 'hidden'}>
         <SectionHeader icon={<FileMinus size={16} />} title="بيانات الموظفين الناقصة" />
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-          <StatCard label="تاريخ إقامة ناقص" count={employeeMissing.residence} color="gray" loading={dataLoading}
-            onClick={() => openEmployeeModal('تاريخ إقامة ناقص', predicates.isMissingResidenceDate)} />
-          <StatCard label="تاريخ عقد عمل ناقص" count={employeeMissing.contract} color="gray" loading={dataLoading}
-            onClick={() => openEmployeeModal('تاريخ عقد عمل ناقص', predicates.isMissingContractDate)} />
-          <StatCard label="تاريخ عقد أجير ناقص" count={employeeMissing.hired_worker_contract} color="gray" loading={dataLoading}
-            onClick={() => openEmployeeModal('تاريخ عقد أجير ناقص', predicates.isMissingHiredWorkerContractDate)} />
-          <StatCard label="تاريخ تأمين صحي ناقص" count={employeeMissing.health_insurance} color="gray" loading={dataLoading}
-            onClick={() => openEmployeeModal('تاريخ تأمين صحي ناقص', predicates.isMissingHealthInsuranceDate)} />
-          <StatCard label="راتب ناقص أو صفر" count={employeeMissing.salary} color="gray" loading={dataLoading}
-            onClick={() => openEmployeeModal('راتب ناقص أو صفر', predicates.isMissingSalary)} />
-          <StatCard label="مهنة ناقصة" count={employeeMissing.profession} color="gray" loading={dataLoading}
-            onClick={() => openEmployeeModal('مهنة ناقصة', predicates.isMissingProfession)} />
-          <StatCard label="حساب بنكي ناقص" count={employeeMissing.bank_account} color="gray" loading={dataLoading}
-            onClick={() => openEmployeeModal('حساب بنكي ناقص', predicates.isMissingBankAccount)} />
-          <StatCard label="صورة إقامة ناقصة" count={employeeMissing.residence_image} color="gray" loading={dataLoading}
-            onClick={() => openEmployeeModal('صورة إقامة ناقصة', predicates.isMissingResidenceImage)} />
-          <StatCard label="رقم موحد ناقص" count={employeeMissing.company_unified_number} color="gray" loading={dataLoading}
-            onClick={() => openEmployeeModal('رقم موحد ناقص', predicates.isMissingCompanyUnifiedNumber)} />
+          <StatCard
+            label="تاريخ إقامة ناقص"
+            count={employeeMissing.residence}
+            color="gray"
+            loading={dataLoading}
+            onClick={() => openEmployeeModal('تاريخ إقامة ناقص', predicates.isMissingResidenceDate)}
+          />
+          <StatCard
+            label="تاريخ عقد عمل ناقص"
+            count={employeeMissing.contract}
+            color="gray"
+            loading={dataLoading}
+            onClick={() => openEmployeeModal('تاريخ عقد عمل ناقص', predicates.isMissingContractDate)}
+          />
+          <StatCard
+            label="تاريخ عقد أجير ناقص"
+            count={employeeMissing.hired_worker_contract}
+            color="gray"
+            loading={dataLoading}
+            onClick={() => openEmployeeModal('تاريخ عقد أجير ناقص', predicates.isMissingHiredWorkerContractDate)}
+          />
+          <StatCard
+            label="تاريخ تأمين صحي ناقص"
+            count={employeeMissing.health_insurance}
+            color="gray"
+            loading={dataLoading}
+            onClick={() => openEmployeeModal('تاريخ تأمين صحي ناقص', predicates.isMissingHealthInsuranceDate)}
+          />
+          <StatCard
+            label="راتب ناقص أو صفر"
+            count={employeeMissing.salary}
+            color="gray"
+            loading={dataLoading}
+            onClick={() => openEmployeeModal('راتب ناقص أو صفر', predicates.isMissingSalary)}
+          />
+          <StatCard
+            label="مهنة ناقصة"
+            count={employeeMissing.profession}
+            color="gray"
+            loading={dataLoading}
+            onClick={() => openEmployeeModal('مهنة ناقصة', predicates.isMissingProfession)}
+          />
+          <StatCard
+            label="حساب بنكي ناقص"
+            count={employeeMissing.bank_account}
+            color="gray"
+            loading={dataLoading}
+            onClick={() => openEmployeeModal('حساب بنكي ناقص', predicates.isMissingBankAccount)}
+          />
+          <StatCard
+            label="صورة إقامة ناقصة"
+            count={employeeMissing.residence_image}
+            color="gray"
+            loading={dataLoading}
+            onClick={() => openEmployeeModal('صورة إقامة ناقصة', predicates.isMissingResidenceImage)}
+          />
+          <StatCard
+            label="رقم موحد ناقص"
+            count={employeeMissing.company_unified_number}
+            color="gray"
+            loading={dataLoading}
+            onClick={() => openEmployeeModal('رقم موحد ناقص', predicates.isMissingCompanyUnifiedNumber)}
+          />
         </div>
       </section>
 
-      {/* ── Section E — تنبيهات الموظفين ────────────── */}
+      {/* ── Section E ─ تنبيهات الموظفين ────────────── */}
       <section className={activeTab === 'employees' ? '' : 'hidden'}>
-        <SectionHeader icon={<AlertTriangle size={16} />} title="تنبيهات الموظفين" subtitle="الموظفون السليمون فقط" />
+        <SectionHeader icon={<AlertTriangle size={16} />} title="تنبيهات الموظفين" />
         <div className="grid grid-cols-3 gap-3">
           <StatCard
             label="طارئ"
@@ -429,7 +412,6 @@ export default function StatsDashboard() {
         </div>
       </section>
 
-      {/* ── StatsDetailModal ──────────────────────────── */}
       {modalState && (
         <StatsDetailModal
           title={modalState.title}
@@ -443,10 +425,6 @@ export default function StatsDashboard() {
     </div>
   )
 }
-
-// ──────────────────────────────────────────────
-// Section header helper
-// ──────────────────────────────────────────────
 
 function SectionHeader({
   icon,

@@ -1,4 +1,4 @@
-// Pure calculation functions for stats dashboard — no React/supabase/date-fns imports
+// Pure calculation functions for stats dashboard - no React/supabase/date-fns imports
 // Day math: Math.floor convention matching differenceInDays from date-fns
 
 import type {
@@ -6,8 +6,6 @@ import type {
   StatsEmployeeRow,
   CompanyClassification,
   EmployeeClassification,
-  CompanyStatsResult,
-  EmployeeStatsResult,
   CompanyAlertStatsResult,
   CompanyExpiredDocsResult,
   CompanyMissingDataResult,
@@ -18,7 +16,7 @@ import type {
   EmployeeThresholds,
 } from '@/types/statsTypes'
 
-// days remaining until expiry — negative means expired
+// days remaining until expiry - negative means expired
 function daysBetween(today: Date, expiryStr: string | null | undefined): number | null {
   if (!expiryStr) return null
   const expiry = new Date(expiryStr)
@@ -36,10 +34,11 @@ function isDateExpired(d: string | null | undefined, today: Date): boolean {
   return days !== null && days < 0
 }
 
-// ──────────────────────────────────────────────
-// Company classification (single source of truth)
-// ──────────────────────────────────────────────
+function isStringMissing(value: string | null | undefined): boolean {
+  return !value || value.trim() === ''
+}
 
+// Classification source of truth
 export function classifyCompany(row: StatsCompanyRow, today: Date): CompanyClassification {
   const dates = [
     row.commercial_registration_expiry,
@@ -51,12 +50,7 @@ export function classifyCompany(row: StatsCompanyRow, today: Date): CompanyClass
   return 'healthy'
 }
 
-// ──────────────────────────────────────────────
-// Employee classification (date fields only)
-// ──────────────────────────────────────────────
-
 export function classifyEmployee(row: StatsEmployeeRow, today: Date): EmployeeClassification {
-  // classification uses ONLY the 4 date fields, not salary/profession/etc
   const dates = [
     row.residence_expiry,
     row.contract_expiry,
@@ -72,50 +66,12 @@ function isActive(row: StatsEmployeeRow): boolean {
   return row.is_deleted !== true
 }
 
-// ──────────────────────────────────────────────
-// Section A — حالة المؤسسات
-// ──────────────────────────────────────────────
-
-export function calculateCompanyStats(rows: StatsCompanyRow[], today: Date): CompanyStatsResult {
-  let healthy = 0, damaged = 0, missing = 0
-  for (const row of rows) {
-    const c = classifyCompany(row, today)
-    if (c === 'healthy') healthy++
-    else if (c === 'damaged') damaged++
-    else missing++
-  }
-  return { healthy, damaged, missing, total: rows.length }
-}
-
-// ──────────────────────────────────────────────
-// Section A' — حالة الموظفين
-// ──────────────────────────────────────────────
-
-export function calculateEmployeeStats(rows: StatsEmployeeRow[], today: Date): EmployeeStatsResult {
-  let healthy = 0, damaged = 0, missing = 0
-  for (const row of rows) {
-    if (!isActive(row)) continue
-    const c = classifyEmployee(row, today)
-    if (c === 'healthy') healthy++
-    else if (c === 'damaged') damaged++
-    else missing++
-  }
-  const total = healthy + damaged + missing
-  return { healthy, damaged, missing, total }
-}
-
-// ──────────────────────────────────────────────
-// Section B — تنبيهات المؤسسات (سليمة فقط)
-// ──────────────────────────────────────────────
-
+// Section B - company alerts
 function getCompanyAlertLevel(
   row: StatsCompanyRow,
   thresholds: StatusThresholds,
   today: Date
 ): 'urgent' | 'high' | 'medium' | null {
-  // only healthy companies are alert candidates
-  if (classifyCompany(row, today) !== 'healthy') return null
-
   const checks = [
     { date: row.commercial_registration_expiry, u: thresholds.commercial_reg_urgent_days, h: thresholds.commercial_reg_high_days, m: thresholds.commercial_reg_medium_days },
     { date: row.ending_subscription_power_date, u: thresholds.power_subscription_urgent_days, h: thresholds.power_subscription_high_days, m: thresholds.power_subscription_medium_days },
@@ -126,15 +82,16 @@ function getCompanyAlertLevel(
 
   for (const { date, u, h, m } of checks) {
     const days = daysBetween(today, date)
-    if (days === null || days <= 0) continue // missing or expired (shouldn't happen for healthy, but guard)
+    if (days === null || days <= 0) continue
     let level: 'urgent' | 'high' | 'medium' | null = null
     if (days <= u) level = 'urgent'
     else if (days <= h) level = 'high'
     else if (days <= m) level = 'medium'
-    if (level === 'urgent') return 'urgent' // short-circuit
+    if (level === 'urgent') return 'urgent'
     if (level === 'high') topLevel = 'high'
     else if (level === 'medium' && topLevel !== 'high') topLevel = 'medium'
   }
+
   return topLevel
 }
 
@@ -153,10 +110,7 @@ export function calculateCompanyAlertStats(
   return { urgent, high, medium }
 }
 
-// ──────────────────────────────────────────────
-// Section C — وثائق الموظفين المنتهية
-// ──────────────────────────────────────────────
-
+// Section C - employee expired docs
 export function calculateEmployeeExpiredDocs(
   rows: StatsEmployeeRow[],
   today: Date
@@ -172,10 +126,7 @@ export function calculateEmployeeExpiredDocs(
   return { residence, contract, hired_worker_contract, health_insurance }
 }
 
-// ──────────────────────────────────────────────
-// Section G — وثائق المؤسسات المنتهية
-// ──────────────────────────────────────────────
-
+// Section G - company expired docs
 export function calculateCompanyExpiredDocs(
   rows: StatsCompanyRow[],
   today: Date
@@ -189,28 +140,37 @@ export function calculateCompanyExpiredDocs(
   return { commercial_reg, power_subscription, moqeem_subscription }
 }
 
-// ──────────────────────────────────────────────
-// Section F — بيانات المؤسسات الناقصة
-// ──────────────────────────────────────────────
-
+// Section F - company missing data
 export function calculateCompanyMissingData(rows: StatsCompanyRow[]): CompanyMissingDataResult {
   let commercial_reg = 0, power_subscription = 0, moqeem_subscription = 0, any_missing = 0
+  let labor_subscription = 0, social_insurance = 0
+
   for (const row of rows) {
     const missingComm = isDateMissing(row.commercial_registration_expiry)
     const missingPower = isDateMissing(row.ending_subscription_power_date)
     const missingMoqeem = isDateMissing(row.ending_subscription_moqeem_date)
+    const missingLabor = isStringMissing(row.labor_subscription_number)
+    const missingInsurance = isStringMissing(row.social_insurance_number)
+
     if (missingComm) commercial_reg++
     if (missingPower) power_subscription++
     if (missingMoqeem) moqeem_subscription++
-    if (missingComm || missingPower || missingMoqeem) any_missing++
+    if (missingLabor) labor_subscription++
+    if (missingInsurance) social_insurance++
+    if (missingComm || missingPower || missingMoqeem || missingLabor || missingInsurance) any_missing++
   }
-  return { commercial_reg, power_subscription, moqeem_subscription, any_missing }
+
+  return {
+    commercial_reg,
+    power_subscription,
+    moqeem_subscription,
+    labor_subscription,
+    social_insurance,
+    any_missing,
+  }
 }
 
-// ──────────────────────────────────────────────
-// Section D — بيانات الموظفين الناقصة
-// ──────────────────────────────────────────────
-
+// Section D - employee missing docs
 export function calculateEmployeeMissingDocs(rows: StatsEmployeeRow[]): EmployeeMissingDocsResult {
   let residence = 0, contract = 0, hired_worker_contract = 0, health_insurance = 0
   let salary = 0, profession = 0, bank_account = 0, residence_image = 0, company_unified_number = 0
@@ -220,28 +180,32 @@ export function calculateEmployeeMissingDocs(rows: StatsEmployeeRow[]): Employee
     if (isDateMissing(row.contract_expiry)) contract++
     if (isDateMissing(row.hired_worker_contract_expiry)) hired_worker_contract++
     if (isDateMissing(row.health_insurance_expiry)) health_insurance++
-    // salary: null OR 0 counts as missing
     if (row.salary === null || row.salary === undefined || row.salary === 0) salary++
-    if (!row.profession || row.profession.trim() === '') profession++
-    if (!row.bank_account || row.bank_account.trim() === '') bank_account++
-    if (!row.residence_image_url || row.residence_image_url.trim() === '') residence_image++
+    if (isStringMissing(row.profession)) profession++
+    if (isStringMissing(row.bank_account)) bank_account++
+    if (isStringMissing(row.residence_image_url)) residence_image++
     if (row.company_unified_number === null || row.company_unified_number === undefined) company_unified_number++
   }
-  return { residence, contract, hired_worker_contract, health_insurance, salary, profession, bank_account, residence_image, company_unified_number }
+  return {
+    residence,
+    contract,
+    hired_worker_contract,
+    health_insurance,
+    salary,
+    profession,
+    bank_account,
+    residence_image,
+    company_unified_number,
+  }
 }
 
-// ──────────────────────────────────────────────
-// Section E — تنبيهات الموظفين (سليمون فقط)
-// ──────────────────────────────────────────────
-
+// Section E - employee alerts
 function getEmployeeAlertLevel(
   row: StatsEmployeeRow,
   thresholds: EmployeeThresholds,
   today: Date
 ): 'urgent' | 'high' | 'medium' | null {
   if (!isActive(row)) return null
-  // only healthy employees (all 4 dates present and not expired) are alert candidates
-  if (classifyEmployee(row, today) !== 'healthy') return null
 
   const checks = [
     { date: row.residence_expiry, u: thresholds.residence_urgent_days, h: thresholds.residence_high_days, m: thresholds.residence_medium_days },
@@ -280,17 +244,9 @@ export function calculateEmployeeAlertStats(
   return { urgent, high, medium }
 }
 
-// ──────────────────────────────────────────────
-// Predicate functions — used by StatsDetailModal
+// Predicate functions - used by StatsDetailModal
 // to filter entities at click time (lazy)
-// ──────────────────────────────────────────────
-
 export const predicates = {
-  // Company classification
-  isHealthyCompany: (row: StatsCompanyRow, today: Date) => classifyCompany(row, today) === 'healthy',
-  isDamagedCompany: (row: StatsCompanyRow, today: Date) => classifyCompany(row, today) === 'damaged',
-  isMissingCompany: (row: StatsCompanyRow, today: Date) => classifyCompany(row, today) === 'missing',
-
   // Company expired docs (Section G)
   hasExpiredCommercialReg: (row: StatsCompanyRow, today: Date) => isDateExpired(row.commercial_registration_expiry, today),
   hasExpiredPowerDate: (row: StatsCompanyRow, today: Date) => isDateExpired(row.ending_subscription_power_date, today),
@@ -300,6 +256,8 @@ export const predicates = {
   isMissingCommercialReg: (row: StatsCompanyRow) => isDateMissing(row.commercial_registration_expiry),
   isMissingPowerDate: (row: StatsCompanyRow) => isDateMissing(row.ending_subscription_power_date),
   isMissingMoqeemDate: (row: StatsCompanyRow) => isDateMissing(row.ending_subscription_moqeem_date),
+  isMissingLaborSubscription: (row: StatsCompanyRow) => isStringMissing(row.labor_subscription_number),
+  isMissingInsuranceNumber: (row: StatsCompanyRow) => isStringMissing(row.social_insurance_number),
 
   // Company alerts
   isUrgentAlertCompany: (row: StatsCompanyRow, thresholds: StatusThresholds, today: Date) =>
@@ -309,28 +267,23 @@ export const predicates = {
   isMediumAlertCompany: (row: StatsCompanyRow, thresholds: StatusThresholds, today: Date) =>
     getCompanyAlertLevel(row, thresholds, today) === 'medium',
 
-  // Employee classification
-  isHealthyEmployee: (row: StatsEmployeeRow, today: Date) => isActive(row) && classifyEmployee(row, today) === 'healthy',
-  isDamagedEmployee: (row: StatsEmployeeRow, today: Date) => isActive(row) && classifyEmployee(row, today) === 'damaged',
-  isMissingEmployee: (row: StatsEmployeeRow, today: Date) => isActive(row) && classifyEmployee(row, today) === 'missing',
-
   // Employee expired docs (Section C)
   hasExpiredResidence: (row: StatsEmployeeRow, today: Date) => isActive(row) && isDateExpired(row.residence_expiry, today),
   hasExpiredContract: (row: StatsEmployeeRow, today: Date) => isActive(row) && isDateExpired(row.contract_expiry, today),
   hasExpiredHiredWorkerContract: (row: StatsEmployeeRow, today: Date) => isActive(row) && isDateExpired(row.hired_worker_contract_expiry, today),
   hasExpiredHealthInsurance: (row: StatsEmployeeRow, today: Date) => isActive(row) && isDateExpired(row.health_insurance_expiry, today),
 
-  // Employee missing date fields (Section D — date-specific)
+  // Employee missing date fields (Section D - date-specific)
   isMissingResidenceDate: (row: StatsEmployeeRow) => isActive(row) && isDateMissing(row.residence_expiry),
   isMissingContractDate: (row: StatsEmployeeRow) => isActive(row) && isDateMissing(row.contract_expiry),
   isMissingHiredWorkerContractDate: (row: StatsEmployeeRow) => isActive(row) && isDateMissing(row.hired_worker_contract_expiry),
   isMissingHealthInsuranceDate: (row: StatsEmployeeRow) => isActive(row) && isDateMissing(row.health_insurance_expiry),
 
-  // Employee missing data fields (Section D — non-date)
+  // Employee missing data fields (Section D - non-date)
   isMissingSalary: (row: StatsEmployeeRow) => isActive(row) && (row.salary === null || row.salary === undefined || row.salary === 0),
-  isMissingProfession: (row: StatsEmployeeRow) => isActive(row) && (!row.profession || row.profession.trim() === ''),
-  isMissingBankAccount: (row: StatsEmployeeRow) => isActive(row) && (!row.bank_account || row.bank_account.trim() === ''),
-  isMissingResidenceImage: (row: StatsEmployeeRow) => isActive(row) && (!row.residence_image_url || row.residence_image_url.trim() === ''),
+  isMissingProfession: (row: StatsEmployeeRow) => isActive(row) && isStringMissing(row.profession),
+  isMissingBankAccount: (row: StatsEmployeeRow) => isActive(row) && isStringMissing(row.bank_account),
+  isMissingResidenceImage: (row: StatsEmployeeRow) => isActive(row) && isStringMissing(row.residence_image_url),
   isMissingCompanyUnifiedNumber: (row: StatsEmployeeRow) => isActive(row) && (row.company_unified_number === null || row.company_unified_number === undefined),
 
   // Employee alerts
