@@ -631,9 +631,13 @@ export function enrichEmployeeAlertsWithCompanyData(
  */
 export function filterEmployeeAlertsByPriority(
   alerts: EmployeeAlert[],
-  priority: EmployeeAlert['priority']
+  priorities: EmployeeAlert['priority'][]
 ): EmployeeAlert[] {
-  return alerts.filter((alert) => alert.priority === priority)
+  if (priorities.length === 0) {
+    return alerts
+  }
+
+  return alerts.filter((alert) => priorities.includes(alert.priority))
 }
 
 /**

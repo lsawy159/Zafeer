@@ -14,12 +14,40 @@ import { PageHeader } from '@/components/ui/PageHeader'
 import { FilterBar } from '@/components/ui/FilterBar'
 import { SearchInput } from '@/components/ui/SearchInput'
 import { Button } from '@/components/ui/Button'
+import {
+  DropdownMenu,
+  DropdownMenuCheckboxItem,
+  DropdownMenuContent,
+  DropdownMenuTrigger,
+} from '@/components/ui/DropdownMenu'
 import { useDeleteAdminProject, ConflictResponse } from '@workspace/api-client-react'
 
 type SortField = 'name' | 'created_at' | 'status' | 'employee_count' | 'total_salaries'
 type SortDirection = 'asc' | 'desc'
 type ProjectStatus = 'all' | 'active' | 'inactive' | 'completed'
 type ActiveTab = 'list' | 'statistics'
+
+const PROJECT_STATUS_OPTIONS: Array<{ value: Exclude<ProjectStatus, 'all'>; label: string }> = [
+  { value: 'active', label: 'نشط' },
+  { value: 'inactive', label: 'متوقف' },
+  { value: 'completed', label: 'مكتمل' },
+]
+
+const PROJECT_STATUS_LABELS: Record<Exclude<ProjectStatus, 'all'>, string> = {
+  active: 'نشط',
+  inactive: 'متوقف',
+  completed: 'مكتمل',
+}
+
+const compareNullableNumbers = (
+  left: number | null | undefined,
+  right: number | null | undefined
+) => {
+  if (left == null && right == null) return 0
+  if (left == null) return 1
+  if (right == null) return -1
+  return left - right
+}
 
 export default function Projects() {
   const { canView, canCreate } = usePermissions()
@@ -43,7 +71,7 @@ export default function Projects() {
 
   // Filter states
   const [searchTerm, setSearchTerm] = useState('')
-  const [statusFilter, setStatusFilter] = useState<ProjectStatus>('all')
+  const [statusFilter, setStatusFilter] = useState<ProjectStatus[]>([])
 
   // Sort states
   const [sortField, setSortField] = useState<SortField>('name')
@@ -122,8 +150,10 @@ export default function Projects() {
     }
 
     // Apply status filter
-    if (statusFilter !== 'all') {
-      filtered = filtered.filter((project) => project.status === statusFilter)
+    if (statusFilter.length > 0) {
+      filtered = filtered.filter((project) =>
+        statusFilter.includes((project.status ?? '') as Exclude<ProjectStatus, 'all'>)
+      )
     }
 
     // Apply sort
@@ -141,10 +171,10 @@ export default function Projects() {
           comparison = (a.status || '').localeCompare(b.status || '', 'ar')
           break
         case 'employee_count':
-          comparison = a.employee_count - b.employee_count
+          comparison = compareNullableNumbers(a.employee_count, b.employee_count)
           break
         case 'total_salaries':
-          comparison = a.total_salaries - b.total_salaries
+          comparison = compareNullableNumbers(a.total_salaries, b.total_salaries)
           break
         default:
           comparison = 0
@@ -327,8 +357,15 @@ export default function Projects() {
 
                 <div className="min-w-[150px]">
                   <select
+                    multiple
                     value={statusFilter}
-                    onChange={(e) => setStatusFilter(e.target.value as ProjectStatus)}
+                    onChange={(e) =>
+                      setStatusFilter(
+                        Array.from(e.currentTarget.selectedOptions)
+                          .map((option) => option.value)
+                          .filter((value): value is Exclude<ProjectStatus, 'all'> => value !== 'all')
+                      )
+                    }
                     className="focus-ring-brand w-full rounded-lg border border-input bg-surface px-4 py-2 text-sm transition-[border-color,box-shadow] duration-[var(--motion-fast)] ease-[var(--ease-out)]"
                   >
                     <option value="all">جميع الحالات</option>
@@ -365,7 +402,7 @@ export default function Projects() {
                 <div className="text-center py-12 bg-surface rounded-lg border border-neutral-200">
                   <FolderKanban className="w-16 h-16 text-neutral-400 mx-auto mb-4" />
                   <p className="text-neutral-600">لا توجد مشاريع</p>
-                  {searchTerm || statusFilter !== 'all' ? (
+                  {searchTerm || statusFilter.length > 0 ? (
                     <p className="text-sm text-neutral-500 mt-2">جرب تغيير الفلاتر</p>
                   ) : (
                     canCreate('projects') && (

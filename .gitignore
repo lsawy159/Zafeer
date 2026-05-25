@@ -116,3 +116,6 @@ artifacts/zafeer/.impeccable/
 
 # ===== Brand handoff assets (local-only — brand guidelines, design tokens, reference HTML) =====
 /handoff/
+
+# ===== Local drafts (never upload to GitHub) =====
+/draftsss/

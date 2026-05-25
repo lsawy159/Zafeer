@@ -7,7 +7,8 @@ import {
   SelectItem,
   SelectValue,
 } from '@/components/ui/Select'
-import type { useAdvancedSearchFilters } from '@/hooks/useAdvancedSearchFilters'
+import { MultiSelectDropdown } from '@/components/ui/MultiSelectDropdown'
+import type { useAdvancedSearchFilters } from '@/hooks/useAdvancedSearchFiltersPhase10'
 import type { ResidenceStatus, ContractStatus, CommercialRegStatus } from '@/hooks/advancedSearchTypes'
 
 interface AdvancedSearchFiltersModalProps {
@@ -90,19 +91,12 @@ export default function AdvancedSearchFiltersModal({
                       <label className="block text-xs font-semibold text-gray-700 mb-1">
                         الجنسية
                       </label>
-                      <Select value={selectedNationality} onValueChange={setSelectedNationality}>
-                        <SelectTrigger className="w-full">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="all">الكل</SelectItem>
-                          {nationalities.map((nat) => (
-                            <SelectItem key={nat} value={nat}>
-                              {nat}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                      <MultiSelectDropdown
+                        options={nationalities.map((nat) => ({ value: nat, label: nat }))}
+                        selected={selectedNationality}
+                        onChange={setSelectedNationality}
+                        placeholder="جميع الجنسيات"
+                      />
                     </div>
 
                     <div>
@@ -131,19 +125,12 @@ export default function AdvancedSearchFiltersModal({
                       <label className="block text-xs font-semibold text-gray-700 mb-1">
                         المهنة
                       </label>
-                      <Select value={selectedProfession} onValueChange={setSelectedProfession}>
-                        <SelectTrigger className="w-full">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="all">الكل</SelectItem>
-                          {professions.map((prof) => (
-                            <SelectItem key={prof} value={prof}>
-                              {prof}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                      <MultiSelectDropdown
+                        options={professions.map((prof) => ({ value: prof, label: prof }))}
+                        selected={selectedProfession}
+                        onChange={setSelectedProfession}
+                        placeholder="جميع المهن"
+                      />
                     </div>
 
                     <div>

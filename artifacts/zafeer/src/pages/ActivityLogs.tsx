@@ -30,9 +30,80 @@ import {
   generateActivityDescription,
 } from '@/components/activity/activityLogHelpers'
 
-type ActionFilter = 'all' | 'create' | 'update' | 'delete' | 'login' | 'logout'
-type EntityFilter = 'all' | 'employee' | 'company' | 'user' | 'settings'
+type ActionFilterValue = 'create' | 'update' | 'delete' | 'login'
+type EntityFilterValue = 'employee' | 'company' | 'user' | 'settings'
+type ActionFilter = ActionFilterValue[]
+type EntityFilter = EntityFilterValue[]
 type DateFilter = 'all' | 'today' | 'week' | 'month'
+type ActivitySortField = 'created_at' | 'action' | 'entity_type'
+type SortDirection = 'asc' | 'desc'
+
+function compareActivityLogs(
+  left: ActivityLog,
+  right: ActivityLog,
+  sortField: ActivitySortField,
+  sortDirection: SortDirection
+) {
+  const directionFactor = sortDirection === 'asc' ? 1 : -1
+
+  if (sortField === 'created_at') {
+    const leftCreatedAt = left.created_at ? new Date(left.created_at).getTime() : null
+    const rightCreatedAt = right.created_at ? new Date(right.created_at).getTime() : null
+
+    if (leftCreatedAt === null && rightCreatedAt === null) return 0
+    if (leftCreatedAt === null) return 1
+    if (rightCreatedAt === null) return -1
+    if (leftCreatedAt === rightCreatedAt) return 0
+
+    return (leftCreatedAt - rightCreatedAt) * directionFactor
+  }
+
+  const leftValue = (sortField === 'action' ? left.action : left.entity_type ?? '').trim()
+  const rightValue = (sortField === 'action' ? right.action : right.entity_type ?? '').trim()
+
+  if (!leftValue && !rightValue) return 0
+  if (!leftValue) return 1
+  if (!rightValue) return -1
+
+  return leftValue.localeCompare(rightValue, 'ar', { sensitivity: 'base' }) * directionFactor
+}
+
+function matchesActionFilter(action: string, filters: ActionFilter) {
+  if (filters.length === 0) return true
+
+  const actionLower = action.toLowerCase()
+
+  return filters.some((filter) => {
+    const filterLower = filter.toLowerCase()
+    return (
+      actionLower === filterLower ||
+      actionLower.includes(filterLower) ||
+      (filterLower === 'create' &&
+        (actionLower.includes('create') ||
+          actionLower.includes('إنشاء') ||
+          actionLower.includes('add') ||
+          actionLower.includes('إضافة'))) ||
+      (filterLower === 'update' &&
+        (actionLower.includes('update') ||
+          actionLower.includes('edit') ||
+          actionLower.includes('تحديث') ||
+          actionLower.includes('تعديل'))) ||
+      (filterLower === 'delete' &&
+        (actionLower.includes('delete') || actionLower.includes('remove') || actionLower.includes('حذف'))) ||
+      (filterLower === 'login' &&
+        (actionLower.includes('login') ||
+          actionLower.includes('logout') ||
+          actionLower.includes('دخول') ||
+          actionLower.includes('خروج')))
+    )
+  })
+}
+
+function matchesEntityFilter(entityType: string | undefined, filters: EntityFilter) {
+  if (filters.length === 0) return true
+  const entityTypeLower = entityType?.toLowerCase() ?? ''
+  return filters.includes(entityTypeLower as EntityFilterValue)
+}
 
 export default function ActivityLogs({ embedded = false }: { embedded?: boolean } = {}) {
   const { user } = useAuth()
@@ -43,9 +114,11 @@ export default function ActivityLogs({ embedded = false }: { embedded?: boolean 
   const [loading, setLoading] = useState(true)
   const [usersMap, setUsersMap] = useState<Map<string, User>>(new Map())
   const [searchTerm, setSearchTerm] = useState('')
-  const [actionFilter, setActionFilter] = useState<ActionFilter>('all')
-  const [entityFilter, setEntityFilter] = useState<EntityFilter>('all')
+  const [actionFilter, setActionFilter] = useState<ActionFilter>([])
+  const [entityFilter, setEntityFilter] = useState<EntityFilter>([])
   const [dateFilter, setDateFilter] = useState<DateFilter>('all')
+  const [sortField, setSortField] = useState<ActivitySortField>('created_at')
+  const [sortDirection, setSortDirection] = useState<SortDirection>('desc')
   const [selectedLog, setSelectedLog] = useState<ActivityLog | null>(null)
   const [selectedLogIds, setSelectedLogIds] = useState<Set<number>>(new Set())
   const [showDeleteModal, setShowDeleteModal] = useState(false)
@@ -65,7 +138,7 @@ export default function ActivityLogs({ embedded = false }: { embedded?: boolean 
   // Reset to first page when filters change
   useEffect(() => {
     setCurrentPage(1)
-  }, [debouncedSearchTerm, actionFilter, entityFilter, dateFilter])
+  }, [debouncedSearchTerm, actionFilter, entityFilter, dateFilter, sortField, sortDirection])
 
   // إغلاق بطاقة التفاصيل عند الضغط على Escape
   useEffect(() => {
@@ -83,7 +156,7 @@ export default function ActivityLogs({ embedded = false }: { embedded?: boolean 
   // التحقق من صلاحية العرض بدون إرجاع مبكر لتعزيز ترتيب الـ Hooks
   const unauthorized = !canView('activityLogs')
 
-  const loadLogs = async () => {
+  async function loadLogs() {
     setLoading(true)
     try {
       const { data, error } = await supabase
@@ -151,70 +224,38 @@ export default function ActivityLogs({ embedded = false }: { embedded?: boolean 
         }
 
         // فلتر العملية - تحسين المطابقة
-        if (actionFilter !== 'all') {
-          const actionLower = log.action.toLowerCase()
-          const filterLower = actionFilter.toLowerCase()
+        if (!matchesActionFilter(log.action, actionFilter)) return false
+        if (!matchesEntityFilter(log.entity_type, entityFilter)) return false
 
-          // مطابقة دقيقة بدلاً من includes
-          const isMatch =
-            actionLower === filterLower || // مطابقة دقيقة
-            actionLower.includes(filterLower) || // احتواء
-            // معالجة حالات خاصة للعربية والإنجليزية
-            (filterLower === 'create' &&
-              (actionLower.includes('create') ||
-                actionLower.includes('إنشاء') ||
-                actionLower.includes('add') ||
-                actionLower.includes('إضافة'))) ||
-            (filterLower === 'update' &&
-              (actionLower.includes('update') ||
-                actionLower.includes('edit') ||
-                actionLower.includes('تحديث') ||
-                actionLower.includes('تعديل'))) ||
-            (filterLower === 'delete' &&
-              (actionLower.includes('delete') ||
-                actionLower.includes('remove') ||
-                actionLower.includes('حذف'))) ||
-            (filterLower === 'login' &&
-              (actionLower.includes('login') ||
-                actionLower.includes('logout') ||
-                actionLower.includes('دخول') ||
-                actionLower.includes('خروج')))
-
-          if (!isMatch) return false
-        }
-
-        // فلتر نوع الكيان - تصحيح حساسية الأحرف
-        if (entityFilter !== 'all') {
-          const entityTypeLower = log.entity_type?.toLowerCase() || ''
-          const entityFilterLower = entityFilter.toLowerCase()
-
-          if (entityTypeLower !== entityFilterLower) return false
-        }
-
-        // فلتر التاريخ - تحسين المنطق
         if (dateFilter !== 'all') {
-          const logDate = new Date(log.created_at)
-          const now = new Date()
-          const today = new Date(now.getFullYear(), now.getMonth(), now.getDate())
-          const tomorrow = new Date(today.getTime() + 24 * 60 * 60 * 1000)
-          const weekAgo = new Date(today.getTime() - 7 * 24 * 60 * 60 * 1000)
-          const monthAgo = new Date(today.getTime() - 30 * 24 * 60 * 60 * 1000)
+          if (dateFilter === 'today') {
+            if (new Date(log.created_at).toDateString() !== new Date().toDateString()) return false
+          }
 
-          if (dateFilter === 'today' && (logDate < today || logDate >= tomorrow)) return false
-          if (dateFilter === 'week' && logDate < weekAgo) return false
-          if (dateFilter === 'month' && logDate < monthAgo) return false
+          if (dateFilter === 'week') {
+            const now = new Date()
+            const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+            const weekAgo = new Date(todayStart.getTime() - 7 * 24 * 60 * 60 * 1000)
+            if (new Date(log.created_at) < weekAgo) return false
+          }
+
+          if (dateFilter === 'month') {
+            const now = new Date()
+            const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+            const monthAgo = new Date(todayStart.getTime() - 30 * 24 * 60 * 60 * 1000)
+            if (new Date(log.created_at) < monthAgo) return false
+          }
         }
 
         return true
-      }),
-    [logs, debouncedSearchTerm, actionFilter, entityFilter, dateFilter]
+      }).sort((left, right) => compareActivityLogs(left, right, sortField, sortDirection)),
+    [logs, debouncedSearchTerm, actionFilter, entityFilter, dateFilter, sortField, sortDirection]
   )
 
   // حساب الإحصائيات (باستخدام filteredLogs) مع حساب التواريخ داخل useMemo
   const todayLogs = useMemo(() => {
-    const now = new Date()
-    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate())
-    return filteredLogs.filter((log) => new Date(log.created_at) >= today)
+    const today = new Date().toDateString()
+    return filteredLogs.filter((log) => new Date(log.created_at).toDateString() === today)
   }, [filteredLogs])
   const weekLogs = useMemo(() => {
     const now = new Date()
@@ -704,19 +745,30 @@ export default function ActivityLogs({ embedded = false }: { embedded?: boolean 
             searchTerm={searchTerm}
             onSearchTermChange={(v) => setSearchTerm(v)}
             actionFilter={actionFilter}
-            onActionFilterChange={(v) => setActionFilter(v as ActionFilter)}
+            onActionFilterChange={(v) => setActionFilter(v)}
             entityFilter={entityFilter}
-            onEntityFilterChange={(v) => setEntityFilter(v as EntityFilter)}
+            onEntityFilterChange={(v) => setEntityFilter(v)}
             dateFilter={dateFilter}
             onDateFilterChange={(v) => setDateFilter(v as DateFilter)}
+            sortField={sortField}
+            onSortFieldChange={(v) => setSortField(v as ActivitySortField)}
+            sortDirection={sortDirection}
+            onSortDirectionChange={(v) => setSortDirection(v as SortDirection)}
             hasActiveFilters={Boolean(
-              searchTerm || actionFilter !== 'all' || entityFilter !== 'all' || dateFilter !== 'all'
+              searchTerm ||
+                actionFilter.length > 0 ||
+                entityFilter.length > 0 ||
+                dateFilter !== 'all' ||
+                sortField !== 'created_at' ||
+                sortDirection !== 'desc'
             )}
             onReset={() => {
               setSearchTerm('')
-              setActionFilter('all')
-              setEntityFilter('all')
+              setActionFilter([])
+              setEntityFilter([])
               setDateFilter('all')
+              setSortField('created_at')
+              setSortDirection('desc')
               setCurrentPage(1)
             }}
           />

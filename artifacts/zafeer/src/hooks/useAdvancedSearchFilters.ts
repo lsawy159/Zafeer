@@ -26,6 +26,12 @@ export type {
   ViewMode,
 } from '@/hooks/advancedSearchTypes'
 
+const normalizeSavedFilterValue = (value: string | string[] | undefined): string => {
+  if (!value) return 'all'
+  if (Array.isArray(value)) return value[0] || 'all'
+  return value || 'all'
+}
+
 // Helper: get company name from employee
 export const getCompanyName = (
   emp: EmployeeType & { companies?: CompanyType | CompanyType[] }
@@ -146,9 +152,9 @@ export function useAdvancedSearchFilters({ userId }: UseAdvancedSearchFiltersOpt
       companies: data.companies,
       employeeSearchQuery,
       companySearchQuery,
-      selectedNationality,
+      selectedNationality: selectedNationality === 'all' ? [] : [selectedNationality],
       selectedCompanyFilter,
-      selectedProfession,
+      selectedProfession: selectedProfession === 'all' ? [] : [selectedProfession],
       selectedProject,
       residenceStatus,
       contractStatus,
@@ -176,6 +182,7 @@ export function useAdvancedSearchFilters({ userId }: UseAdvancedSearchFiltersOpt
       companyCreatedEndDate,
       notesSearch,
       notesFilter,
+      sortDirection: 'asc',
     })
     setFilteredEmployees(emps)
     setFilteredCompanies(comps)
@@ -286,9 +293,9 @@ export function useAdvancedSearchFilters({ userId }: UseAdvancedSearchFiltersOpt
     }
     if (saved.filters) {
       if (savedType === 'employees') {
-        setSelectedNationality(saved.filters.nationality || 'all')
+        setSelectedNationality(normalizeSavedFilterValue(saved.filters.nationality))
         setSelectedCompanyFilter(saved.filters.company || 'all')
-        setSelectedProfession(saved.filters.profession || 'all')
+        setSelectedProfession(normalizeSavedFilterValue(saved.filters.profession))
         setSelectedProject(saved.filters.project || 'all')
         setResidenceStatus((saved.filters.residenceStatus as ResidenceStatus) || 'all')
         setContractStatus((saved.filters.contractStatus as ContractStatus) || 'all')

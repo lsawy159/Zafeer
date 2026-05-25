@@ -62,6 +62,16 @@ export function useAdvancedSearchData(opts: UseAdvancedSearchDataOptions) {
   const [professions, setProfessions] = useState<string[]>([])
   const [projects, setProjects] = useState<string[]>([])
 
+  const employeeSelect =
+    'id,company_id,name,profession,nationality,birth_date,phone,passport_number,residence_number,joining_date,contract_expiry,residence_expiry,project_name,bank_account,residence_image_url,salary,health_insurance_expiry,additional_fields,created_at,updated_at,notes,hired_worker_contract_expiry,project_id,is_deleted,deleted_at, companies(name)'
+
+  const normalizeSavedFilterArray = (value: string | string[] | undefined): string[] => {
+    if (!value) return []
+    if (Array.isArray(value)) return value.filter(Boolean)
+    if (value === 'all') return []
+    return [value]
+  }
+
   const loadData = useCallback(async () => {
     setIsLoading(true)
     try {

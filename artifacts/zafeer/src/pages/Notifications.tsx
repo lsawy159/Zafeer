@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
 import { supabase, Notification, Company, Employee } from '@/lib/supabase'
 import { SnoozeModal } from '@/components/notifications/SnoozeModal'
 import CompanyDetailModal from '@/components/companies/CompanyDetailModal'
@@ -35,6 +35,7 @@ import { toast } from 'sonner'
 import ConfirmationDialog from '@/components/dialogs/ConfirmationDialog'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
+import { MultiSelectDropdown } from '@/components/ui/MultiSelectDropdown'
 import {
   Select,
   SelectContent,
@@ -42,9 +43,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/Select'
+import { normalizeArabic } from '@/utils/textUtils'
 
 type FilterType = 'all' | 'unread' | 'read'
-type PriorityFilter = 'all' | 'urgent' | 'high' | 'medium' | 'low'
+type PriorityFilter = 'urgent' | 'high' | 'medium' | 'low'
+type NotificationSortField = 'created_at' | 'priority' | 'entity_type'
+type SortDirection = 'asc' | 'desc'
 type ActiveTab = 'notifications' | 'csv-report' | 'deferred'
 
 type ExpiryNotificationRow = {
@@ -70,6 +74,28 @@ const EXPIRY_NOTIFICATION_TYPES = [
 ]
 
 const CHUNK_SIZE = 400
+const PRIORITY_OPTIONS: Array<{ value: PriorityFilter; label: string }> = [
+  { value: 'urgent', label: 'طارئ' },
+  { value: 'high', label: 'عاجل' },
+  { value: 'medium', label: 'متوسط' },
+  { value: 'low', label: 'منخفض' },
+]
+const NOTIFICATION_SORT_FIELDS: Array<{ value: NotificationSortField; label: string }> = [
+  { value: 'created_at', label: 'تاريخ الإنشاء' },
+  { value: 'priority', label: 'الأولوية' },
+  { value: 'entity_type', label: 'نوع الكيان' },
+]
+const SORT_DIRECTIONS: Array<{ value: SortDirection; label: string }> = [
+  { value: 'desc', label: 'تنازلي' },
+  { value: 'asc', label: 'تصاعدي' },
+]
+const PRIORITY_ORDER: Record<Notification['priority'], number> = {
+  critical: 5,
+  urgent: 4,
+  high: 3,
+  medium: 2,
+  low: 1,
+}
 
 function getNotificationKey(row: Pick<ExpiryNotificationRow, 'entity_type' | 'entity_id' | 'type'>) {
   return `${row.entity_type}:${row.entity_id}:${row.type}`
@@ -106,6 +132,48 @@ function countUniqueNotificationEntities(items: Notification[]) {
   return new Set(items.map((item) => `${item.entity_type}:${item.entity_id}`)).size
 }
 
+function getNotificationSearchText(notification: Notification) {
+  return normalizeArabic(
+    [notification.title, notification.message ?? '', notification.type, notification.entity_type ?? '']
+      .join(' ')
+      .trim()
+  ).toLowerCase()
+}
+
+function compareNotifications(
+  left: Notification,
+  right: Notification,
+  sortField: NotificationSortField,
+  sortDirection: SortDirection
+) {
+  const directionFactor = sortDirection === 'asc' ? 1 : -1
+
+  if (sortField === 'created_at') {
+    const leftCreatedAt = left.created_at ? new Date(left.created_at).getTime() : null
+    const rightCreatedAt = right.created_at ? new Date(right.created_at).getTime() : null
+
+    if (leftCreatedAt === null && rightCreatedAt === null) return 0
+    if (leftCreatedAt === null) return 1
+    if (rightCreatedAt === null) return -1
+    if (leftCreatedAt === rightCreatedAt) return 0
+
+    return (leftCreatedAt - rightCreatedAt) * directionFactor
+  }
+
+  if (sortField === 'priority') {
+    return (PRIORITY_ORDER[left.priority] - PRIORITY_ORDER[right.priority]) * directionFactor
+  }
+
+  const leftEntityType = (left.entity_type ?? '').trim()
+  const rightEntityType = (right.entity_type ?? '').trim()
+
+  if (!leftEntityType && !rightEntityType) return 0
+  if (!leftEntityType) return 1
+  if (!rightEntityType) return -1
+
+  return leftEntityType.localeCompare(rightEntityType, 'ar', { sensitivity: 'base' }) * directionFactor
+}
+
 export default function Notifications() {
   const { user } = useAuth()
   const { canView } = usePermissions()
@@ -114,7 +182,9 @@ export default function Notifications() {
   const [notifications, setNotifications] = useState<Notification[]>([])
   const [loading, setLoading] = useState(true)
   const [filterType, setFilterType] = useState<FilterType>('all')
-  const [priorityFilter, setPriorityFilter] = useState<PriorityFilter>('all')
+  const [priorityFilter, setPriorityFilter] = useState<PriorityFilter[]>([])
+  const [notificationSortField, setNotificationSortField] = useState<NotificationSortField>('created_at')
+  const [notificationSortDirection, setNotificationSortDirection] = useState<SortDirection>('desc')
   const [searchTerm, setSearchTerm] = useState('')
   const [generating, setGenerating] = useState(false)
   const [activeTab, setActiveTab] = useState<ActiveTab>('notifications')
@@ -513,32 +583,42 @@ export default function Notifications() {
     }
   }
 
-  const deferredNotifications = notifications.filter(isDeferredNotification)
+  const normalizedSearchTerm = normalizeArabic(searchTerm).trim().toLowerCase()
 
-  const filteredNotifications = notifications.filter((notification) => {
-    // استثناء المؤجلة والمنتظرة snooze من التبويب النشط
-    if (isDeferredNotification(notification)) return false
+  const filteredNotifications = useMemo(() => {
+    const filtered = notifications.filter((notification) => {
+      // استثناء المؤجلة والمنتظرة snooze من التبويب النشط
+      if (isDeferredNotification(notification)) return false
 
-    if (filterType === 'read' && !notification.is_read) return false
-    if (filterType === 'unread' && notification.is_read) return false
+      if (filterType === 'read' && !notification.is_read) return false
+      if (filterType === 'unread' && notification.is_read) return false
 
-    if (priorityFilter === 'urgent' && !['critical', 'urgent'].includes(notification.priority)) {
-      return false
-    }
-    if (priorityFilter !== 'all' && priorityFilter !== 'urgent' && notification.priority !== priorityFilter) {
-      return false
-    }
+      if (priorityFilter.length > 0) {
+        const normalizedPriority =
+          notification.priority === 'critical' ? 'urgent' : notification.priority
+        if (!priorityFilter.includes(normalizedPriority as PriorityFilter)) return false
+      }
 
-    if (searchTerm) {
-      const search = searchTerm.toLowerCase()
-      return (
-        notification.title.toLowerCase().includes(search) ||
-        (notification.message ?? '').toLowerCase().includes(search)
-      )
-    }
+      if (normalizedSearchTerm) {
+        const searchText = getNotificationSearchText(notification)
+        return searchText.includes(normalizedSearchTerm)
+      }
 
-    return true
-  })
+      return true
+    })
+
+    return [...filtered].sort((left, right) =>
+      compareNotifications(left, right, notificationSortField, notificationSortDirection)
+    )
+  }, [filterType, notificationSortDirection, notificationSortField, notifications, priorityFilter, normalizedSearchTerm])
+
+  const deferredNotifications = useMemo(() => {
+    const filtered = notifications.filter(isDeferredNotification)
+
+    return [...filtered].sort((left, right) =>
+      compareNotifications(left, right, notificationSortField, notificationSortDirection)
+    )
+  }, [notifications, notificationSortDirection, notificationSortField])
 
   const activeCountableNotifications = notifications.filter(
     (notification) =>
@@ -745,7 +825,7 @@ export default function Notifications() {
 
         {/* Filters and Actions */}
         <div className="app-panel mb-6 p-4">
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-5">
             {/* Search */}
             <div className="md:col-span-2">
               <div className="relative">
@@ -779,19 +859,47 @@ export default function Notifications() {
 
             {/* Filter by Priority */}
             <div>
+              <MultiSelectDropdown
+                options={PRIORITY_OPTIONS}
+                selected={priorityFilter}
+                onChange={(selected) => setPriorityFilter(selected as PriorityFilter[])}
+                placeholder="جميع الأولويات"
+              />
+            </div>
+
+            {/* Sort */}
+            <div>
               <Select
-                value={priorityFilter}
-                onValueChange={(value) => setPriorityFilter(value as PriorityFilter)}
+                value={notificationSortField}
+                onValueChange={(value) => setNotificationSortField(value as NotificationSortField)}
               >
                 <SelectTrigger>
-                  <SelectValue placeholder="الأولوية" />
+                  <SelectValue placeholder="الترتيب" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">جميع الأولويات</SelectItem>
-                  <SelectItem value="urgent">طارئ فقط</SelectItem>
-                  <SelectItem value="high">عاجل فقط</SelectItem>
-                  <SelectItem value="medium">متوسط فقط</SelectItem>
-                  <SelectItem value="low">منخفض فقط</SelectItem>
+                  {NOTIFICATION_SORT_FIELDS.map((field) => (
+                    <SelectItem key={field.value} value={field.value}>
+                      {field.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div>
+              <Select
+                value={notificationSortDirection}
+                onValueChange={(value) => setNotificationSortDirection(value as SortDirection)}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="الاتجاه" />
+                </SelectTrigger>
+                <SelectContent>
+                  {SORT_DIRECTIONS.map((direction) => (
+                    <SelectItem key={direction.value} value={direction.value}>
+                      {direction.label}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>
