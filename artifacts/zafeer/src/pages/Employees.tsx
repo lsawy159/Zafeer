@@ -216,27 +216,32 @@ export default function Employees() {
   }, [queryClient])
 
   // Filter + sort state (extracted from component for clean separation)
-  const {
-    searchTerm, setSearchTerm,
-    residenceNumberSearch, setResidenceNumberSearch,
-    companyFilter, setCompanyFilter,
-    nationalityFilter, setNationalityFilter,
-    professionFilter, setProfessionFilter,
-    projectFilter, setProjectFilter,
-    contractFilter, setContractFilter,
-    hiredWorkerContractFilter, setHiredWorkerContractFilter,
-    residenceFilter, setResidenceFilter,
-    healthInsuranceFilter, setHealthInsuranceFilter,
-    showAlertsOnly, setShowAlertsOnly,
-    sortField, setSortField,
-    sortDirection, setSortDirection,
-    filteredEmployees,
-    sortedAndFilteredEmployees,
-    activeFiltersCount,
-    hasActiveFilters,
-    clearFilters: clearFilterState,
-    applyUrlFilter,
-  } = useEmployeeFilters({ employees, colorThresholds })
+   const {
+     searchTerm, setSearchTerm,
+     residenceNumberSearch, setResidenceNumberSearch,
+     companyFilter, setCompanyFilter,
+     nationalityFilter, setNationalityFilter,
+     professionFilter, setProfessionFilter,
+     projectFilter, setProjectFilter,
+     contractFilter, setContractFilter,
+     hiredWorkerContractFilter, setHiredWorkerContractFilter,
+     residenceFilter, setResidenceFilter,
+     healthInsuranceFilter, setHealthInsuranceFilter,
+     contractStatusDocFilter, setContractStatusDocFilter,
+     hiredWorkerContractStatusDocFilter, setHiredWorkerContractStatusDocFilter,
+     residenceStatusDocFilter, setResidenceStatusDocFilter,
+     healthInsuranceStatusDocFilter, setHealthInsuranceStatusDocFilter,
+     hasAlertFilter, setHasAlertFilter,
+     showAlertsOnly, setShowAlertsOnly,
+     sortField, setSortField,
+     sortDirection, setSortDirection,
+     filteredEmployees,
+     sortedAndFilteredEmployees,
+     activeFiltersCount,
+     hasActiveFilters,
+     clearFilters: clearFilterState,
+     applyUrlFilter,
+   } = useEmployeeFilters({ employees, colorThresholds })
 
   // تحميل إعدادات الألوان مع الاستماع لتحديثات الإعدادات
   useEffect(() => {
@@ -269,18 +274,18 @@ export default function Employees() {
   }, [hasViewPermission])
 
 
-  // Handle company filter from URL after companies are loaded
-  useEffect(() => {
-    const params = new URLSearchParams(location.search)
-    const companyId = params.get('company')
-    if (companyId && companiesWithIds.length > 0) {
-      const company = companiesWithIds.find((c) => c.id === companyId)
-      if (company && companyFilter !== company.name) {
-        setCompanyFilter(company.name)
-      }
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [companiesWithIds, location.search])
+   // Handle company filter from URL after companies are loaded
+   useEffect(() => {
+     const params = new URLSearchParams(location.search)
+     const companyId = params.get('company')
+     if (companyId && companiesWithIds.length > 0) {
+       const company = companiesWithIds.find((c) => c.id === companyId)
+       if (company) {
+         setCompanyFilter([company.name])
+       }
+     }
+     // eslint-disable-next-line react-hooks/exhaustive-deps
+   }, [companiesWithIds, location.search])
 
   // Deep-link: ?open=EMPLOYEE_ID → open employee card directly
   const openEmployeeHandledRef = useRef(false)
@@ -310,6 +315,11 @@ export default function Employees() {
     hiredWorkerContractFilter,
     residenceFilter,
     healthInsuranceFilter,
+    contractStatusDocFilter,
+    hiredWorkerContractStatusDocFilter,
+    residenceStatusDocFilter,
+    healthInsuranceStatusDocFilter,
+    hasAlertFilter,
     showAlertsOnly,
   ]) // تحديث: insuranceFilter → healthInsuranceFilter
 
@@ -1038,35 +1048,45 @@ export default function Employees() {
           />
         </FilterBar>
 
-        {/* Filters Modal */}
-        {showFiltersModal && (
-          <EmployeesFiltersModal
-            activeFiltersCount={activeFiltersCount}
-            colorThresholds={colorThresholds}
-            companies={companiesWithIds}
-            companyFilter={companyFilter}
-            setCompanyFilter={setCompanyFilter}
-            projects={projects}
-            projectFilter={projectFilter}
-            setProjectFilter={setProjectFilter}
-            nationalities={nationalities}
-            nationalityFilter={nationalityFilter}
-            setNationalityFilter={setNationalityFilter}
-            professions={professions}
-            professionFilter={professionFilter}
-            setProfessionFilter={setProfessionFilter}
-            contractFilter={contractFilter}
-            setContractFilter={setContractFilter}
-            hiredWorkerContractFilter={hiredWorkerContractFilter}
-            setHiredWorkerContractFilter={setHiredWorkerContractFilter}
-            residenceFilter={residenceFilter}
-            setResidenceFilter={setResidenceFilter}
-            healthInsuranceFilter={healthInsuranceFilter}
-            setHealthInsuranceFilter={setHealthInsuranceFilter}
-            clearFilters={clearFilters}
-            onClose={() => setShowFiltersModal(false)}
-          />
-        )}
+         {/* Filters Modal */}
+         {showFiltersModal && (
+           <EmployeesFiltersModal
+             activeFiltersCount={activeFiltersCount}
+             colorThresholds={colorThresholds}
+             companies={companiesWithIds}
+             companyFilter={companyFilter}
+             setCompanyFilter={setCompanyFilter}
+             projects={projects}
+             projectFilter={projectFilter}
+             setProjectFilter={setProjectFilter}
+             nationalities={nationalities}
+             nationalityFilter={nationalityFilter}
+             setNationalityFilter={setNationalityFilter}
+             professions={professions}
+             professionFilter={professionFilter}
+             setProfessionFilter={setProfessionFilter}
+             contractFilter={contractFilter}
+             setContractFilter={setContractFilter}
+             hiredWorkerContractFilter={hiredWorkerContractFilter}
+             setHiredWorkerContractFilter={setHiredWorkerContractFilter}
+             residenceFilter={residenceFilter}
+             setResidenceFilter={setResidenceFilter}
+             healthInsuranceFilter={healthInsuranceFilter}
+             setHealthInsuranceFilter={setHealthInsuranceFilter}
+             contractStatusDocFilter={contractStatusDocFilter}
+             setContractStatusDocFilter={setContractStatusDocFilter}
+             hiredWorkerContractStatusDocFilter={hiredWorkerContractStatusDocFilter}
+             setHiredWorkerContractStatusDocFilter={setHiredWorkerContractStatusDocFilter}
+             residenceStatusDocFilter={residenceStatusDocFilter}
+             setResidenceStatusDocFilter={setResidenceStatusDocFilter}
+             healthInsuranceStatusDocFilter={healthInsuranceStatusDocFilter}
+             setHealthInsuranceStatusDocFilter={setHealthInsuranceStatusDocFilter}
+             hasAlertFilter={hasAlertFilter}
+             setHasAlertFilter={setHasAlertFilter}
+             clearFilters={clearFilters}
+             onClose={() => setShowFiltersModal(false)}
+           />
+         )}
 
         {/* Bulk Actions Bar */}
         {selectedEmployees.size > 0 && (

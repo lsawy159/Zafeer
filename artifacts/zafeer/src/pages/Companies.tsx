@@ -55,15 +55,97 @@ type SortField =
   | 'power_subscription_status'
   | 'moqeem_subscription_status'
 type SortDirection = 'asc' | 'desc'
-type CommercialRegStatus = 'all' | 'expired' | 'expiring_soon' | 'valid'
-type PowerSubscriptionStatus = 'all' | 'expired' | 'expiring_soon' | 'valid'
-type MoqeemSubscriptionStatus = 'all' | 'expired' | 'expiring_soon' | 'valid'
+type CommercialRegStatus = 'expired' | 'expiring_soon' | 'valid'
+type PowerSubscriptionStatus = 'expired' | 'expiring_soon' | 'valid'
+type MoqeemSubscriptionStatus = 'expired' | 'expiring_soon' | 'valid'
 
-type EmployeeCountFilter = 'all' | '1' | '2' | '3' | '4+'
 type AvailableSlotsFilter = 'all' | '0' | '1' | '2' | '3' | '4+'
-type DateRange = 'all' | 'last_month' | 'last_3_months' | 'last_year' | 'custom'
-type ExemptionsFilter = 'all' | 'تم الاعفاء' | 'لم يتم الاعفاء' | 'أخرى'
+type ExemptionsFilter = string
 type ViewMode = 'grid' | 'table'
+
+function normalizeArrayFilter(value: unknown): string[] {
+  if (Array.isArray(value)) {
+    return value.filter((item): item is string => typeof item === 'string')
+  }
+  if (typeof value === 'string' && value !== '' && value !== 'all') {
+    return [value]
+  }
+  return []
+}
+
+function normalizeNumberFilter(value: unknown): number | null {
+  if (typeof value === 'number' && Number.isFinite(value)) {
+    return value
+  }
+
+  if (typeof value === 'string' && value.trim() !== '') {
+    const parsed = Number(value)
+    return Number.isFinite(parsed) ? parsed : null
+  }
+
+  return null
+}
+
+function normalizeDateFilter(value: unknown): string | null {
+  if (typeof value === 'string' && value.trim() !== '') {
+    return value
+  }
+
+  return null
+}
+
+function getTodayInputValue(date = new Date()) {
+  const year = date.getFullYear()
+  const month = String(date.getMonth() + 1).padStart(2, '0')
+  const day = String(date.getDate()).padStart(2, '0')
+  return `${year}-${month}-${day}`
+}
+
+function getLegacyCreatedAtRange(dateRangeFilter: unknown): [string | null, string | null] {
+  if (typeof dateRangeFilter !== 'string') {
+    return [null, null]
+  }
+
+  const today = new Date()
+  const todayInput = getTodayInputValue(today)
+
+  if (dateRangeFilter === 'last_month') {
+    return [
+      getTodayInputValue(new Date(today.getFullYear(), today.getMonth() - 1, today.getDate())),
+      todayInput,
+    ]
+  }
+
+  if (dateRangeFilter === 'last_3_months') {
+    return [
+      getTodayInputValue(new Date(today.getFullYear(), today.getMonth() - 3, today.getDate())),
+      todayInput,
+    ]
+  }
+
+  if (dateRangeFilter === 'last_year') {
+    return [
+      getTodayInputValue(new Date(today.getFullYear() - 1, today.getMonth(), today.getDate())),
+      todayInput,
+    ]
+  }
+
+  return [null, null]
+}
+
+function compareSortableValues(
+  aValue: string | number | null,
+  bValue: string | number | null,
+  direction: SortDirection
+) {
+  if (aValue === null && bValue === null) return 0
+  if (aValue === null) return 1
+  if (bValue === null) return -1
+  if (aValue === bValue) return 0
+
+  const comparison = aValue > bValue ? 1 : -1
+  return direction === 'asc' ? comparison : -comparison
+}
 
 export default function Companies() {
   const { canView, canCreate, canEdit, canDelete } = usePermissions()
@@ -89,18 +171,16 @@ export default function Companies() {
 
   // Filter states
   const [searchTerm, setSearchTerm] = useState('')
-  const [commercialRegStatus, setCommercialRegStatus] = useState<CommercialRegStatus>('all')
-  const [powerSubscriptionStatus, setPowerSubscriptionStatus] =
-    useState<PowerSubscriptionStatus>('all')
-  const [moqeemSubscriptionStatus, setMoqeemSubscriptionStatus] =
-    useState<MoqeemSubscriptionStatus>('all')
+  const [commercialRegStatus, setCommercialRegStatus] = useState<string[]>([])
+  const [powerSubscriptionStatus, setPowerSubscriptionStatus] = useState<string[]>([])
+  const [moqeemSubscriptionStatus, setMoqeemSubscriptionStatus] = useState<string[]>([])
   const [showAlertsOnly, setShowAlertsOnly] = useState(false)
 
-  const [employeeCountFilter, setEmployeeCountFilter] = useState<EmployeeCountFilter>('all')
+  const [employeeCountMin, setEmployeeCountMin] = useState<number | null>(null)
+  const [employeeCountMax, setEmployeeCountMax] = useState<number | null>(null)
   const [availableSlotsFilter, setAvailableSlotsFilter] = useState<AvailableSlotsFilter>('all')
-  const [dateRangeFilter, setDateRangeFilter] = useState<DateRange>('all')
-  const [customStartDate, setCustomStartDate] = useState('')
-  const [customEndDate, setCustomEndDate] = useState('')
+  const [createdAtFrom, setCreatedAtFrom] = useState<string | null>(null)
+  const [createdAtTo, setCreatedAtTo] = useState<string | null>(null)
   const [exemptionsFilter, setExemptionsFilter] = useState<ExemptionsFilter>('all')
   const [showFiltersModal, setShowFiltersModal] = useState(false)
 
@@ -129,14 +209,50 @@ export default function Companies() {
       if (saved) {
         const filters = JSON.parse(saved)
         setSearchTerm(filters.searchTerm || '')
-        setCommercialRegStatus(filters.commercialRegStatus || 'all')
-        setPowerSubscriptionStatus(filters.powerSubscriptionStatus || 'all')
-        setMoqeemSubscriptionStatus(filters.moqeemSubscriptionStatus || 'all')
+        setCommercialRegStatus(normalizeArrayFilter(filters.commercialRegStatus))
+        setPowerSubscriptionStatus(normalizeArrayFilter(filters.powerSubscriptionStatus))
+        setMoqeemSubscriptionStatus(normalizeArrayFilter(filters.moqeemSubscriptionStatus))
         setShowAlertsOnly(filters.showAlertsOnly || false)
 
-        setEmployeeCountFilter(filters.employeeCountFilter || 'all')
+        const legacyEmployeeCountFilter =
+          typeof filters.employeeCountFilter === 'string' ? filters.employeeCountFilter : 'all'
+        const savedEmployeeCountMin = normalizeNumberFilter(filters.employeeCountMin)
+        const savedEmployeeCountMax = normalizeNumberFilter(filters.employeeCountMax)
+
+        if (savedEmployeeCountMin !== null || savedEmployeeCountMax !== null) {
+          setEmployeeCountMin(savedEmployeeCountMin)
+          setEmployeeCountMax(savedEmployeeCountMax)
+        } else if (legacyEmployeeCountFilter === '4+') {
+          setEmployeeCountMin(4)
+          setEmployeeCountMax(null)
+        } else if (legacyEmployeeCountFilter !== 'all') {
+          const parsedEmployeeCount = normalizeNumberFilter(legacyEmployeeCountFilter)
+          setEmployeeCountMin(parsedEmployeeCount)
+          setEmployeeCountMax(parsedEmployeeCount)
+        } else {
+          setEmployeeCountMin(null)
+          setEmployeeCountMax(null)
+        }
+
         setAvailableSlotsFilter(filters.availableSlotsFilter || 'all')
-        setDateRangeFilter(filters.dateRangeFilter || 'all')
+
+        const savedCreatedAtFrom = normalizeDateFilter(filters.createdAtFrom)
+        const savedCreatedAtTo = normalizeDateFilter(filters.createdAtTo)
+        if (savedCreatedAtFrom !== null || savedCreatedAtTo !== null) {
+          setCreatedAtFrom(savedCreatedAtFrom)
+          setCreatedAtTo(savedCreatedAtTo)
+        } else {
+          const legacyDateRange = filters.dateRangeFilter
+          const [legacyCreatedAtFrom, legacyCreatedAtTo] = getLegacyCreatedAtRange(legacyDateRange)
+          if (legacyDateRange === 'custom') {
+            setCreatedAtFrom(normalizeDateFilter(filters.customStartDate))
+            setCreatedAtTo(normalizeDateFilter(filters.customEndDate))
+          } else {
+            setCreatedAtFrom(legacyCreatedAtFrom)
+            setCreatedAtTo(legacyCreatedAtTo)
+          }
+        }
+
         setExemptionsFilter(filters.exemptionsFilter || 'all')
         setSortField(filters.sortField || 'name')
         setSortDirection(filters.sortDirection || 'asc')
@@ -156,9 +272,11 @@ export default function Companies() {
         moqeemSubscriptionStatus,
         showAlertsOnly,
 
-        employeeCountFilter,
+        employeeCountMin,
+        employeeCountMax,
         availableSlotsFilter,
-        dateRangeFilter,
+        createdAtFrom,
+        createdAtTo,
         exemptionsFilter,
         sortField,
         sortDirection,
@@ -174,9 +292,11 @@ export default function Companies() {
     powerSubscriptionStatus,
     moqeemSubscriptionStatus,
     showAlertsOnly,
-    employeeCountFilter,
+    employeeCountMin,
+    employeeCountMax,
     availableSlotsFilter,
-    dateRangeFilter,
+    createdAtFrom,
+    createdAtTo,
     exemptionsFilter,
     sortField,
     sortDirection,
@@ -311,55 +431,54 @@ export default function Companies() {
     }
 
     // Apply commercial registration status filter
-    if (commercialRegStatus !== 'all') {
+    if (commercialRegStatus.length > 0) {
       filtered = filtered.filter((company) => {
+        if (!company.commercial_registration_expiry) return false
         const statusInfo = calculateCommercialRegistrationStatus(
           company.commercial_registration_expiry
         )
-
-        if (commercialRegStatus === 'expired') return statusInfo.status === 'منتهي'
-        if (commercialRegStatus === 'expiring_soon')
-          return (
-            statusInfo.status === 'طارئ' ||
-            statusInfo.status === 'عاجل' ||
-            statusInfo.status === 'متوسط'
-          )
-        if (commercialRegStatus === 'valid') return statusInfo.status === 'ساري'
-        return true
+        const statusText = String(statusInfo.status)
+        const calcStatus: CommercialRegStatus =
+          statusText === 'منتهي' || statusText === 'طارئ'
+            ? 'expired'
+            : statusText === 'ساري'
+              ? 'valid'
+              : 'expiring_soon'
+        return commercialRegStatus.includes(calcStatus)
       })
     }
 
     // Apply power subscription status filter
-    if (powerSubscriptionStatus !== 'all') {
+    if (powerSubscriptionStatus.length > 0) {
       const today = new Date()
       const thirtyDaysLater = new Date(today.getTime() + 30 * 24 * 60 * 60 * 1000)
 
       filtered = filtered.filter((company) => {
         if (!company.ending_subscription_power_date) return false
         const expiryDate = new Date(company.ending_subscription_power_date)
-
-        if (powerSubscriptionStatus === 'expired') return expiryDate < today
-        if (powerSubscriptionStatus === 'expiring_soon')
-          return expiryDate >= today && expiryDate <= thirtyDaysLater
-        if (powerSubscriptionStatus === 'valid') return expiryDate > thirtyDaysLater
-        return true
+        const calcStatus: PowerSubscriptionStatus = expiryDate < today
+          ? 'expired'
+          : expiryDate <= thirtyDaysLater
+            ? 'expiring_soon'
+            : 'valid'
+        return powerSubscriptionStatus.includes(calcStatus)
       })
     }
 
     // Apply moqeem subscription status filter
-    if (moqeemSubscriptionStatus !== 'all') {
+    if (moqeemSubscriptionStatus.length > 0) {
       const today = new Date()
       const thirtyDaysLater = new Date(today.getTime() + 30 * 24 * 60 * 60 * 1000)
 
       filtered = filtered.filter((company) => {
         if (!company.ending_subscription_moqeem_date) return false
         const expiryDate = new Date(company.ending_subscription_moqeem_date)
-
-        if (moqeemSubscriptionStatus === 'expired') return expiryDate < today
-        if (moqeemSubscriptionStatus === 'expiring_soon')
-          return expiryDate >= today && expiryDate <= thirtyDaysLater
-        if (moqeemSubscriptionStatus === 'valid') return expiryDate > thirtyDaysLater
-        return true
+        const calcStatus: MoqeemSubscriptionStatus = expiryDate < today
+          ? 'expired'
+          : expiryDate <= thirtyDaysLater
+            ? 'expiring_soon'
+            : 'valid'
+        return moqeemSubscriptionStatus.includes(calcStatus)
       })
     }
 
@@ -369,11 +488,13 @@ export default function Companies() {
     }
 
     // Apply employee count filter
-    if (employeeCountFilter !== 'all') {
+    if (employeeCountMin !== null || employeeCountMax !== null) {
       filtered = filtered.filter((company) => {
         const count = company.employee_count
-        if (employeeCountFilter === '4+') return count >= 4
-        return count === parseInt(employeeCountFilter)
+        return (
+          (employeeCountMin === null || count >= employeeCountMin) &&
+          (employeeCountMax === null || count <= employeeCountMax)
+        )
       })
     }
 
@@ -388,32 +509,18 @@ export default function Companies() {
     }
 
     // Apply date range filter
-    if (dateRangeFilter !== 'all') {
-      const today = new Date()
-      let startDate: Date | null = null
-      let endDate: Date | null = null
+    if (createdAtFrom || createdAtTo) {
+      const startDate = createdAtFrom ? new Date(`${createdAtFrom}T00:00:00`) : null
+      const endDate = createdAtTo ? new Date(`${createdAtTo}T23:59:59.999`) : null
 
-      if (dateRangeFilter === 'last_month') {
-        startDate = new Date(today.getFullYear(), today.getMonth() - 1, today.getDate())
-        endDate = today
-      } else if (dateRangeFilter === 'last_3_months') {
-        startDate = new Date(today.getFullYear(), today.getMonth() - 3, today.getDate())
-        endDate = today
-      } else if (dateRangeFilter === 'last_year') {
-        startDate = new Date(today.getFullYear() - 1, today.getMonth(), today.getDate())
-        endDate = today
-      } else if (dateRangeFilter === 'custom' && customStartDate && customEndDate) {
-        startDate = new Date(customStartDate)
-        endDate = new Date(customEndDate)
-      }
-
-      if (startDate && endDate) {
-        filtered = filtered.filter((company) => {
-          if (!company.created_at) return false
-          const createdDate = new Date(company.created_at)
-          return createdDate >= startDate! && createdDate <= endDate!
-        })
-      }
+      filtered = filtered.filter((company) => {
+        if (!company.created_at) return false
+        const createdDate = new Date(company.created_at)
+        return (
+          (startDate === null || createdDate >= startDate) &&
+          (endDate === null || createdDate <= endDate)
+        )
+      })
     }
 
     // Apply exemptions filter
@@ -433,8 +540,8 @@ export default function Companies() {
 
     // Apply sorting
     filtered.sort((a, b) => {
-      let aValue: string | number
-      let bValue: string | number
+      let aValue: string | number | null
+      let bValue: string | number | null
 
       switch (sortField) {
         case 'name':
@@ -442,36 +549,36 @@ export default function Companies() {
           bValue = b.name.toLowerCase()
           break
         case 'created_at':
-          aValue = a.created_at ? new Date(a.created_at).getTime() : 0
-          bValue = b.created_at ? new Date(b.created_at).getTime() : 0
+          aValue = a.created_at ? new Date(a.created_at).getTime() : null
+          bValue = b.created_at ? new Date(b.created_at).getTime() : null
           break
         case 'commercial_registration_status':
           aValue = a.commercial_registration_expiry
             ? calculateCommercialRegistrationStatus(a.commercial_registration_expiry).daysRemaining
-            : -999999
+            : null
           bValue = b.commercial_registration_expiry
             ? calculateCommercialRegistrationStatus(b.commercial_registration_expiry).daysRemaining
-            : -999999
+            : null
           break
         case 'employee_count':
-          aValue = a.employee_count || 0
-          bValue = b.employee_count || 0
+          aValue = typeof a.employee_count === 'number' ? a.employee_count : null
+          bValue = typeof b.employee_count === 'number' ? b.employee_count : null
           break
         case 'power_subscription_status':
           aValue = a.ending_subscription_power_date
             ? getDaysRemaining(a.ending_subscription_power_date)
-            : -999999
+            : null
           bValue = b.ending_subscription_power_date
             ? getDaysRemaining(b.ending_subscription_power_date)
-            : -999999
+            : null
           break
         case 'moqeem_subscription_status':
           aValue = a.ending_subscription_moqeem_date
             ? getDaysRemaining(a.ending_subscription_moqeem_date)
-            : -999999
+            : null
           bValue = b.ending_subscription_moqeem_date
             ? getDaysRemaining(b.ending_subscription_moqeem_date)
-            : -999999
+            : null
           break
 
         default:
@@ -479,11 +586,7 @@ export default function Companies() {
           bValue = b.name.toLowerCase()
       }
 
-      if (sortDirection === 'asc') {
-        return aValue > bValue ? 1 : aValue < bValue ? -1 : 0
-      } else {
-        return aValue < bValue ? 1 : aValue > bValue ? -1 : 0
-      }
+      return compareSortableValues(aValue, bValue, sortDirection)
     })
 
     return filtered
@@ -495,11 +598,11 @@ export default function Companies() {
     powerSubscriptionStatus,
     moqeemSubscriptionStatus,
     showAlertsOnly,
-    employeeCountFilter,
+    employeeCountMin,
+    employeeCountMax,
     availableSlotsFilter,
-    dateRangeFilter,
-    customStartDate,
-    customEndDate,
+    createdAtFrom,
+    createdAtTo,
     exemptionsFilter,
     sortField,
     sortDirection,
@@ -541,22 +644,7 @@ export default function Companies() {
   useEffect(() => {
     // Save filters to localStorage whenever filters change
     saveFiltersToStorage()
-  }, [
-    saveFiltersToStorage,
-    searchTerm,
-    commercialRegStatus,
-    powerSubscriptionStatus,
-    moqeemSubscriptionStatus,
-    showAlertsOnly,
-    employeeCountFilter,
-    availableSlotsFilter,
-    dateRangeFilter,
-    customStartDate,
-    customEndDate,
-    exemptionsFilter,
-    sortField,
-    sortDirection,
-  ])
+  }, [saveFiltersToStorage])
 
   // دالة الحصول على لون حالة الأماكن الشاغرة
   const getAvailableSlotsColor = (availableSlots: number) => {
@@ -584,16 +672,16 @@ export default function Companies() {
 
   const clearFilters = () => {
     setSearchTerm('')
-    setCommercialRegStatus('all')
-    setPowerSubscriptionStatus('all')
-    setMoqeemSubscriptionStatus('all')
+    setCommercialRegStatus([])
+    setPowerSubscriptionStatus([])
+    setMoqeemSubscriptionStatus([])
     setShowAlertsOnly(false)
 
-    setEmployeeCountFilter('all')
+    setEmployeeCountMin(null)
+    setEmployeeCountMax(null)
     setAvailableSlotsFilter('all')
-    setDateRangeFilter('all')
-    setCustomStartDate('')
-    setCustomEndDate('')
+    setCreatedAtFrom(null)
+    setCreatedAtTo(null)
     setExemptionsFilter('all')
   }
 
@@ -794,14 +882,14 @@ export default function Companies() {
 
   const activeFiltersCount = [
     searchTerm !== '',
-    commercialRegStatus !== 'all',
-    powerSubscriptionStatus !== 'all',
-    moqeemSubscriptionStatus !== 'all',
+    commercialRegStatus.length > 0,
+    powerSubscriptionStatus.length > 0,
+    moqeemSubscriptionStatus.length > 0,
     showAlertsOnly,
 
-    employeeCountFilter !== 'all',
+    employeeCountMin !== null || employeeCountMax !== null,
     availableSlotsFilter !== 'all',
-    dateRangeFilter !== 'all',
+    createdAtFrom !== null || createdAtTo !== null,
     exemptionsFilter !== 'all',
   ].filter(Boolean).length
 
@@ -914,9 +1002,11 @@ export default function Companies() {
     powerSubscriptionStatus,
     moqeemSubscriptionStatus,
     showAlertsOnly,
-    employeeCountFilter,
+    employeeCountMin,
+    employeeCountMax,
     availableSlotsFilter,
-    dateRangeFilter,
+    createdAtFrom,
+    createdAtTo,
     exemptionsFilter,
     sortField,
     sortDirection,
@@ -1196,18 +1286,20 @@ export default function Companies() {
             setPowerSubscriptionStatus={setPowerSubscriptionStatus}
             moqeemSubscriptionStatus={moqeemSubscriptionStatus}
             setMoqeemSubscriptionStatus={setMoqeemSubscriptionStatus}
-            employeeCountFilter={employeeCountFilter}
-            setEmployeeCountFilter={setEmployeeCountFilter}
+            employeeCountMin={employeeCountMin}
+            setEmployeeCountMin={setEmployeeCountMin}
+            employeeCountMax={employeeCountMax}
+            setEmployeeCountMax={setEmployeeCountMax}
             availableSlotsFilter={availableSlotsFilter}
             setAvailableSlotsFilter={setAvailableSlotsFilter}
-            dateRangeFilter={dateRangeFilter}
-            setDateRangeFilter={setDateRangeFilter}
-            customStartDate={customStartDate}
-            setCustomStartDate={setCustomStartDate}
-            customEndDate={customEndDate}
-            setCustomEndDate={setCustomEndDate}
+            createdAtFrom={createdAtFrom}
+            setCreatedAtFrom={setCreatedAtFrom}
+            createdAtTo={createdAtTo}
+            setCreatedAtTo={setCreatedAtTo}
             exemptionsFilter={exemptionsFilter}
             setExemptionsFilter={setExemptionsFilter}
+            showAlertsOnly={showAlertsOnly}
+            setShowAlertsOnly={setShowAlertsOnly}
             clearFilters={clearFilters}
             onClose={() => setShowFiltersModal(false)}
           />

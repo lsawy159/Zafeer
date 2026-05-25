@@ -188,7 +188,7 @@ describe('alerts utils', () => {
 
   describe('filterAlertsByPriority', () => {
     it('should filter alerts by urgent priority', () => {
-      const urgentAlerts = filterAlertsByPriority(mockAlerts, 'urgent')
+      const urgentAlerts = filterAlertsByPriority(mockAlerts, ['urgent'])
 
       expect(urgentAlerts.length).toBe(2)
       urgentAlerts.forEach((alert) => {
@@ -197,21 +197,30 @@ describe('alerts utils', () => {
     })
 
     it('should filter alerts by medium priority', () => {
-      const mediumAlerts = filterAlertsByPriority(mockAlerts, 'medium')
+      const mediumAlerts = filterAlertsByPriority(mockAlerts, ['medium'])
 
       expect(mediumAlerts.length).toBe(1)
       expect(mediumAlerts[0].priority).toBe('medium')
     })
 
     it('should filter alerts by low priority', () => {
-      const lowAlerts = filterAlertsByPriority(mockAlerts, 'low')
+      const lowAlerts = filterAlertsByPriority(mockAlerts, ['low'])
 
       expect(lowAlerts.length).toBe(1)
       expect(lowAlerts[0].priority).toBe('low')
     })
 
+    it('should filter alerts by multiple priorities', () => {
+      const mixedAlerts = filterAlertsByPriority(mockAlerts, ['urgent', 'medium'])
+
+      expect(mixedAlerts.length).toBe(3)
+      mixedAlerts.forEach((alert) => {
+        expect(['urgent', 'medium']).toContain(alert.priority)
+      })
+    })
+
     it('should return empty array if no alerts match priority', () => {
-      const emptyAlerts = filterAlertsByPriority([], 'urgent')
+      const emptyAlerts = filterAlertsByPriority([], ['urgent'])
       expect(emptyAlerts).toEqual([])
     })
   })

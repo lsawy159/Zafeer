@@ -616,8 +616,15 @@ export async function checkMoqeemSubscriptionExpiry(company: Company): Promise<A
 /**
  * فلترة التنبيهات حسب الأولوية
  */
-export function filterAlertsByPriority(alerts: Alert[], priority: Alert['priority']): Alert[] {
-  return alerts.filter((alert) => alert.priority === priority)
+export function filterAlertsByPriority(
+  alerts: Alert[],
+  priorities: Alert['priority'][]
+): Alert[] {
+  if (priorities.length === 0) {
+    return alerts
+  }
+
+  return alerts.filter((alert) => priorities.includes(alert.priority))
 }
 
 /**

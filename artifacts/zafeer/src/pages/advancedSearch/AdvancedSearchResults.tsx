@@ -1,6 +1,6 @@
 import { Search, ChevronLeft, ChevronRight } from 'lucide-react'
 import { Company as CompanyType, Employee as EmployeeType } from '@/lib/supabase'
-import { getCompanyName } from '@/hooks/useAdvancedSearchFilters'
+import { getCompanyName } from '@/hooks/useAdvancedSearchFiltersPhase10'
 import type { TabType, ViewMode } from '@/hooks/advancedSearchTypes'
 
 interface AdvancedSearchResultsProps {

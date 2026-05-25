@@ -47,6 +47,7 @@ export interface Company {
   ending_subscription_power_date?: string
   ending_subscription_moqeem_date?: string
   // عدد الموظفين والعدد الأقصى (للحسابات)
+  current_employees?: number
   employee_count?: number
   max_employees?: number
   // حقل الملاحظات

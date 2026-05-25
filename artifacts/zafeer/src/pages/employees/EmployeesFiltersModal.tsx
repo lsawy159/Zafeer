@@ -1,9 +1,9 @@
 import { createPortal } from 'react-dom'
 import { X } from 'lucide-react'
 import { type EmployeeNotificationThresholds } from '@/utils/employeeAlerts'
-import { COLOR_THRESHOLD_FALLBACK } from './employeeUtils'
+import { MultiSelectDropdown } from '@/components/ui/MultiSelectDropdown'
 
-type StatusFilter = '' | 'منتهي' | 'طارئ' | 'عاجل' | 'متوسط' | 'ساري'
+type DocumentStatusValue = 'منتهي' | 'قريب من الانتهاء' | 'صالح'
 
 interface CompanyOption {
   id: string
@@ -11,29 +11,21 @@ interface CompanyOption {
   unified_number?: number
 }
 
-interface FieldThresholds {
-  urgent: number
-  high: number
-  medium: number
-}
-
 interface EmployeesFiltersModalProps {
   activeFiltersCount: number
   colorThresholds: EmployeeNotificationThresholds | null
-  // تصنيف
   companies: CompanyOption[]
-  companyFilter: string
-  setCompanyFilter: (v: string) => void
+  companyFilter: string[]
+  setCompanyFilter: (v: string[]) => void
   projects: string[]
-  projectFilter: string
-  setProjectFilter: (v: string) => void
+  projectFilter: string[]
+  setProjectFilter: (v: string[]) => void
   nationalities: string[]
-  nationalityFilter: string
-  setNationalityFilter: (v: string) => void
+  nationalityFilter: string[]
+  setNationalityFilter: (v: string[]) => void
   professions: string[]
-  professionFilter: string
-  setProfessionFilter: (v: string) => void
-  // حالة الوثائق
+  professionFilter: string[]
+  setProfessionFilter: (v: string[]) => void
   contractFilter: string
   setContractFilter: (v: string) => void
   hiredWorkerContractFilter: string
@@ -42,68 +34,95 @@ interface EmployeesFiltersModalProps {
   setResidenceFilter: (v: string) => void
   healthInsuranceFilter: string
   setHealthInsuranceFilter: (v: string) => void
+  contractStatusDocFilter: string[]
+  setContractStatusDocFilter: (v: string[]) => void
+  hiredWorkerContractStatusDocFilter: string[]
+  setHiredWorkerContractStatusDocFilter: (v: string[]) => void
+  residenceStatusDocFilter: string[]
+  setResidenceStatusDocFilter: (v: string[]) => void
+  healthInsuranceStatusDocFilter: string[]
+  setHealthInsuranceStatusDocFilter: (v: string[]) => void
+  hasAlertFilter: boolean
+  setHasAlertFilter: (v: boolean) => void
   clearFilters: () => void
   onClose: () => void
 }
 
-function getStatusOptions(t: FieldThresholds): { value: StatusFilter; label: string }[] {
-  return [
-    { value: '', label: 'الكل' },
-    { value: 'منتهي', label: 'منتهي' },
-    { value: 'طارئ', label: `طارئ (≤${t.urgent}ي)` },
-    { value: 'عاجل', label: `عاجل (≤${t.high}ي)` },
-    { value: 'متوسط', label: `متوسط (≤${t.medium}ي)` },
-    { value: 'ساري', label: 'ساري' },
-  ]
+interface MultiStatusOption {
+  value: DocumentStatusValue
+  label: string
+  activeClass: string
 }
 
-function StatusButtonGroup({
+function MultiStatusButtonGroup({
   label,
-  value,
+  selected,
   onChange,
   options,
 }: {
   label: string
-  value: string
-  onChange: (v: string) => void
-  options: { value: StatusFilter; label: string }[]
+  selected: string[]
+  onChange: (v: string[]) => void
+  options: MultiStatusOption[]
 }) {
+  const handleToggle = (value: string) => {
+    if (selected.includes(value)) {
+      onChange(selected.filter((item) => item !== value))
+      return
+    }
+    onChange([...selected, value])
+  }
+
   return (
     <div>
-      <label className="block text-sm font-medium text-neutral-700 mb-2">{label}</label>
+      <label className="mb-2 block text-sm font-medium text-neutral-700">{label}</label>
       <div className="flex flex-wrap gap-1.5">
-        {options.map((opt) => (
-          <button
-            key={opt.value}
-            type="button"
-            onClick={() => onChange(opt.value)}
-            className={`px-3 py-1.5 rounded-full text-xs font-medium border transition-colors ${
-              value === opt.value
-                ? opt.value === 'منتهي'
-                  ? 'bg-red-500 text-white border-red-500'
-                  : opt.value === 'طارئ'
-                    ? 'bg-orange-500 text-white border-orange-500'
-                    : opt.value === 'عاجل'
-                      ? 'bg-yellow-500 text-white border-yellow-500'
-                      : opt.value === 'متوسط'
-                        ? 'bg-blue-500 text-white border-blue-500'
-                        : opt.value === 'ساري'
-                          ? 'bg-green-500 text-white border-green-500'
-                          : 'bg-primary text-primary-foreground border-primary'
-                : 'bg-surface text-neutral-600 border-neutral-300 hover:border-neutral-400 hover:bg-neutral-50'
-            }`}
-          >
-            {opt.label}
-          </button>
-        ))}
+        <button
+          type="button"
+          onClick={() => onChange([])}
+          className={`rounded-full border px-3 py-1.5 text-xs font-medium transition-colors ${
+            selected.length === 0
+              ? 'border-primary bg-primary text-primary-foreground'
+              : 'border-neutral-300 bg-surface text-neutral-600 hover:border-neutral-400 hover:bg-neutral-50'
+          }`}
+        >
+          الكل
+        </button>
+        {options.map((opt) => {
+          const active = selected.includes(opt.value)
+          return (
+            <button
+              key={opt.value}
+              type="button"
+              onClick={() => handleToggle(opt.value)}
+              className={`rounded-full border px-3 py-1.5 text-xs font-medium transition-colors ${
+                active
+                  ? opt.activeClass
+                  : 'border-neutral-300 bg-surface text-neutral-600 hover:border-neutral-400 hover:bg-neutral-50'
+              }`}
+            >
+              {opt.label}
+            </button>
+          )
+        })}
       </div>
     </div>
   )
 }
 
+const documentStatusOptions: MultiStatusOption[] = [
+  { value: 'منتهي', label: 'منتهي', activeClass: 'border-red-500 bg-red-500 text-white' },
+  {
+    value: 'قريب من الانتهاء',
+    label: 'قريب من الانتهاء',
+    activeClass: 'border-orange-500 bg-orange-500 text-white',
+  },
+  { value: 'صالح', label: 'صالح', activeClass: 'border-green-500 bg-green-500 text-white' },
+]
+
 export function EmployeesFiltersModal({
   activeFiltersCount,
-  colorThresholds,
+  colorThresholds: _colorThresholds,
   companies,
   companyFilter,
   setCompanyFilter,
@@ -116,185 +135,168 @@ export function EmployeesFiltersModal({
   professions,
   professionFilter,
   setProfessionFilter,
-  contractFilter,
-  setContractFilter,
-  hiredWorkerContractFilter,
-  setHiredWorkerContractFilter,
-  residenceFilter,
-  setResidenceFilter,
-  healthInsuranceFilter,
-  setHealthInsuranceFilter,
+  contractFilter: _contractFilter,
+  setContractFilter: _setContractFilter,
+  hiredWorkerContractFilter: _hiredWorkerContractFilter,
+  setHiredWorkerContractFilter: _setHiredWorkerContractFilter,
+  residenceFilter: _residenceFilter,
+  setResidenceFilter: _setResidenceFilter,
+  healthInsuranceFilter: _healthInsuranceFilter,
+  setHealthInsuranceFilter: _setHealthInsuranceFilter,
+  contractStatusDocFilter,
+  setContractStatusDocFilter,
+  hiredWorkerContractStatusDocFilter,
+  setHiredWorkerContractStatusDocFilter,
+  residenceStatusDocFilter,
+  setResidenceStatusDocFilter,
+  healthInsuranceStatusDocFilter,
+  setHealthInsuranceStatusDocFilter,
+  hasAlertFilter,
+  setHasAlertFilter,
   clearFilters,
   onClose,
 }: EmployeesFiltersModalProps) {
-  const t = colorThresholds ?? COLOR_THRESHOLD_FALLBACK
-
-  const contractOpts = getStatusOptions({
-    urgent: t.contract_urgent_days,
-    high: t.contract_high_days,
-    medium: t.contract_medium_days,
-  })
-  const hiredWorkerOpts = getStatusOptions({
-    urgent: t.hired_worker_contract_urgent_days,
-    high: t.hired_worker_contract_high_days,
-    medium: t.hired_worker_contract_medium_days,
-  })
-  const residenceOpts = getStatusOptions({
-    urgent: t.residence_urgent_days,
-    high: t.residence_high_days,
-    medium: t.residence_medium_days,
-  })
-  const insuranceOpts = getStatusOptions({
-    urgent: t.health_insurance_urgent_days,
-    high: t.health_insurance_high_days,
-    medium: t.health_insurance_medium_days,
-  })
-
   return createPortal(
     <div
       className="fixed inset-0 z-[9999] flex items-end justify-center bg-black/50 p-0 md:items-center md:p-4"
       onClick={onClose}
     >
       <div
-        className="w-full max-h-[92vh] max-w-3xl flex flex-col overflow-hidden rounded-t-2xl border border-border bg-card shadow-xl md:rounded-2xl"
+        className="flex max-h-[92vh] w-full max-w-3xl flex-col overflow-hidden rounded-t-2xl border border-border bg-card shadow-xl md:rounded-2xl"
         onClick={(e) => e.stopPropagation()}
       >
-        {/* Header */}
-        <div className="flex-shrink-0 flex items-center justify-between p-5 border-b border-border">
+        <div className="flex flex-shrink-0 items-center justify-between border-b border-border p-5">
           <div>
             <h2 className="text-lg font-bold text-neutral-900">فلترة الموظفين</h2>
             {activeFiltersCount > 0 && (
-              <p className="text-xs text-neutral-500 mt-0.5">{activeFiltersCount} فلتر نشط</p>
+              <p className="mt-0.5 text-xs text-neutral-500">{activeFiltersCount} فلتر نشط</p>
             )}
           </div>
-          <button
-            onClick={onClose}
-            className="rounded-lg p-2 hover:bg-muted transition-colors"
-          >
-            <X className="w-5 h-5 text-neutral-500" />
+          <button onClick={onClose} className="rounded-lg p-2 transition-colors hover:bg-muted">
+            <X className="h-5 w-5 text-neutral-500" />
           </button>
         </div>
 
-        {/* Body */}
-        <div className="flex-1 overflow-y-auto p-5 space-y-6">
-
-          {/* القسم 1: التصنيف */}
+        <div className="flex-1 space-y-6 overflow-y-auto p-5">
           <div>
-            <h3 className="text-sm font-semibold text-neutral-500 uppercase tracking-wide mb-3">
-              تصنيف
-            </h3>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              {/* المؤسسة */}
+            <h3 className="mb-3 text-sm font-semibold uppercase tracking-wide text-neutral-500">تصنيف</h3>
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <div>
-                <label className="block text-sm font-medium text-neutral-700 mb-1.5">المؤسسة</label>
-                <select
-                  value={companyFilter}
-                  onChange={(e) => setCompanyFilter(e.target.value)}
-                  className="focus-ring-brand w-full rounded-md border border-input bg-surface px-3 py-2 text-sm"
-                >
-                  <option value="">جميع المؤسسات</option>
-                  {companies.map((c) => (
-                    <option key={c.id} value={c.name}>
-                      {c.unified_number ? `${c.name} (${c.unified_number})` : c.name}
-                    </option>
-                  ))}
-                </select>
+                <label className="mb-1.5 block text-sm font-medium text-neutral-700">المؤسسة</label>
+                <MultiSelectDropdown
+                  options={companies.map((company) => ({
+                    value: company.name,
+                    label: company.unified_number
+                      ? `${company.name} (${company.unified_number})`
+                      : company.name,
+                  }))}
+                  selected={companyFilter}
+                  onChange={setCompanyFilter}
+                  placeholder="جميع المؤسسات"
+                />
               </div>
 
-              {/* المشروع */}
               <div>
-                <label className="block text-sm font-medium text-neutral-700 mb-1.5">المشروع</label>
-                <select
-                  value={projectFilter}
-                  onChange={(e) => setProjectFilter(e.target.value)}
-                  className="focus-ring-brand w-full rounded-md border border-input bg-surface px-3 py-2 text-sm"
-                >
-                  <option value="">جميع المشاريع</option>
-                  {projects.map((p) => (
-                    <option key={p} value={p}>{p}</option>
-                  ))}
-                </select>
+                <label className="mb-1.5 block text-sm font-medium text-neutral-700">المشروع</label>
+                <MultiSelectDropdown
+                  options={projects.map((project) => ({ value: project, label: project }))}
+                  selected={projectFilter}
+                  onChange={setProjectFilter}
+                  placeholder="جميع المشاريع"
+                />
               </div>
 
-              {/* الجنسية */}
               <div>
-                <label className="block text-sm font-medium text-neutral-700 mb-1.5">الجنسية</label>
-                <select
-                  value={nationalityFilter}
-                  onChange={(e) => setNationalityFilter(e.target.value)}
-                  className="focus-ring-brand w-full rounded-md border border-input bg-surface px-3 py-2 text-sm"
-                >
-                  <option value="">جميع الجنسيات</option>
-                  {nationalities.map((n) => (
-                    <option key={n} value={n}>{n}</option>
-                  ))}
-                </select>
+                <label className="mb-1.5 block text-sm font-medium text-neutral-700">الجنسية</label>
+                <MultiSelectDropdown
+                  options={nationalities.map((nationality) => ({
+                    value: nationality,
+                    label: nationality,
+                  }))}
+                  selected={nationalityFilter}
+                  onChange={setNationalityFilter}
+                  placeholder="جميع الجنسيات"
+                />
               </div>
 
-              {/* المهنة */}
               <div>
-                <label className="block text-sm font-medium text-neutral-700 mb-1.5">المهنة</label>
-                <select
-                  value={professionFilter}
-                  onChange={(e) => setProfessionFilter(e.target.value)}
-                  className="focus-ring-brand w-full rounded-md border border-input bg-surface px-3 py-2 text-sm"
-                >
-                  <option value="">جميع المهن</option>
-                  {professions.map((p) => (
-                    <option key={p} value={p}>{p}</option>
-                  ))}
-                </select>
+                <label className="mb-1.5 block text-sm font-medium text-neutral-700">المهنة</label>
+                <MultiSelectDropdown
+                  options={professions.map((profession) => ({
+                    value: profession,
+                    label: profession,
+                  }))}
+                  selected={professionFilter}
+                  onChange={setProfessionFilter}
+                  placeholder="جميع المهن"
+                />
               </div>
             </div>
           </div>
 
-          {/* القسم 2: حالة الوثائق */}
           <div>
-            <h3 className="text-sm font-semibold text-neutral-500 uppercase tracking-wide mb-3">
+            <div className="flex items-center gap-3">
+              <input
+                type="checkbox"
+                id="has-alert-filter"
+                checked={hasAlertFilter}
+                onChange={(e) => setHasAlertFilter(e.target.checked)}
+                className="h-4 w-4 rounded border-gray-300 text-primary-600"
+              />
+              <label htmlFor="has-alert-filter" className="block text-sm font-medium text-neutral-700">
+                فقط الموظفين الذين لديهم تنبيهات
+              </label>
+            </div>
+          </div>
+
+          <div>
+            <h3 className="mb-3 text-sm font-semibold uppercase tracking-wide text-neutral-500">
               حالة الوثائق
             </h3>
             <div className="space-y-4">
-              <StatusButtonGroup
-                label="الإقامة"
-                value={residenceFilter}
-                onChange={setResidenceFilter}
-                options={residenceOpts}
+              <MultiStatusButtonGroup
+                label="حالة العقد"
+                selected={contractStatusDocFilter}
+                onChange={setContractStatusDocFilter}
+                options={documentStatusOptions}
               />
-              <StatusButtonGroup
-                label="التأمين الطبي"
-                value={healthInsuranceFilter}
-                onChange={setHealthInsuranceFilter}
-                options={insuranceOpts}
+
+              <MultiStatusButtonGroup
+                label="حالة عقد الأجير"
+                selected={hiredWorkerContractStatusDocFilter}
+                onChange={setHiredWorkerContractStatusDocFilter}
+                options={documentStatusOptions}
               />
-              <StatusButtonGroup
-                label="عقد العمل"
-                value={contractFilter}
-                onChange={setContractFilter}
-                options={contractOpts}
+
+              <MultiStatusButtonGroup
+                label="حالة الإقامة"
+                selected={residenceStatusDocFilter}
+                onChange={setResidenceStatusDocFilter}
+                options={documentStatusOptions}
               />
-              <StatusButtonGroup
-                label="عقد الأجير"
-                value={hiredWorkerContractFilter}
-                onChange={setHiredWorkerContractFilter}
-                options={hiredWorkerOpts}
+
+              <MultiStatusButtonGroup
+                label="حالة التأمين الصحي"
+                selected={healthInsuranceStatusDocFilter}
+                onChange={setHealthInsuranceStatusDocFilter}
+                options={documentStatusOptions}
               />
             </div>
           </div>
         </div>
 
-        {/* Footer */}
-        <div className="flex-shrink-0 flex items-center justify-between border-t border-border bg-muted/30 px-5 py-4">
+        <div className="flex flex-shrink-0 items-center justify-between border-t border-border bg-muted/30 px-5 py-4">
           <button
             onClick={clearFilters}
             disabled={activeFiltersCount === 0}
             className="flex items-center gap-2 rounded-md border border-border bg-surface px-4 py-2 text-sm transition-colors hover:bg-muted disabled:cursor-not-allowed disabled:opacity-50"
           >
-            <X className="w-4 h-4" />
+            <X className="h-4 w-4" />
             مسح الفلاتر
           </button>
           <button
             onClick={onClose}
-            className="rounded-md bg-primary px-6 py-2 text-sm font-medium text-primary-foreground hover:brightness-95 transition-[filter]"
+            className="rounded-md bg-primary px-6 py-2 text-sm font-medium text-primary-foreground transition-[filter] hover:brightness-95"
           >
             تطبيق
           </button>

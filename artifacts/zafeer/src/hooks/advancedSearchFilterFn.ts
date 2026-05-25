@@ -11,6 +11,7 @@ import type {
   ResidenceStatus,
   ContractStatus,
   CommercialRegStatus,
+  AdvancedSearchSortDirection,
 } from '@/hooks/advancedSearchTypes'
 
 export interface FilterParams {
@@ -20,9 +21,9 @@ export interface FilterParams {
   employeeSearchQuery: string
   companySearchQuery: string
   // employee filters
-  selectedNationality: string
+  selectedNationality: string[]
   selectedCompanyFilter: string
-  selectedProfession: string
+  selectedProfession: string[]
   selectedProject: string
   residenceStatus: ResidenceStatus
   contractStatus: ContractStatus
@@ -51,6 +52,29 @@ export interface FilterParams {
   companyCreatedEndDate: string
   notesSearch: string
   notesFilter: 'all' | 'has_notes' | 'no_notes'
+  sortDirection: AdvancedSearchSortDirection
+}
+
+const compareTextValues = (
+  left: string | null | undefined,
+  right: string | null | undefined,
+  sortDirection: AdvancedSearchSortDirection
+) => {
+  const leftValue = (left ?? '').trim()
+  const rightValue = (right ?? '').trim()
+
+  const leftEmpty = leftValue.length === 0
+  const rightEmpty = rightValue.length === 0
+
+  if (leftEmpty && rightEmpty) return 0
+  if (leftEmpty) return 1
+  if (rightEmpty) return -1
+
+  const comparison = leftValue.localeCompare(rightValue, 'ar', {
+    sensitivity: 'base',
+    numeric: true,
+  })
+  return sortDirection === 'asc' ? comparison : -comparison
 }
 
 /** Returns { filteredEmployees, filteredCompanies } after applying all filters */
@@ -92,12 +116,14 @@ export function applyAdvancedSearchFilters(p: FilterParams): {
   }
 
   // ---- Employee filters ----
-  if (p.selectedNationality !== 'all')
-    emps = emps.filter((e) => e.nationality === p.selectedNationality)
+  if (p.selectedNationality.length > 0) {
+    emps = emps.filter((e) => p.selectedNationality.includes(e.nationality ?? ''))
+  }
   if (p.selectedCompanyFilter !== 'all')
     emps = emps.filter((e) => e.company_id === p.selectedCompanyFilter)
-  if (p.selectedProfession !== 'all')
-    emps = emps.filter((e) => e.profession === p.selectedProfession)
+  if (p.selectedProfession.length > 0) {
+    emps = emps.filter((e) => p.selectedProfession.includes(e.profession ?? ''))
+  }
   if (p.selectedProject !== 'all')
     emps = emps.filter((e) => e.project_name === p.selectedProject)
 
@@ -255,7 +281,7 @@ export function applyAdvancedSearchFilters(p: FilterParams): {
 
   if (p.availableSlotsFilter !== 'all') {
     comps = comps.filter((c) => {
-      const slots = (c as CompanyType & { available_slots?: number }).available_slots || 0
+      const slots = (c.max_employees ?? 0) - (c.current_employees ?? 0)
       if (p.availableSlotsFilter === '1') return slots === 1
       if (p.availableSlotsFilter === '2') return slots === 2
       if (p.availableSlotsFilter === '3') return slots === 3
@@ -339,6 +365,9 @@ export function applyAdvancedSearchFilters(p: FilterParams): {
       return true
     })
   }
+
+  emps.sort((left, right) => compareTextValues(left.name, right.name, p.sortDirection))
+  comps.sort((left, right) => compareTextValues(left.name, right.name, p.sortDirection))
 
   return { filteredEmployees: emps, filteredCompanies: comps }
 }

@@ -2,9 +2,9 @@
 
 export interface SavedSearchFilters {
   // Employee filters
-  nationality?: string
+  nationality?: string | string[]
   company?: string
-  profession?: string
+  profession?: string | string[]
   project?: string
   residenceStatus?: string
   contractStatus?: string
@@ -48,3 +48,4 @@ export type ResidenceStatus = 'all' | 'expired' | 'expiring_soon' | 'valid'
 export type ContractStatus = 'all' | 'expired' | 'expiring_soon' | 'valid'
 export type CommercialRegStatus = 'all' | 'expired' | 'expiring_soon' | 'valid'
 export type ViewMode = 'grid' | 'table'
+export type AdvancedSearchSortDirection = 'asc' | 'desc'

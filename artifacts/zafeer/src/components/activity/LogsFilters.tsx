@@ -1,22 +1,60 @@
 import { RefreshCw, Search } from 'lucide-react'
+import { MultiSelectDropdown } from '@/components/ui/MultiSelectDropdown'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/Select'
 
-// Local literal unions to keep props strongly typed without cross-file dependency
-export type ActionFilter = 'all' | 'create' | 'update' | 'delete' | 'login' | 'logout'
-export type EntityFilter = 'all' | 'employee' | 'company' | 'user' | 'settings'
-export type DateFilter = 'all' | 'today' | 'week' | 'month'
+type ActionFilterValue = 'create' | 'update' | 'delete' | 'login'
+type EntityFilterValue = 'employee' | 'company' | 'user' | 'settings'
+type DateFilter = 'all' | 'today' | 'week' | 'month'
+type ActivitySortField = 'created_at' | 'action' | 'entity_type'
+type SortDirection = 'asc' | 'desc'
 
 interface LogsFiltersProps {
   searchTerm: string
   onSearchTermChange: (value: string) => void
-  actionFilter: ActionFilter
-  onActionFilterChange: (value: ActionFilter) => void
-  entityFilter: EntityFilter
-  onEntityFilterChange: (value: EntityFilter) => void
+  actionFilter: ActionFilterValue[]
+  onActionFilterChange: (value: ActionFilterValue[]) => void
+  entityFilter: EntityFilterValue[]
+  onEntityFilterChange: (value: EntityFilterValue[]) => void
   dateFilter: DateFilter
   onDateFilterChange: (value: DateFilter) => void
+  sortField: ActivitySortField
+  onSortFieldChange: (value: ActivitySortField) => void
+  sortDirection: SortDirection
+  onSortDirectionChange: (value: SortDirection) => void
   hasActiveFilters: boolean
   onReset: () => void
 }
+
+const ACTION_OPTIONS: Array<{ value: ActionFilterValue; label: string }> = [
+  { value: 'create', label: 'إنشاء' },
+  { value: 'update', label: 'تحديث' },
+  { value: 'delete', label: 'حذف' },
+  { value: 'login', label: 'دخول / خروج' },
+]
+
+const ENTITY_OPTIONS: Array<{ value: EntityFilterValue; label: string }> = [
+  { value: 'employee', label: 'موظفين' },
+  { value: 'company', label: 'مؤسسات' },
+  { value: 'user', label: 'مستخدمين' },
+  { value: 'settings', label: 'إعدادات' },
+]
+
+const SORT_FIELD_OPTIONS: Array<{ value: ActivitySortField; label: string }> = [
+  { value: 'created_at', label: 'تاريخ الإنشاء' },
+  { value: 'action', label: 'نوع الإجراء' },
+  { value: 'entity_type', label: 'نوع الكيان' },
+]
+
+const SORT_DIRECTION_OPTIONS: Array<{ value: SortDirection; label: string }> = [
+  { value: 'desc', label: 'تنازلي' },
+  { value: 'asc', label: 'تصاعدي' },
+]
 
 export function LogsFilters(props: LogsFiltersProps) {
   const {
@@ -28,6 +66,10 @@ export function LogsFilters(props: LogsFiltersProps) {
     onEntityFilterChange,
     dateFilter,
     onDateFilterChange,
+    sortField,
+    onSortFieldChange,
+    sortDirection,
+    onSortDirectionChange,
     hasActiveFilters,
     onReset,
   } = props
@@ -47,8 +89,8 @@ export function LogsFilters(props: LogsFiltersProps) {
             </button>
           )}
         </div>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-4">
-          {/* Search */}
+
+        <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-4 sm:gap-4">
           <div className="sm:col-span-2 lg:col-span-1">
             <div className="relative">
               <Search className="absolute right-3 top-1/2 transform -translate-y-1/2 text-neutral-400 w-4 sm:w-5 h-4 sm:h-5" />
@@ -62,48 +104,74 @@ export function LogsFilters(props: LogsFiltersProps) {
             </div>
           </div>
 
-          {/* Action Filter */}
           <div>
-            <select
-              value={actionFilter}
-              onChange={(e) => onActionFilterChange(e.target.value as ActionFilter)}
-              className="w-full px-2 sm:px-4 py-2 text-sm border border-neutral-300 rounded-lg focus:ring-2 focus:ring-purple-500 bg-white"
-            >
-              <option value="all">جميع العمليات</option>
-              <option value="create">إنشاء</option>
-              <option value="update">تحديث</option>
-              <option value="delete">حذف</option>
-              <option value="login">دخول/خروج</option>
-            </select>
+            <MultiSelectDropdown
+              options={ACTION_OPTIONS}
+              selected={actionFilter}
+              onChange={onActionFilterChange}
+              placeholder="جميع أنواع الإجراءات"
+            />
           </div>
 
-          {/* Entity Filter */}
           <div>
-            <select
-              value={entityFilter}
-              onChange={(e) => onEntityFilterChange(e.target.value as EntityFilter)}
-              className="w-full px-2 sm:px-4 py-2 text-sm border border-neutral-300 rounded-lg focus:ring-2 focus:ring-purple-500 bg-white"
-            >
-              <option value="all">جميع الأنواع</option>
-              <option value="employee">موظفين</option>
-              <option value="company">مؤسسات</option>
-              <option value="user">مستخدمين</option>
-              <option value="settings">إعدادات</option>
-            </select>
+            <MultiSelectDropdown
+              options={ENTITY_OPTIONS}
+              selected={entityFilter}
+              onChange={onEntityFilterChange}
+              placeholder="جميع أنواع الكيانات"
+            />
           </div>
 
-          {/* Date Filter */}
           <div>
-            <select
-              value={dateFilter}
-              onChange={(e) => onDateFilterChange(e.target.value as DateFilter)}
-              className="w-full px-2 sm:px-4 py-2 text-sm border border-neutral-300 rounded-lg focus:ring-2 focus:ring-purple-500 bg-white"
+            <Select value={dateFilter} onValueChange={(value) => onDateFilterChange(value as DateFilter)}>
+              <SelectTrigger className="w-full">
+                <SelectValue placeholder="جميع التواريخ" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">جميع التواريخ</SelectItem>
+                <SelectItem value="today">اليوم</SelectItem>
+                <SelectItem value="week">أسبوع</SelectItem>
+                <SelectItem value="month">شهر</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+          <div>
+            <Select
+              value={sortField}
+              onValueChange={(value) => onSortFieldChange(value as ActivitySortField)}
             >
-              <option value="all">جميع التواريخ</option>
-              <option value="today">اليوم</option>
-              <option value="week">أسبوع</option>
-              <option value="month">شهر</option>
-            </select>
+              <SelectTrigger className="w-full">
+                <SelectValue placeholder="ترتيب حسب" />
+              </SelectTrigger>
+              <SelectContent>
+                {SORT_FIELD_OPTIONS.map((option) => (
+                  <SelectItem key={option.value} value={option.value}>
+                    {option.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div>
+            <Select
+              value={sortDirection}
+              onValueChange={(value) => onSortDirectionChange(value as SortDirection)}
+            >
+              <SelectTrigger className="w-full">
+                <SelectValue placeholder="اتجاه الترتيب" />
+              </SelectTrigger>
+              <SelectContent>
+                {SORT_DIRECTION_OPTIONS.map((option) => (
+                  <SelectItem key={option.value} value={option.value}>
+                    {option.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
         </div>
       </div>

@@ -7,6 +7,8 @@ import {
   List,
   Users,
   Building2,
+  ArrowUp,
+  ArrowDown,
 } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
 import EmployeeCard from '@/components/employees/EmployeeCard'
@@ -19,7 +21,7 @@ import { PageHeader } from '@/components/ui/PageHeader'
 import { FilterBar } from '@/components/ui/FilterBar'
 import { SearchInput } from '@/components/ui/SearchInput'
 import { Button } from '@/components/ui/Button'
-import { useAdvancedSearchFilters } from '@/hooks/useAdvancedSearchFilters'
+import { useAdvancedSearchFilters } from '@/hooks/useAdvancedSearchFiltersPhase10'
 import AdvancedSearchFiltersModal from './advancedSearch/AdvancedSearchFiltersModal'
 import AdvancedSearchResults from './advancedSearch/AdvancedSearchResults'
 import ActiveFilterChips from './advancedSearch/ActiveFilterChips'
@@ -191,6 +193,27 @@ export default function AdvancedSearch() {
                 <option value={100}>100</option>
                 <option value={150}>150</option>
               </select>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <span className="text-sm text-gray-600">الترتيب:</span>
+              <Button
+                onClick={() => {
+                  search.setSortDirection(search.sortDirection === 'asc' ? 'desc' : 'asc')
+                  search.setCurrentPage(1)
+                }}
+                variant="secondary"
+                className="gap-2"
+                size="sm"
+                title="ترتيب بالاسم"
+              >
+                {search.sortDirection === 'asc' ? (
+                  <ArrowUp className="w-4 h-4" />
+                ) : (
+                  <ArrowDown className="w-4 h-4" />
+                )}
+                <span>{search.sortDirection === 'asc' ? 'أ-ي' : 'ي-أ'}</span>
+              </Button>
             </div>
           </div>
 

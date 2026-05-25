@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { supabase, Employee, Company } from '@/lib/supabase'
 import { AlertCard, Alert } from '@/components/alerts/AlertCard'
 import { EmployeeAlertCard, EmployeeAlert } from '@/components/alerts/EmployeeAlertCard'
@@ -9,6 +9,7 @@ import {
   getEmployeeAlertsStats,
   filterEmployeeAlertsByPriority,
 } from '@/utils/employeeAlerts'
+import { normalizeArabic } from '@/utils/textUtils'
 import { Bell, AlertTriangle, Building2, Users, X, CheckCircle2, Mail } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import Layout from '@/components/layout/Layout'
@@ -21,6 +22,15 @@ import { FilterBar } from '@/components/ui/FilterBar'
 import { SearchInput } from '@/components/ui/SearchInput'
 import { Button } from '@/components/ui/Button'
 import {
+  DropdownMenu,
+  DropdownMenuCheckboxItem,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/DropdownMenu'
+import {
   Select,
   SelectContent,
   SelectItem,
@@ -31,6 +41,96 @@ import {
 interface AlertsProps {
   initialTab?: 'companies' | 'employees' | 'all'
   initialFilter?: 'all' | 'urgent' | 'high' | 'medium' | 'low'
+}
+
+type AlertPriority = Alert['priority']
+type AlertSortField = 'priority' | 'entity_name' | 'days_remaining'
+type SortDirection = 'asc' | 'desc'
+
+const PRIORITY_OPTIONS: Array<{ value: AlertPriority; label: string }> = [
+  { value: 'urgent', label: 'طارئ' },
+  { value: 'high', label: 'عالي' },
+  { value: 'medium', label: 'متوسط' },
+  { value: 'low', label: 'خفيف' },
+]
+
+const PRIORITY_LABELS: Record<AlertPriority, string> = {
+  urgent: 'طارئ',
+  high: 'عالي',
+  medium: 'متوسط',
+  low: 'خفيف',
+}
+
+const ALERT_SORT_FIELDS: Array<{ value: AlertSortField; label: string }> = [
+  { value: 'priority', label: 'الأولوية' },
+  { value: 'entity_name', label: 'اسم الكيان' },
+  { value: 'days_remaining', label: 'الأيام المتبقية' },
+]
+
+const ALERT_SORT_DIRECTIONS: Array<{ value: SortDirection; label: string }> = [
+  { value: 'desc', label: 'تنازلي' },
+  { value: 'asc', label: 'تصاعدي' },
+]
+
+const PRIORITY_ORDER: Record<AlertPriority, number> = {
+  urgent: 4,
+  high: 3,
+  medium: 2,
+  low: 1,
+}
+
+function getInitialPriorityFilter(initialFilter: AlertsProps['initialFilter']) {
+  return initialFilter && initialFilter !== 'all' ? [initialFilter] : []
+}
+
+function getPriorityFilterLabel(selected: AlertPriority[]) {
+  if (selected.length === 0) {
+    return 'جميع الأولويات'
+  }
+
+  if (selected.length === PRIORITY_OPTIONS.length) {
+    return 'جميع الأولويات'
+  }
+
+  if (selected.length <= 2) {
+    return selected.map((priority) => PRIORITY_LABELS[priority]).join('، ')
+  }
+
+  return `${selected.length} أولويات مختارة`
+}
+
+function compareAlerts<T extends { priority: AlertPriority; days_remaining?: number }>(
+  left: T,
+  right: T,
+  sortField: AlertSortField,
+  sortDirection: SortDirection,
+  getEntityName: (value: T) => string
+) {
+  const directionFactor = sortDirection === 'asc' ? 1 : -1
+
+  if (sortField === 'priority') {
+    return (PRIORITY_ORDER[left.priority] - PRIORITY_ORDER[right.priority]) * directionFactor
+  }
+
+  if (sortField === 'entity_name') {
+    const nameLeft = getEntityName(left).trim()
+    const nameRight = getEntityName(right).trim()
+
+    if (!nameLeft && !nameRight) return 0
+    if (!nameLeft) return 1
+    if (!nameRight) return -1
+
+    return nameLeft.localeCompare(nameRight, 'ar', { sensitivity: 'base' }) * directionFactor
+  }
+
+  const daysLeft = left.days_remaining
+  const daysRight = right.days_remaining
+
+  if (daysLeft == null && daysRight == null) return 0
+  if (daysLeft == null) return 1
+  if (daysRight == null) return -1
+
+  return (daysLeft - daysRight) * directionFactor
 }
 
 export default function Alerts({ initialTab = 'all', initialFilter = 'all' }: AlertsProps) {
@@ -47,10 +147,13 @@ export default function Alerts({ initialTab = 'all', initialFilter = 'all' }: Al
 
   // [NEW] تبويب لـ "جديد" و "مقروء"
   const [readFilterTab, setReadFilterTab] = useState<'new' | 'read'>('new')
+  const [alertStatusFilter, setAlertStatusFilter] = useState<'all' | 'active' | 'expired'>('all')
 
-  const [activeFilter, setActiveFilter] = useState<'all' | 'urgent' | 'high' | 'medium' | 'low'>(
-    initialFilter
+  const [activeFilter, setActiveFilter] = useState<AlertPriority[]>(() =>
+    getInitialPriorityFilter(initialFilter)
   )
+  const [alertSortField, setAlertSortField] = useState<AlertSortField>('priority')
+  const [alertSortDir, setAlertSortDir] = useState<SortDirection>('desc')
   const [searchTerm, setSearchTerm] = useState('')
   const [showCompanyCard, setShowCompanyCard] = useState(false)
   const [selectedCompany, setSelectedCompany] = useState<Company | null>(null)
@@ -60,9 +163,19 @@ export default function Alerts({ initialTab = 'all', initialFilter = 'all' }: Al
     (Employee & { company: Company }) | null
   >(null)
   const navigate = useNavigate()
+  const togglePriorityFilter = (priority: AlertPriority) => {
+    setActiveFilter((current) =>
+      current.includes(priority)
+        ? current.filter((item) => item !== priority)
+        : [...current, priority]
+    )
+  }
+
+  const clearPriorityFilter = () => {
+    setActiveFilter([])
+  }
   // شبكة خاصة بكروت التنبيهات - أعرض من الكروت العادية لاستيعاب المحتوى
   const ALERT_GRID_CLASS = 'grid grid-cols-[repeat(auto-fill,minmax(290px,1fr))] gap-3'
-  const alertGridClass = ALERT_GRID_CLASS
 
   useEffect(() => {
     fetchData()
@@ -414,72 +527,101 @@ export default function Alerts({ initialTab = 'all', initialFilter = 'all' }: Al
   const totalUrgentAlerts = companyAlertsStats.urgent + employeeAlertsStats.urgent
 
   // [MODIFIED] فلترة التنبيهات بناءً على التبويب "جديد" أو "مقروء"
-  const getFilteredCompanyAlerts = () => {
-    // 1. ابدأ بجميع تنبيهات المؤسسات - فلترة لعرض urgent و high فقط
+
+  // [NEW] حساب عدد المقروءة (لأجل تبويب "مقروء")
+  const normalizedSearchTerm = normalizeArabic(searchTerm).trim().toLowerCase()
+
+  const filteredCompanyAlerts = useMemo(() => {
     let filtered = companyAlerts.filter(
       (alert) => alert.priority === 'urgent' || alert.priority === 'high'
     )
 
-    // 2. فلتر الأولوية (إذا كان المستخدم يريد فلترة إضافية)
-    if (activeFilter !== 'all') {
-      filtered = filterAlertsByPriority(filtered, activeFilter)
-    }
-
-    // 3. فلتر البحث
-    if (searchTerm) {
-      filtered = filtered.filter(
-        (alert) =>
-          alert.company.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          alert.title.toLowerCase().includes(searchTerm.toLowerCase())
+    if (alertStatusFilter !== 'all') {
+      filtered = filtered.filter((alert) =>
+        alertStatusFilter === 'expired'
+          ? (alert.days_remaining ?? 0) <= 0
+          : (alert.days_remaining ?? 0) > 0
       )
     }
 
-    // 4. [NEW] فلتر المقروء/غير المقروء
+    if (activeFilter.length > 0) {
+      filtered = filterAlertsByPriority(filtered, activeFilter)
+    }
+
+    if (normalizedSearchTerm) {
+      filtered = filtered.filter(
+        (alert) =>
+          normalizeArabic(alert.company.name).toLowerCase().includes(normalizedSearchTerm) ||
+          normalizeArabic(alert.title).toLowerCase().includes(normalizedSearchTerm)
+      )
+    }
+
     if (readFilterTab === 'new') {
       filtered = filtered.filter((alert) => !readAlerts.has(alert.id))
     } else {
       filtered = filtered.filter((alert) => readAlerts.has(alert.id))
     }
 
-    return filtered
-  }
+    return [...filtered].sort((left, right) =>
+      compareAlerts(left, right, alertSortField, alertSortDir, (alert) => alert.company.name)
+    )
+  }, [
+    companyAlerts,
+    alertStatusFilter,
+    activeFilter,
+    normalizedSearchTerm,
+    readFilterTab,
+    readAlerts,
+    alertSortField,
+    alertSortDir,
+  ])
 
-  // [MODIFIED] فلترة التنبيهات بناءً على التبويب "جديد" أو "مقروء"
-  const getFilteredEmployeeAlerts = () => {
-    // 1. ابدأ بجميع تنبيهات الموظفين - فلترة لعرض urgent و high فقط
+  const filteredEmployeeAlerts = useMemo(() => {
     let filtered = employeeAlerts.filter(
       (alert) => alert.priority === 'urgent' || alert.priority === 'high'
     )
 
-    // 2. فلتر الأولوية (إذا كان المستخدم يريد فلترة إضافية)
-    if (activeFilter !== 'all') {
-      filtered = filterEmployeeAlertsByPriority(filtered, activeFilter)
-    }
-
-    // 3. فلتر البحث
-    if (searchTerm) {
-      filtered = filtered.filter(
-        (alert) =>
-          alert.employee.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          alert.company.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          alert.title.toLowerCase().includes(searchTerm.toLowerCase())
+    if (alertStatusFilter !== 'all') {
+      filtered = filtered.filter((alert) =>
+        alertStatusFilter === 'expired'
+          ? (alert.days_remaining ?? 0) <= 0
+          : (alert.days_remaining ?? 0) > 0
       )
     }
 
-    // 4. [NEW] فلتر المقروء/غير المقروء
+    if (activeFilter.length > 0) {
+      filtered = filterEmployeeAlertsByPriority(filtered, activeFilter)
+    }
+
+    if (normalizedSearchTerm) {
+      filtered = filtered.filter(
+        (alert) =>
+          normalizeArabic(alert.employee.name).toLowerCase().includes(normalizedSearchTerm) ||
+          normalizeArabic(alert.company.name).toLowerCase().includes(normalizedSearchTerm) ||
+          normalizeArabic(alert.title).toLowerCase().includes(normalizedSearchTerm)
+      )
+    }
+
     if (readFilterTab === 'new') {
       filtered = filtered.filter((alert) => !readAlerts.has(alert.id))
     } else {
       filtered = filtered.filter((alert) => readAlerts.has(alert.id))
     }
 
-    return filtered
-  }
+    return [...filtered].sort((left, right) =>
+      compareAlerts(left, right, alertSortField, alertSortDir, (alert) => alert.employee.name)
+    )
+  }, [
+    employeeAlerts,
+    alertStatusFilter,
+    activeFilter,
+    normalizedSearchTerm,
+    readFilterTab,
+    readAlerts,
+    alertSortField,
+    alertSortDir,
+  ])
 
-  const filteredCompanyAlerts = getFilteredCompanyAlerts()
-  const filteredEmployeeAlerts = getFilteredEmployeeAlerts()
-
-  // [NEW] حساب عدد المقروءة (لأجل تبويب "مقروء")
   const readCompanyAlertsCount = companyAlerts.filter((alert) => readAlerts.has(alert.id)).length
   const readEmployeeAlertsCount = employeeAlerts.filter((alert) => readAlerts.has(alert.id)).length
   const totalReadAlerts = readCompanyAlertsCount + readEmployeeAlertsCount
@@ -596,21 +738,74 @@ export default function Alerts({ initialTab = 'all', initialFilter = 'all' }: Al
                 wrapperClassName="min-w-[220px] flex-1"
               />
 
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="secondary" className="justify-between min-w-[180px]">
+                    <span className="truncate">الأولويات: {getPriorityFilterLabel(activeFilter)}</span>
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="start" sideOffset={8} className="w-56">
+                  <DropdownMenuLabel>اختر الأولويات</DropdownMenuLabel>
+                  <DropdownMenuItem onSelect={() => clearPriorityFilter()}>
+                    جميع الأولويات
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  {PRIORITY_OPTIONS.map((option) => (
+                    <DropdownMenuCheckboxItem
+                      key={option.value}
+                      checked={activeFilter.includes(option.value)}
+                      onCheckedChange={() => togglePriorityFilter(option.value)}
+                      onSelect={(event) => event.preventDefault()}
+                    >
+                      {option.label}
+                    </DropdownMenuCheckboxItem>
+                  ))}
+                </DropdownMenuContent>
+              </DropdownMenu>
+
               <Select
-                value={activeFilter}
-                onValueChange={(value) =>
-                  setActiveFilter(value as 'all' | 'urgent' | 'high' | 'medium' | 'low')
-                }
+                value={alertStatusFilter}
+                onValueChange={(value) => setAlertStatusFilter(value as typeof alertStatusFilter)}
               >
-                <SelectTrigger className="min-w-[220px]">
-                  <SelectValue placeholder="جميع الأولويات" />
+                <SelectTrigger className="min-w-[160px]">
+                  <SelectValue placeholder="حالة التنبيه" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">جميع الأولويات (طارئ وعاجل)</SelectItem>
-                  <SelectItem value="urgent">طارئ</SelectItem>
-                  <SelectItem value="high">عاجل</SelectItem>
-                  <SelectItem value="medium">متوسط</SelectItem>
-                  <SelectItem value="low">طفيف</SelectItem>
+                  <SelectItem value="all">الكل</SelectItem>
+                  <SelectItem value="active">نشط</SelectItem>
+                  <SelectItem value="expired">منتهي</SelectItem>
+                </SelectContent>
+              </Select>
+
+              <Select
+                value={alertSortField}
+                onValueChange={(value) => setAlertSortField(value as AlertSortField)}
+              >
+                <SelectTrigger className="min-w-[180px]">
+                  <SelectValue placeholder="اختر الترتيب" />
+                </SelectTrigger>
+                <SelectContent>
+                  {ALERT_SORT_FIELDS.map((field) => (
+                    <SelectItem key={field.value} value={field.value}>
+                      {field.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+
+              <Select
+                value={alertSortDir}
+                onValueChange={(value) => setAlertSortDir(value as SortDirection)}
+              >
+                <SelectTrigger className="min-w-[140px]">
+                  <SelectValue placeholder="اتجاه" />
+                </SelectTrigger>
+                <SelectContent>
+                  {ALERT_SORT_DIRECTIONS.map((direction) => (
+                    <SelectItem key={direction.value} value={direction.value}>
+                      {direction.label}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </FilterBar>
@@ -670,7 +865,7 @@ export default function Alerts({ initialTab = 'all', initialFilter = 'all' }: Al
                     {filteredCompanyAlerts.length}
                   </span>
                 </div>
-                <div className={alertGridClass}>
+                <div className={ALERT_GRID_CLASS}>
                   {filteredCompanyAlerts.map((alert) => (
                     <AlertCard
                       key={alert.id}
@@ -696,7 +891,7 @@ export default function Alerts({ initialTab = 'all', initialFilter = 'all' }: Al
                     {filteredEmployeeAlerts.length}
                   </span>
                 </div>
-                <div className={alertGridClass}>
+                <div className={ALERT_GRID_CLASS}>
                   {filteredEmployeeAlerts.map((alert) => (
                     <EmployeeAlertCard
                       key={alert.id}
