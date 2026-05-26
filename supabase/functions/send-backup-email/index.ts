@@ -217,7 +217,12 @@ Deno.serve(async (req: Request) => {
   const backupDate = backup.completed_at ? formatDate(backup.completed_at) : '—'
   const backupIdShort = backup_id.slice(0, 8)
   const zipFilename = `backup-${backupDate.replace(/\//g, '-')}-${backupIdShort}.zip`
-  const zipBase64 = btoa(String.fromCharCode(...zipBuffer))
+  let zipBinary = ''
+  const chunkSize = 8192
+  for (let i = 0; i < zipBuffer.length; i += chunkSize) {
+    zipBinary += String.fromCharCode(...zipBuffer.subarray(i, i + chunkSize))
+  }
+  const zipBase64 = btoa(zipBinary)
 
   const htmlBody = `<!DOCTYPE html>
 <html dir="rtl" lang="ar">

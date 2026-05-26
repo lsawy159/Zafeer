@@ -8,6 +8,7 @@ import {
   BarChart3,
   Users,
   AlertTriangle,
+  Mail,
 } from 'lucide-react'
 
 export interface SettingsCategory {
@@ -25,6 +26,7 @@ export type TabType =
   | 'audit'
   | 'permissions'
   | 'advanced-notifications'
+  | 'email-settings'
   | 'alert-settings'
   | 'backup'
   | 'activity-logs'
@@ -35,6 +37,7 @@ export const ALLOWED_TABS: TabType[] = [
   'audit',
   'permissions',
   'advanced-notifications',
+  'email-settings',
   'alert-settings',
   'backup',
   'activity-logs',
@@ -49,23 +52,7 @@ export const LEGACY_SYSTEM_SETTINGS_KEYS = [
   'working_hours_end',
 ]
 
-
 export const NOTIFICATIONS_SETTINGS: GeneralSetting[] = [
-  {
-    setting_key: 'admin_email',
-    setting_value: '',
-    category: 'notifications',
-    description: 'إيميل المسؤول (لإرسال الإشعارات اليومية وتقارير CSV)',
-    setting_type: 'text',
-  },
-  {
-    setting_key: 'notification_methods',
-    setting_value: 'in_app',
-    category: 'notifications',
-    description: 'طرق الإرسال',
-    setting_type: 'select',
-    options: ['in_app', 'email', 'all'],
-  },
   {
     setting_key: 'notification_frequency',
     setting_value: 'immediate',
@@ -81,20 +68,6 @@ export const NOTIFICATIONS_SETTINGS: GeneralSetting[] = [
     description: 'تفعيل الإشعارات العاجلة',
     setting_type: 'boolean',
   },
-  {
-    setting_key: 'quiet_hours_start',
-    setting_value: '22:00',
-    category: 'notifications',
-    description: 'بداية فترة الصمت (لا إشعارات)',
-    setting_type: 'time',
-  },
-  {
-    setting_key: 'quiet_hours_end',
-    setting_value: '08:00',
-    category: 'notifications',
-    description: 'نهاية فترة الصمت',
-    setting_type: 'time',
-  },
 ]
 
 export function buildSettingsCategories(
@@ -104,7 +77,8 @@ export function buildSettingsCategories(
   AuditDashboard: React.ComponentType,
   PermissionsPanel: React.ComponentType,
   UnifiedSettings: React.ComponentType,
-  ActivityLogsEmbedded: React.ComponentType
+  ActivityLogsEmbedded: React.ComponentType,
+  EmailSettingsTab: React.ComponentType
 ): SettingsCategory[] {
   return [
     {
@@ -145,21 +119,30 @@ export function buildSettingsCategories(
     {
       key: 'advanced-notifications',
       label: 'إعدادات الإشعارات المتقدمة',
-      description: 'التحكم في طريقة الإشعارات (داخل التطبيق / بريد / SMS)، وتحديد عدد الأيام للتنبيه قبل انتهاء الإقامات والعقود، وساعات الصمت.',
+      description:
+        'التحكم في تكرار الإشعارات داخل التطبيق وتفعيل الإشعارات العاجلة.',
       icon: Bell,
       settings: NOTIFICATIONS_SETTINGS,
     },
     {
+      key: 'email-settings',
+      label: 'إرسال الإيميلات',
+      description:
+        'إدارة مستلمي الإيميلات، إعدادات الإرسال التلقائي، ساعات الصمت، وإرسال النسخ والتقارير يدوياً.',
+      icon: Mail,
+      component: EmailSettingsTab,
+    },
+    {
       key: 'alert-settings',
       label: 'إعدادات التنبيهات',
-      description: 'تخصيص حدود التنبيهات وألوانها وحالاتها: ما يُعتبر تنبيهاً حرجاً، والألوان المرتبطة بكل حالة.',
+      description: 'تخصيص حدود التنبيهات وألوانها وحالاتها: ما يعتبر تنبيهاً حرجاً، والألوان المرتبطة بكل حالة.',
       icon: AlertTriangle,
       component: UnifiedSettings,
     },
     {
       key: 'activity-logs',
       label: 'سجل الأنشطة',
-      description: 'عرض كامل سجل الإجراءات والعمليات التي تمت في النظام مع التوقيت والمستخدم المسؤول.',
+      description: 'عرض كامل لسجل الإجراءات والعمليات التي تمت في النظام مع التوقيت والمستخدم المسؤول.',
       icon: Clock,
       component: ActivityLogsEmbedded,
     },

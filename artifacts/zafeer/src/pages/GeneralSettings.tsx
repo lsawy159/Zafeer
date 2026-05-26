@@ -8,8 +8,6 @@ import {
   Database as DatabaseIcon,
   Clock,
   Shield,
-  AlertTriangle,
-  Send,
   BellOff,
   Bell,
 } from 'lucide-react'
@@ -27,6 +25,7 @@ import { PermissionsPanel } from '@/pages/Permissions'
 import UnifiedSettings from '@/components/settings/UnifiedSettings'
 import { Button } from '@/components/ui/Button'
 import { SystemDefaultsInfo } from './settings/SystemDefaultsInfo'
+import { EmailSettingsTab } from '@/components/settings/tabs/EmailSettingsTab'
 import { SettingControl } from './settings/SettingControl'
 import {
   buildSettingsCategories,
@@ -42,7 +41,6 @@ export default function GeneralSettings() {
   const { canView, canEdit } = usePermissions()
   const [searchParams, setSearchParams] = useSearchParams()
   const [activeTab, setActiveTab] = useState<TabType>('system')
-  // Settings can be string, number, boolean, or object
   const [settings, setSettings] = useState<
     Record<string, string | number | boolean | Record<string, unknown> | null>
   >({})
@@ -50,8 +48,6 @@ export default function GeneralSettings() {
   const [isSaving, setIsSaving] = useState(false)
   const [showConfirmReset, setShowConfirmReset] = useState(false)
   const [resetTabKey, setResetTabKey] = useState<TabType | null>(null)
-  const [csvSending, setCsvSending] = useState(false)
-  const [csvSendMsg, setCsvSendMsg] = useState<{ ok: boolean; text: string } | null>(null)
   const [deferredNotifications, setDeferredNotifications] = useState<Notification[]>([])
   const [deferredLoading, setDeferredLoading] = useState(false)
   const [snoozeTarget, setSnoozeTarget] = useState<Notification | null>(null)
@@ -69,9 +65,7 @@ export default function GeneralSettings() {
         return
       }
 
-      const { error } = await table
-        .delete()
-        .in('setting_key', LEGACY_SYSTEM_SETTINGS_KEYS)
+      const { error } = await table.delete().in('setting_key', LEGACY_SYSTEM_SETTINGS_KEYS)
 
       if (error) {
         console.error('Error cleaning legacy system settings:', error)
@@ -99,7 +93,6 @@ export default function GeneralSettings() {
         > = {}
         data.forEach((row: { setting_key: string; setting_value: unknown }) => {
           const raw = row.setting_value
-          // Values stored as JSON strings — parse back to native type
           if (typeof raw === 'string') {
             try {
               settingsMap[row.setting_key] = JSON.parse(raw)
@@ -167,7 +160,10 @@ export default function GeneralSettings() {
       .from('notifications')
       .update({ snoozed_until: null, is_deferred: false })
       .eq('id', id)
-    if (error) { toast.error('فشل التفعيل'); return }
+    if (error) {
+      toast.error('فشل التفعيل')
+      return
+    }
     toast.success('تم تفعيل الإشعار')
     loadDeferredNotifications()
   }
@@ -177,7 +173,6 @@ export default function GeneralSettings() {
     setSearchParams({ tab })
   }
 
-  // Check if user has view permission
   if (!user || !hasViewPermission) {
     return (
       <Layout>
@@ -201,7 +196,8 @@ export default function GeneralSettings() {
     AuditDashboard,
     PermissionsPanel,
     UnifiedSettings,
-    ActivityLogsEmbedded
+    ActivityLogsEmbedded,
+    EmailSettingsTab
   )
 
   const saveActiveTabSettings = async () => {
@@ -212,7 +208,6 @@ export default function GeneralSettings() {
 
     const categoryToSave = settingsCategories.find((cat) => cat.key === activeTab)
     if (!categoryToSave || !categoryToSave.settings) {
-      // تبويبات بدون settings تستخدم مكونات مستقلة (مثل الحقول المخصصة/الإعدادات الموحدة)
       toast.info('هذا التبويب يدير الحفظ من داخل مكونه الخاص')
       return
     }
@@ -227,9 +222,7 @@ export default function GeneralSettings() {
         }
       })
 
-      const { error } = await supabase
-        .from('system_settings')
-        .upsert(rows, { onConflict: 'setting_key' })
+      const { error } = await supabase.from('system_settings').upsert(rows, { onConflict: 'setting_key' })
 
       if (error) {
         console.error('Error saving settings:', error)
@@ -259,8 +252,6 @@ export default function GeneralSettings() {
     if (!resetTabKey) return []
 
     const categoryToReset = settingsCategories.find((cat) => cat.key === resetTabKey)
-
-    // إذا كان التبويب لا يحتوي على settings array (يستخدم component)، أرجع مصفوفة فارغة
     if (!categoryToReset || !categoryToReset.settings) return []
 
     return categoryToReset.settings
@@ -297,9 +288,7 @@ export default function GeneralSettings() {
     }))
 
     const categoryLabel = categoryToReset?.label || 'الإعدادات'
-    toast.success(
-      `تم إعادة تعيين ${categoryLabel} إلى القيم الافتراضية`
-    )
+    toast.success(`تم إعادة تعيين ${categoryLabel} إلى القيم الافتراضية`)
     setShowConfirmReset(false)
     setResetTabKey(null)
   }
@@ -318,36 +307,6 @@ export default function GeneralSettings() {
     }))
   }
 
-  const handleSendCsvReport = async () => {
-    setCsvSending(true)
-    setCsvSendMsg(null)
-    try {
-      const { data, error } = await supabase.functions.invoke('send-alert-report')
-      if (error) {
-        // error.context is the raw Response object — must await .json() to read body
-        let serverMsg: string | undefined
-        try {
-          const body = await (error as unknown as { context: Response }).context.json()
-          serverMsg = body?.error as string | undefined
-        } catch {
-          // context not JSON-parseable
-        }
-        throw new Error(serverMsg ?? error.message)
-      }
-      if (data?.error === 'no_admin_email') {
-        setCsvSendMsg({ ok: false, text: 'إيميل المسؤول غير مضبوط — احفظ الإيميل أولاً ثم أعد المحاولة.' })
-      } else if (data?.email_sent === false) {
-        setCsvSendMsg({ ok: true, text: 'لا توجد تنبيهات نشطة حالياً — لم يُرسل تقرير.' })
-      } else {
-        setCsvSendMsg({ ok: true, text: `تم الإرسال بنجاح إلى ${data?.recipient ?? ''}` })
-      }
-    } catch (err) {
-      setCsvSendMsg({ ok: false, text: err instanceof Error ? err.message : 'حدث خطأ غير متوقع' })
-    } finally {
-      setCsvSending(false)
-    }
-  }
-
   const activeCategory = settingsCategories.find((cat) => cat.key === activeTab)
   const shouldBlockForLoading = isLoading && Boolean(activeCategory?.settings)
 
@@ -364,7 +323,6 @@ export default function GeneralSettings() {
   return (
     <Layout>
       <div className="app-page app-tech-grid">
-        {/* Header */}
         <div className="mb-3 flex items-center gap-2">
           <div className="app-icon-chip p-2">
             <Settings className="w-5 h-5" />
@@ -378,12 +336,9 @@ export default function GeneralSettings() {
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-3">
-          {/* Sidebar Navigation */}
           <div className="lg:col-span-1">
             <div className="app-panel sticky top-3 p-2.5">
-              <h3 className="font-semibold text-foreground mb-2 text-xs">
-                فئات الإعدادات
-              </h3>
+              <h3 className="font-semibold text-foreground mb-2 text-xs">فئات الإعدادات</h3>
               <nav className="space-y-1">
                 {settingsCategories.map((category) => {
                   const Icon = category.icon
@@ -408,11 +363,9 @@ export default function GeneralSettings() {
             </div>
           </div>
 
-          {/* Settings Content */}
           <div className="lg:col-span-3">
             {activeCategory && (
               <div className="app-panel overflow-hidden">
-                {/* Tab Header */}
                 <div className="bg-surface-secondary-50 border-b border-border-200 px-4 py-2.5">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
@@ -451,19 +404,7 @@ export default function GeneralSettings() {
                   </div>
                 </div>
 
-                {/* Tab Content */}
                 <div className="p-3">
-                  {activeTab === 'advanced-notifications' && user?.role === 'admin' && !settings.admin_email && (
-                    <div className="mb-3 flex items-start gap-2.5 rounded-xl border border-amber-500/30 bg-amber-500/10 px-3.5 py-3" dir="rtl">
-                      <AlertTriangle className="w-4 h-4 mt-0.5 text-amber-500 shrink-0" />
-                      <div>
-                        <p className="text-sm font-medium text-amber-700 dark:text-amber-400">إيميل المسؤول غير مضبوط</p>
-                        <p className="text-xs text-amber-600 dark:text-amber-500 mt-0.5">
-                          لن تصل الإشعارات اليومية ولا تقارير CSV بالبريد. أدخل إيميل المسؤول في الحقل أدناه.
-                        </p>
-                      </div>
-                    </div>
-                  )}
                   {activeCategory.component ? (
                     <activeCategory.component />
                   ) : activeCategory.settings ? (
@@ -497,29 +438,6 @@ export default function GeneralSettings() {
                         </div>
                       ))}
 
-                      {/* زر إرسال التقرير — advanced-notifications tab + admin only */}
-                      {activeTab === 'advanced-notifications' && user?.role === 'admin' && (
-                        <div className="pt-3 mt-1 border-t border-border-100">
-                          <div className="flex items-center justify-between">
-                            <div>
-                              <h3 className="font-medium text-foreground text-sm">إرسال تقرير CSV الآن</h3>
-                              <p className="text-xs text-foreground-tertiary mt-0.5">
-                                إرسال تقرير التنبيهات النشطة فوراً إلى إيميل المسؤول
-                              </p>
-                              {csvSendMsg && (
-                                <p className={`text-xs mt-1 font-medium ${csvSendMsg.ok ? 'text-green-600' : 'text-red-600'}`}>
-                                  {csvSendMsg.text}
-                                </p>
-                              )}
-                            </div>
-                            <Button onClick={handleSendCsvReport} disabled={csvSending} size="sm" className="text-xs shrink-0">
-                              {csvSending ? <><RefreshCw className="w-3.5 h-3.5 animate-spin" /> جارٍ...</> : <><Send className="w-3.5 h-3.5" /> إرسال الآن</>}
-                            </Button>
-                          </div>
-                        </div>
-                      )}
-
-                      {/* الإشعارات المؤجلة — advanced-notifications tab + admin only */}
                       {activeTab === 'advanced-notifications' && user?.role === 'admin' && (
                         <div className="pt-3 mt-1 border-t border-border-100">
                           <div className="flex items-center justify-between mb-3">
@@ -532,25 +450,40 @@ export default function GeneralSettings() {
                                 </span>
                               )}
                             </div>
-                            <Button variant="secondary" size="sm" className="text-xs" onClick={loadDeferredNotifications} disabled={deferredLoading}>
+                            <Button
+                              variant="secondary"
+                              size="sm"
+                              className="text-xs"
+                              onClick={loadDeferredNotifications}
+                              disabled={deferredLoading}
+                            >
                               <RefreshCw className={`w-3 h-3 ${deferredLoading ? 'animate-spin' : ''}`} />
                             </Button>
                           </div>
                           {deferredLoading ? (
-                            <p className="text-xs text-foreground-tertiary text-center py-4">جارٍ التحميل...</p>
+                            <p className="text-xs text-foreground-tertiary text-center py-4">
+                              جاري التحميل...
+                            </p>
                           ) : deferredNotifications.length === 0 ? (
-                            <p className="text-xs text-foreground-tertiary text-center py-4">لا توجد إشعارات مؤجلة</p>
+                            <p className="text-xs text-foreground-tertiary text-center py-4">
+                              لا توجد إشعارات مؤجلة
+                            </p>
                           ) : (
                             <div className="space-y-2">
                               {deferredNotifications.map((n) => (
-                                <div key={n.id} className="flex items-start justify-between gap-3 rounded-xl border border-border-100 bg-surface-secondary-50 px-3 py-2.5">
+                                <div
+                                  key={n.id}
+                                  className="flex items-start justify-between gap-3 rounded-xl border border-border-100 bg-surface-secondary-50 px-3 py-2.5"
+                                >
                                   <div className="flex-1 min-w-0">
-                                    <p className="text-sm font-medium text-foreground truncate">{n.title}</p>
+                                    <p className="text-sm font-medium text-foreground truncate">
+                                      {n.title}
+                                    </p>
                                     <p className="text-xs text-foreground-tertiary mt-0.5">
                                       {n.is_deferred
-                                        ? 'مؤجَّل حتى يُفعَّل يدوياً'
+                                        ? 'مؤجل حتى يُفعل يدوياً'
                                         : n.snoozed_until
-                                          ? `مؤجَّل حتى: ${new Date(n.snoozed_until).toLocaleDateString('ar-SA')}`
+                                          ? `مؤجل حتى: ${new Date(n.snoozed_until).toLocaleDateString('ar-SA')}`
                                           : ''}
                                     </p>
                                   </div>
@@ -582,9 +515,7 @@ export default function GeneralSettings() {
                   ) : (
                     <div className="text-center py-6 text-foreground-tertiary">
                       <activeCategory.icon className="w-10 h-10 mx-auto mb-2 text-foreground-tertiary" />
-                      <p className="text-xs">
-                        لا توجد إعدادات متاحة في هذا القسم
-                      </p>
+                      <p className="text-xs">لا توجد إعدادات متاحة في هذا القسم</p>
                     </div>
                   )}
                 </div>
@@ -593,7 +524,6 @@ export default function GeneralSettings() {
           </div>
         </div>
 
-        {/* Quick Stats */}
         <div className="mt-3 grid grid-cols-1 md:grid-cols-3 gap-2">
           <div className="app-panel border-primary/30 bg-primary/10 p-2.5">
             <div className="flex items-center gap-2">
@@ -696,7 +626,10 @@ export default function GeneralSettings() {
             notification={snoozeTarget}
             open={!!snoozeTarget}
             onClose={() => setSnoozeTarget(null)}
-            onSuccess={() => { setSnoozeTarget(null); loadDeferredNotifications() }}
+            onSuccess={() => {
+              setSnoozeTarget(null)
+              loadDeferredNotifications()
+            }}
           />
         )}
       </div>

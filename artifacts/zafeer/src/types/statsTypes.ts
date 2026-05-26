@@ -1,4 +1,4 @@
-// Stats dashboard type definitions — no React/supabase imports
+// Stats dashboard type definitions â€” no React/supabase imports
 
 export interface StatsCompanyRow {
   id: string
@@ -7,6 +7,8 @@ export interface StatsCompanyRow {
   commercial_registration_expiry?: string | null
   ending_subscription_power_date?: string | null
   ending_subscription_moqeem_date?: string | null
+  labor_subscription_number?: string | null
+  social_insurance_number?: string | null
 }
 
 export interface StatsEmployeeRow {
@@ -29,45 +31,31 @@ export type CompanyClassification = 'healthy' | 'damaged' | 'missing'
 export type EmployeeClassification = 'healthy' | 'damaged' | 'missing'
 export type AlertLevel = 'urgent' | 'high' | 'medium'
 
-// Section A — حالة المؤسسات
-export interface CompanyStatsResult {
-  healthy: number
-  damaged: number
-  missing: number
-  total: number
-}
-
-// Section A' — حالة الموظفين
-export interface EmployeeStatsResult {
-  healthy: number
-  damaged: number
-  missing: number
-  total: number
-}
-
-// Section B — تنبيهات المؤسسات (سليمة فقط — لديها تواريخ صالحة غير منتهية)
+// Section B â€” تنبيهات المؤسسات
 export interface CompanyAlertStatsResult {
   urgent: number
   high: number
   medium: number
 }
 
-// Section F — بيانات المؤسسات الناقصة
+// Section F â€” بيانات المؤسسات الناقصة
 export interface CompanyMissingDataResult {
-  commercial_reg: number          // commercial_registration_expiry = null
-  power_subscription: number     // ending_subscription_power_date = null
-  moqeem_subscription: number    // ending_subscription_moqeem_date = null
-  any_missing: number            // لديها حقل واحد على الأقل ناقص
+  commercial_reg: number // commercial_registration_expiry = null
+  power_subscription: number // ending_subscription_power_date = null
+  moqeem_subscription: number // ending_subscription_moqeem_date = null
+  labor_subscription: number // labor_subscription_number فارغ أو null
+  social_insurance: number // social_insurance_number فارغ أو null
+  any_missing: number // لديها حقل واحد على الأقل ناقص
 }
 
-// Section G — وثائق المؤسسات المنتهية
+// Section G â€” وثائق المؤسسات المنتهية
 export interface CompanyExpiredDocsResult {
   commercial_reg: number
   power_subscription: number
   moqeem_subscription: number
 }
 
-// Section C — وثائق الموظفين المنتهية
+// Section C â€” وثائق الموظفين المنتهية
 export interface EmployeeExpiredDocsResult {
   residence: number
   contract: number
@@ -75,7 +63,7 @@ export interface EmployeeExpiredDocsResult {
   health_insurance: number
 }
 
-// Section D — بيانات الموظفين الناقصة
+// Section D â€” بيانات الموظفين الناقصة
 export interface EmployeeMissingDocsResult {
   residence: number
   contract: number
@@ -88,22 +76,11 @@ export interface EmployeeMissingDocsResult {
   company_unified_number: number
 }
 
-// Section E — تنبيهات الموظفين (سليمون فقط)
+// Section E â€” تنبيهات الموظفين
 export interface EmployeeAlertStatsResult {
   urgent: number
   high: number
   medium: number
-}
-
-export interface AllStatsResult {
-  companyStats: CompanyStatsResult
-  companyAlerts: CompanyAlertStatsResult
-  companyExpired: CompanyExpiredDocsResult
-  companyMissing: CompanyMissingDataResult
-  employeeStats: EmployeeStatsResult
-  employeeExpired: EmployeeExpiredDocsResult
-  employeeMissing: EmployeeMissingDocsResult
-  employeeAlerts: EmployeeAlertStatsResult
 }
 
 export interface StatusThresholds {

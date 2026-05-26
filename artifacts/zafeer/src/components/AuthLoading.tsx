@@ -144,52 +144,52 @@ function AuthError({ error, onRetry, onDismiss }: AuthErrorProps) {
   return (
     <div className="min-h-screen flex items-center justify-center bg-neutral-50 p-4">
       <div className="max-w-lg w-full bg-white rounded-lg shadow-lg p-6">
-        <div className="flex items-center mb-4">
-          <AlertCircle className={`ml-3 h-8 w-8 ${errorInfo.iconClass}`} />
-          <h2 className="text-xl font-semibold text-neutral-900">{errorInfo.title}</h2>
-        </div>
+            <div className="flex items-center mb-4">
+              <AlertCircle className={`ml-3 h-8 w-8 ${errorInfo.iconClass}`} />
+              <h2 className="text-xl font-semibold text-neutral-900">{errorInfo.title}</h2>
+            </div>
 
-        <p className="text-neutral-600 mb-4">{errorMessageMap(error, errorInfo.type)}</p>
+            <p className="text-neutral-600 mb-4">{errorMessageMap(error, errorInfo.type)}</p>
 
-        {showDetails && (
-          <div className="bg-neutral-100 p-3 rounded-lg mb-4 text-sm text-neutral-700 font-mono">
-            {error}
+            {showDetails && (
+              <div className="bg-neutral-100 p-3 rounded-lg mb-4 text-sm text-neutral-700 font-mono">
+                {error}
+              </div>
+            )}
+
+            <div className="flex flex-wrap gap-3">
+              <button
+                onClick={() => {
+                  void onRetry()
+                }}
+                className="app-button-primary flex-1 justify-center"
+              >
+                <RefreshCw className="w-4 h-4 ml-2" />
+                إعادة المحاولة
+              </button>
+
+              <button
+                onClick={() => window.location.reload()}
+                className="app-button-secondary flex-1 justify-center"
+              >
+                إعادة تحميل الصفحة
+              </button>
+
+              <button
+                onClick={onDismiss}
+                className="px-4 py-2 text-neutral-600 hover:text-neutral-800 transition-colors"
+              >
+                تجاهل
+              </button>
+            </div>
+
+            <button
+              onClick={() => setShowDetails(!showDetails)}
+              className="app-button-secondary mt-3 w-full justify-center text-sm"
+            >
+              {showDetails ? 'إخفاء التفاصيل' : 'عرض التفاصيل التقنية'}
+            </button>
           </div>
-        )}
-
-        <div className="flex flex-wrap gap-3">
-          <button
-            onClick={() => {
-              void onRetry()
-            }}
-            className="app-button-primary flex-1 justify-center"
-          >
-            <RefreshCw className="w-4 h-4 ml-2" />
-            إعادة المحاولة
-          </button>
-
-          <button
-            onClick={() => window.location.reload()}
-            className="app-button-secondary flex-1 justify-center"
-          >
-            إعادة تحميل الصفحة
-          </button>
-
-          <button
-            onClick={onDismiss}
-            className="px-4 py-2 text-neutral-600 hover:text-neutral-800 transition-colors"
-          >
-            تجاهل
-          </button>
-        </div>
-
-        <button
-          onClick={() => setShowDetails(!showDetails)}
-          className="app-button-secondary mt-3 w-full justify-center text-sm"
-        >
-          {showDetails ? 'إخفاء التفاصيل' : 'عرض التفاصيل التقنية'}
-        </button>
-      </div>
     </div>
   )
 }

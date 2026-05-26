@@ -946,126 +946,79 @@ export default function Notifications() {
             </p>
           </div>
         ) : (
-          <div className="space-y-3">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
             {filteredNotifications.map((notification) => (
               <div
                 key={notification.id}
-                className={`bg-surface rounded-xl shadow-sm border-2 p-6 transition ${
-                  !notification.is_read ? 'border-blue-200 bg-blue-50/30' : 'border-neutral-200'
+                className={`bg-surface rounded-xl shadow-sm border-2 p-5 flex flex-col gap-4 transition ${
+                  !notification.is_read ? 'border-blue-200' : 'border-neutral-200'
                 }`}
               >
-                <div className="flex items-start gap-4">
-                  {/* Priority Icon */}
-                  <div className={`p-3 rounded-xl ${getPriorityColor(notification.priority)}`}>
+                <div className="flex items-start gap-3">
+                  <div className={`p-2.5 rounded-xl flex-shrink-0 ${getPriorityColor(notification.priority)}`}>
                     {getPriorityIcon(notification.priority)}
                   </div>
-
-                  {/* Content */}
                   <div className="flex-1 min-w-0">
-                    <div className="flex items-start justify-between gap-4 mb-2">
-                      <h3
-                        className={`text-lg font-semibold ${!notification.is_read ? 'text-neutral-900' : 'text-neutral-700'}`}
-                      >
+                    <div className="flex items-start gap-2">
+                      <h3 className={`text-base font-semibold leading-snug flex-1 ${!notification.is_read ? 'text-neutral-900' : 'text-neutral-700'}`}>
                         {notification.title}
                       </h3>
-                      {!notification.is_read && (
-                        <span className="flex-shrink-0 w-3 h-3 bg-blue-600 rounded-full"></span>
-                      )}
+                      {!notification.is_read && <span className="w-2.5 h-2.5 bg-blue-600 rounded-full flex-shrink-0 mt-1" />}
                     </div>
-
-                    <p className="text-neutral-600 mb-3">{notification.message}</p>
-
-                    <div className="flex flex-wrap items-center gap-3">
-                      <span
-                        className={`px-3 py-1 rounded-full text-sm font-medium ${getPriorityColor(notification.priority)}`}
-                      >
-                        {getPriorityLabel(notification.priority)}
-                      </span>
-
-                      {notification.days_remaining != null && (
-                        <span
-                          className={`px-3 py-1 rounded-full text-sm font-medium ${
-                            notification.days_remaining < 0
-                              ? 'bg-red-100 text-red-700'
-                              : notification.days_remaining <= 7
-                                ? 'bg-orange-100 text-warning-700'
-                                : 'bg-blue-100 text-info-700'
-                          }`}
-                        >
-                          {notification.days_remaining < 0
-                            ? `منتهي منذ ${String(Math.abs(notification.days_remaining))} يوم`
-                            : `باقي ${String(notification.days_remaining)} يوم`}
-                        </span>
-                      )}
-
-                      <span className="text-sm text-neutral-500">
-                        {formatDistanceToNow(new Date(notification.created_at), {
-                          addSuffix: true,
-                          locale: ar,
-                        })}
-                      </span>
-
-                      {notification.target_date && (
-                        <span className="text-sm text-neutral-500">
-                          <HijriDateDisplay date={notification.target_date}>
-                            التاريخ المستهدف:{' '}
-                            {formatDateShortWithHijri(notification.target_date)}
-                          </HijriDateDisplay>
-                        </span>
-                      )}
-                    </div>
-
-                    {/* Action Buttons */}
-                    <div className="flex gap-2 mt-4">
-                      {!notification.is_read ? (
-                        <Button
-                          onClick={() => handleMarkAsRead(notification.id)}
-                          variant="default"
-                          size="sm"
-                        >
-                          <Check className="w-4 h-4" />
-                          تحديد كمقروء
-                        </Button>
-                      ) : (
-                        <Button
-                          onClick={() => handleMarkAsUnread(notification.id)}
-                          variant="secondary"
-                          size="sm"
-                        >
-                          <Mail className="w-4 h-4" />
-                          تحديد كغير مقروء
-                        </Button>
-                      )}
-                      {notification.entity_type === 'company' && notification.entity_id && (
-                        <Button
-                          onClick={() => handleViewCompany(String(notification.entity_id!))}
-                          variant="secondary"
-                          size="sm"
-                        >
-                          <Building2 className="w-4 h-4" />
-                          عرض المؤسسة
-                        </Button>
-                      )}
-                      {isAdmin && (
-                        <Button
-                          onClick={() => setSnoozeTarget(notification)}
-                          variant="secondary"
-                          size="sm"
-                        >
-                          <BellOff className="w-4 h-4" />
-                          تأجيل
-                        </Button>
-                      )}
-                      <Button
-                        onClick={() => handleDelete(notification)}
-                        variant="destructive"
-                        size="sm"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                        حذف
-                      </Button>
-                    </div>
+                    <span className={`inline-block mt-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold border ${getPriorityColor(notification.priority)}`}>
+                      {getPriorityLabel(notification.priority)}
+                    </span>
                   </div>
+                </div>
+                <p className="text-sm text-neutral-600 line-clamp-3">{notification.message}</p>
+                <div className="flex flex-wrap gap-2">
+                  {notification.days_remaining != null && (
+                    <span className={`px-2.5 py-1 rounded-full text-xs font-medium ${
+                      notification.days_remaining < 0
+                        ? 'bg-red-100 text-red-700'
+                        : notification.days_remaining <= 7
+                          ? 'bg-orange-100 text-warning-700'
+                          : 'bg-blue-100 text-info-700'
+                    }`}>
+                      {notification.days_remaining < 0
+                        ? `منتهي منذ ${Math.abs(notification.days_remaining)} يوم`
+                        : `باقي ${notification.days_remaining} يوم`}
+                    </span>
+                  )}
+                  {notification.target_date && (
+                    <span className="text-xs text-neutral-500 self-center">
+                      <HijriDateDisplay date={notification.target_date}>
+                        {formatDateShortWithHijri(notification.target_date)}
+                      </HijriDateDisplay>
+                    </span>
+                  )}
+                  <span className="text-xs text-neutral-500 self-center">
+                    {formatDistanceToNow(new Date(notification.created_at), { addSuffix: true, locale: ar })}
+                  </span>
+                </div>
+                <div className="flex flex-wrap gap-2 pt-1 mt-auto">
+                  {!notification.is_read ? (
+                    <Button onClick={() => handleMarkAsRead(notification.id)} variant="default" size="sm">
+                      <Check className="w-4 h-4" />تحديد كمقروء
+                    </Button>
+                  ) : (
+                    <Button onClick={() => handleMarkAsUnread(notification.id)} variant="secondary" size="sm">
+                      <Mail className="w-4 h-4" />تحديد كغير مقروء
+                    </Button>
+                  )}
+                  {notification.entity_type === 'company' && notification.entity_id && (
+                    <Button onClick={() => handleViewCompany(String(notification.entity_id!))} variant="secondary" size="sm">
+                      <Building2 className="w-4 h-4" />عرض المؤسسة
+                    </Button>
+                  )}
+                  {isAdmin && (
+                    <Button onClick={() => setSnoozeTarget(notification)} variant="secondary" size="sm">
+                      <BellOff className="w-4 h-4" />تأجيل
+                    </Button>
+                  )}
+                  <Button onClick={() => handleDelete(notification)} variant="destructive" size="sm">
+                    <Trash2 className="w-4 h-4" />حذف
+                  </Button>
                 </div>
               </div>
             ))}

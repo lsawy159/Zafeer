@@ -224,7 +224,7 @@ export function EmployeeAlertCard({
         <button
           onClick={() => void runAction('view', () => onViewEmployee(alert.employee.id))}
           disabled={isBusy}
-          className="flex flex-1 items-center justify-center gap-1.5 rounded-xl bg-primary py-2 text-[12px] font-semibold text-slate-900 transition hover:bg-primary/90 disabled:opacity-50"
+          className="flex flex-1 items-center justify-center gap-1.5 rounded-xl bg-primary py-2 text-[12px] font-semibold text-white transition hover:bg-[var(--color-primary-700)] disabled:opacity-50"
         >
           {actionLoading === 'view' ? (
             <Loader2 className="h-3.5 w-3.5 animate-spin" />
