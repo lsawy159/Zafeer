@@ -233,6 +233,7 @@ function ScheduleForm({ initial, onSaved }: ScheduleFormProps) {
                 </button>
               </div>
 
+              {/* email_recipients: Gmail for automated backup delivery — independent of system_settings.notification_recipients */}
               <label className="mt-3 mb-1.5 block text-xs font-medium text-foreground-secondary">
                 مستقبلو Gmail (مفصولين بفاصلة)
               </label>
