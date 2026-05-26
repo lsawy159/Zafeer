@@ -15,6 +15,7 @@ const updateUserSchema = UpdateAdminUserBody.refine(
 );
 
 // POST /api/admin/users — إنشاء مستخدم جديد
+// LOCAL ONLY â€” production uses Edge Function admin-users (spec 028)
 router.post("/admin/users", requireAdmin, async (req, res) => {
   const parsed = createUserSchema.safeParse(req.body);
   if (!parsed.success) {
@@ -62,6 +63,7 @@ router.post("/admin/users", requireAdmin, async (req, res) => {
 });
 
 // GET /api/admin/users — قائمة المستخدمين
+// LOCAL ONLY â€” production uses Edge Function admin-users (spec 028)
 router.get("/admin/users", requireAdmin, async (_req, res) => {
   const { data, error } = await supabaseAdmin
     .from("users")
@@ -77,6 +79,7 @@ router.get("/admin/users", requireAdmin, async (_req, res) => {
 });
 
 // PATCH /api/admin/users/:id — تعديل مستخدم
+// LOCAL ONLY â€” production uses Edge Function admin-users (spec 028)
 router.patch("/admin/users/:id", requireAdmin, async (req, res) => {
   const id = req.params.id as string;
 
@@ -124,6 +127,7 @@ router.patch("/admin/users/:id", requireAdmin, async (req, res) => {
 });
 
 // DELETE /api/admin/users/:id — حذف مستخدم
+// LOCAL ONLY â€” production uses Edge Function admin-users (spec 028)
 router.delete("/admin/users/:id", requireAdmin, async (req, res) => {
   const id = req.params.id as string;
 

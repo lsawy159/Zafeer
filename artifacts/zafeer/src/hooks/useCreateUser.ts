@@ -1,14 +1,42 @@
-import { useCreateAdminUser } from '@workspace/api-client-react'
-import { useAuth } from '@/contexts/AuthContext'
+import { useMutation } from '@tanstack/react-query'
+import { FunctionsHttpError } from '@supabase/supabase-js'
+import { supabase, type User } from '@/lib/supabase'
+
+type CreateUserVariables = {
+  data: {
+    full_name: string
+    email: string
+    password: string
+    role: User['role']
+  }
+}
 
 export function useCreateUser() {
-  const { session } = useAuth()
+  return useMutation({
+    mutationFn: async ({ data }: CreateUserVariables) => {
+      const { data: result, error } = await supabase.functions.invoke('admin-users', {
+        body: data,
+        headers: {
+          'x-action': 'create',
+        },
+      })
 
-  return useCreateAdminUser({
-    request: {
-      headers: {
-        Authorization: `Bearer ${session?.access_token ?? ''}`,
-      },
+      if (error) {
+        let message: string = error.message
+        if (error instanceof FunctionsHttpError) {
+          try {
+            const body = await error.context.json()
+            if (typeof body?.error === 'string') message = body.error
+          } catch { /* keep generic message */ }
+        }
+        throw new Error(message)
+      }
+
+      if (result?.error) {
+        throw new Error(result.error)
+      }
+
+      return result as { user: User }
     },
   })
 }

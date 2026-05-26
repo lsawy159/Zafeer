@@ -1,0 +1,241 @@
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.45.0'
+
+const CORS_HEADERS = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-action',
+  'Access-Control-Allow-Methods': 'POST, PATCH, OPTIONS',
+}
+
+function jsonResponse(body: unknown, status = 200): Response {
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' },
+  })
+}
+
+function mapAuthError(message: string): string {
+  const normalized = message.toLowerCase()
+
+  if (
+    normalized.includes('already registered') ||
+    normalized.includes('email_exists') ||
+    normalized.includes('already exists')
+  ) {
+    return 'البريد الإلكتروني مستخدم بالفعل'
+  }
+
+  if (normalized.includes('weak_password') || normalized.includes('password')) {
+    return 'كلمة المرور يجب أن تكون 8 أحرف على الأقل'
+  }
+
+  return 'حدث خطأ، حاول مجدداً'
+}
+
+function isNonEmptyString(value: unknown): value is string {
+  return typeof value === 'string' && value.trim().length > 0
+}
+
+function isValidRole(value: unknown): value is 'admin' | 'manager' | 'user' {
+  return value === 'admin' || value === 'manager' || value === 'user'
+}
+
+Deno.serve(async (req: Request) => {
+  if (req.method === 'OPTIONS') {
+    return new Response('ok', { headers: CORS_HEADERS })
+  }
+
+  if (req.method !== 'POST' && req.method !== 'PATCH') {
+    return jsonResponse({ error: 'إجراء غير معروف' }, 400)
+  }
+
+  const SUPABASE_URL = Deno.env.get('SUPABASE_URL')
+  const SUPABASE_ANON_KEY = Deno.env.get('SUPABASE_ANON_KEY')
+  const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')
+
+  if (!SUPABASE_URL || !SUPABASE_ANON_KEY || !SUPABASE_SERVICE_ROLE_KEY) {
+    return jsonResponse({ error: 'حدث خطأ، حاول مجدداً' }, 500)
+  }
+
+  const authHeader = req.headers.get('Authorization')
+  const token = authHeader?.replace(/^Bearer\s+/i, '').trim() ?? ''
+  if (!token) {
+    return jsonResponse({ error: 'انتهت جلسة العمل، أعد تسجيل الدخول' }, 401)
+  }
+
+  const anonClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+    auth: { autoRefreshToken: false, persistSession: false },
+  })
+  const adminClient = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
+    auth: { autoRefreshToken: false, persistSession: false },
+  })
+
+  const {
+    data: { user },
+    error: authError,
+  } = await anonClient.auth.getUser(token)
+
+  if (authError || !user) {
+    return jsonResponse({ error: 'انتهت جلسة العمل، أعد تسجيل الدخول' }, 401)
+  }
+
+  const { data: profile, error: profileError } = await adminClient
+    .from('users')
+    .select('role, is_active')
+    .eq('id', user.id)
+    .single()
+
+  if (profileError || !profile || profile.role !== 'admin' || profile.is_active !== true) {
+    return jsonResponse({ error: 'غير مصرّح لك بهذه العملية' }, 403)
+  }
+
+  const action = req.headers.get('x-action')
+  if (!action) {
+    return jsonResponse({ error: 'إجراء غير معروف' }, 400)
+  }
+
+  if (action === 'create') {
+    let body: Record<string, unknown>
+    try {
+      body = await req.json()
+    } catch {
+      return jsonResponse({ error: 'حدث خطأ، حاول مجدداً' }, 400)
+    }
+
+    const fullName = body.full_name
+    const email = body.email
+    const password = body.password
+    const role = body.role
+
+    if (!isNonEmptyString(fullName) || !isNonEmptyString(email) || !isNonEmptyString(password)) {
+      return jsonResponse({ error: 'حدث خطأ، حاول مجدداً' }, 400)
+    }
+
+    if (password.length < 8) {
+      return jsonResponse({ error: 'كلمة المرور يجب أن تكون 8 أحرف على الأقل' }, 400)
+    }
+
+    if (!isValidRole(role)) {
+      return jsonResponse({ error: 'حدث خطأ، حاول مجدداً' }, 400)
+    }
+
+    const { data: authData, error: createError } = await adminClient.auth.admin.createUser({
+      email: email.trim(),
+      password,
+      email_confirm: true,
+    })
+
+    if (createError || !authData.user) {
+      return jsonResponse({ error: mapAuthError(createError?.message ?? '') }, 400)
+    }
+
+    const { data: createdProfile, error: insertError } = await adminClient
+      .from('users')
+      .insert({
+        id: authData.user.id,
+        email: email.trim(),
+        full_name: fullName.trim(),
+        role,
+        permissions: [],
+        is_active: true,
+      })
+      .select()
+      .single()
+
+    if (insertError || !createdProfile) {
+      await adminClient.auth.admin.deleteUser(authData.user.id)
+      return jsonResponse({ error: 'حدث خطأ، حاول مجدداً' }, 500)
+    }
+
+    return jsonResponse({ user: createdProfile }, 201)
+  }
+
+  if (action === 'update') {
+    let body: Record<string, unknown>
+    try {
+      body = await req.json()
+    } catch {
+      return jsonResponse({ error: 'حدث خطأ، حاول مجدداً' }, 400)
+    }
+
+    const id = body.id
+    if (!isNonEmptyString(id)) {
+      return jsonResponse({ error: 'حدث خطأ، حاول مجدداً' }, 400)
+    }
+
+    if (id === user.id && body.role !== undefined) {
+      return jsonResponse({ error: 'لا يمكنك تغيير دورك الخاص' }, 400)
+    }
+
+    const updates: Record<string, unknown> = {}
+
+    if (body.full_name !== undefined) {
+      if (!isNonEmptyString(body.full_name)) {
+        return jsonResponse({ error: 'حدث خطأ، حاول مجدداً' }, 400)
+      }
+      updates.full_name = body.full_name.trim()
+    }
+
+    if (body.role !== undefined) {
+      if (!isValidRole(body.role)) {
+        return jsonResponse({ error: 'حدث خطأ، حاول مجدداً' }, 400)
+      }
+      updates.role = body.role
+    }
+
+    if (body.is_active !== undefined) {
+      if (typeof body.is_active !== 'boolean') {
+        return jsonResponse({ error: 'حدث خطأ، حاول مجدداً' }, 400)
+      }
+      updates.is_active = body.is_active
+    }
+
+    if (Object.keys(updates).length === 0) {
+      return jsonResponse({ error: 'لا توجد بيانات للتحديث' }, 400)
+    }
+
+    const { data: updatedUser, error: updateError } = await adminClient
+      .from('users')
+      .update(updates)
+      .eq('id', id)
+      .select()
+      .single()
+
+    if (updateError || !updatedUser) {
+      return jsonResponse({ error: 'حدث خطأ، حاول مجدداً' }, 500)
+    }
+
+    return jsonResponse({ user: updatedUser })
+  }
+
+  if (action === 'reset-password') {
+    let body: Record<string, unknown>
+    try {
+      body = await req.json()
+    } catch {
+      return jsonResponse({ error: 'حدث خطأ، حاول مجدداً' }, 400)
+    }
+
+    const id = body.id
+    const password = body.password
+
+    if (!isNonEmptyString(id) || !isNonEmptyString(password)) {
+      return jsonResponse({ error: 'حدث خطأ، حاول مجدداً' }, 400)
+    }
+
+    if (password.length < 8) {
+      return jsonResponse({ error: 'كلمة المرور يجب أن تكون 8 أحرف على الأقل' }, 400)
+    }
+
+    const { error: resetError } = await adminClient.auth.admin.updateUserById(id, {
+      password,
+    })
+
+    if (resetError) {
+      return jsonResponse({ error: mapAuthError(resetError.message) }, 400)
+    }
+
+    return jsonResponse({ success: true })
+  }
+
+  return jsonResponse({ error: 'إجراء غير معروف' }, 400)
+})
