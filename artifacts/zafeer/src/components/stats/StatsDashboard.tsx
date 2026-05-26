@@ -1,62 +1,28 @@
-import { useState, useEffect, useMemo } from 'react'
-import { AlertTriangle, FileX, FileMinus, Bell, Info } from 'lucide-react'
+import { useState, useMemo } from 'react'
+import { FileMinus, Info } from 'lucide-react'
 import { useAllCompanies } from '@/hooks/useCompanies'
 import { useAllEmployeesPage } from '@/hooks/useEmployees'
-import { DEFAULT_STATUS_THRESHOLDS, getStatusThresholds } from '@/utils/autoCompanyStatus'
-import { DEFAULT_EMPLOYEE_THRESHOLDS, getEmployeeNotificationThresholdsPublic } from '@/utils/employeeAlerts'
 import {
-  calculateCompanyAlertStats,
-  calculateCompanyExpiredDocs,
   calculateCompanyMissingData,
-  calculateEmployeeAlertStats,
-  calculateEmployeeExpiredDocs,
   calculateEmployeeMissingDocs,
   predicates,
 } from '@/utils/statsCalculator'
 import type {
   StatsCompanyRow,
   StatsEmployeeRow,
-  StatusThresholds,
-  EmployeeThresholds,
   ModalState,
 } from '@/types/statsTypes'
 import type { Company, EmployeeWithRelations } from '@/lib/supabase'
 import StatCard from './StatCard'
 import StatsDetailModal from './StatsDetailModal'
 
-function isDefaultStatusThresholds(t: typeof DEFAULT_STATUS_THRESHOLDS): boolean {
-  return t === DEFAULT_STATUS_THRESHOLDS
-}
-function isDefaultEmployeeThresholds(t: typeof DEFAULT_EMPLOYEE_THRESHOLDS): boolean {
-  return t === DEFAULT_EMPLOYEE_THRESHOLDS
-}
-
 export default function StatsDashboard() {
   const { data: companies = [], isLoading: companiesLoading } = useAllCompanies()
   const { data: employees = [], isLoading: employeesLoading } = useAllEmployeesPage()
 
-  const [statusThresholds, setStatusThresholds] = useState<typeof DEFAULT_STATUS_THRESHOLDS>(DEFAULT_STATUS_THRESHOLDS)
-  const [employeeThresholds, setEmployeeThresholds] = useState<typeof DEFAULT_EMPLOYEE_THRESHOLDS>(DEFAULT_EMPLOYEE_THRESHOLDS)
-  const [thresholdsLoaded, setThresholdsLoaded] = useState(false)
-
   const [modalState, setModalState] = useState<ModalState | null>(null)
-  const [activeTab, setActiveTab] = useState<'companies' | 'employees'>('companies')
 
   const today = useMemo(() => new Date(), [])
-
-  useEffect(() => {
-    let cancelled = false
-    Promise.all([getStatusThresholds(), getEmployeeNotificationThresholdsPublic()]).then(([st, et]) => {
-      if (!cancelled) {
-        setStatusThresholds(st)
-        setEmployeeThresholds(et)
-        setThresholdsLoaded(true)
-      }
-    })
-    return () => {
-      cancelled = true
-    }
-  }, [])
 
   const statsCompanies = useMemo(
     (): StatsCompanyRow[] =>
@@ -93,19 +59,8 @@ export default function StatsDashboard() {
     [employees]
   )
 
-  const companyAlerts = useMemo(
-    () => calculateCompanyAlertStats(statsCompanies, statusThresholds as StatusThresholds, today),
-    [statsCompanies, statusThresholds, today]
-  )
-
-  const companyExpired = useMemo(() => calculateCompanyExpiredDocs(statsCompanies, today), [statsCompanies, today])
   const companyMissing = useMemo(() => calculateCompanyMissingData(statsCompanies), [statsCompanies])
-  const employeeExpired = useMemo(() => calculateEmployeeExpiredDocs(statsEmployees, today), [statsEmployees, today])
   const employeeMissing = useMemo(() => calculateEmployeeMissingDocs(statsEmployees), [statsEmployees])
-  const employeeAlerts = useMemo(
-    () => calculateEmployeeAlertStats(statsEmployees, employeeThresholds as EmployeeThresholds, today),
-    [statsEmployees, employeeThresholds, today]
-  )
 
   const dataLoading = companiesLoading || employeesLoading
 
@@ -143,99 +98,10 @@ export default function StatsDashboard() {
     })
   }, [modalState, employees, today])
 
-  const statusBadge = isDefaultStatusThresholds(statusThresholds) ? 'غير مضبوط' : undefined
-  const employeeBadge = isDefaultEmployeeThresholds(employeeThresholds) ? 'غير مضبوط' : undefined
-
   return (
     <div className="space-y-6" dir="rtl">
-      <div className="flex gap-1 border-b border-gray-200 mb-2">
-        <button
-          onClick={() => setActiveTab('companies')}
-          className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
-            activeTab === 'companies'
-              ? 'border-blue-500 text-blue-700'
-              : 'border-transparent text-gray-500 hover:text-gray-700'
-          }`}
-        >
-          المؤسسات
-        </button>
-        <button
-          onClick={() => setActiveTab('employees')}
-          className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
-            activeTab === 'employees'
-              ? 'border-blue-500 text-blue-700'
-              : 'border-transparent text-gray-500 hover:text-gray-700'
-          }`}
-        >
-          الموظفون
-        </button>
-      </div>
-
-      {/* ── Section B ─ تنبيهات المؤسسات ─────────────── */}
-      <section className={activeTab === 'companies' ? '' : 'hidden'}>
-        <SectionHeader
-          icon={<Bell size={16} />}
-          title="تنبيهات المؤسسات"
-          tooltip="تشمل كل المؤسسات التي لديها وثيقة ستنتهي قريباً بغض النظر عن حالتها العامة. الوثائق المنتهية فعلاً لا تُحتسب."
-        />
-        <div className="grid grid-cols-3 gap-3">
-          <StatCard
-            label="طارئ"
-            count={companyAlerts.urgent}
-            color="red"
-            loading={!thresholdsLoaded || dataLoading}
-            badge={statusBadge}
-            onClick={() => openCompanyModal('تنبيهات المؤسسات — طارئ', (r, t) => predicates.isUrgentAlertCompany(r, statusThresholds as StatusThresholds, t))}
-          />
-          <StatCard
-            label="عاجل"
-            count={companyAlerts.high}
-            color="orange"
-            loading={!thresholdsLoaded || dataLoading}
-            badge={statusBadge}
-            onClick={() => openCompanyModal('تنبيهات المؤسسات — عاجل', (r, t) => predicates.isHighAlertCompany(r, statusThresholds as StatusThresholds, t))}
-          />
-          <StatCard
-            label="متوسط"
-            count={companyAlerts.medium}
-            color="yellow"
-            loading={!thresholdsLoaded || dataLoading}
-            badge={statusBadge}
-            onClick={() => openCompanyModal('تنبيهات المؤسسات — متوسط', (r, t) => predicates.isMediumAlertCompany(r, statusThresholds as StatusThresholds, t))}
-          />
-        </div>
-      </section>
-
-      {/* ── Section G ─ وثائق المؤسسات المنتهية ───────── */}
-      <section className={activeTab === 'companies' ? '' : 'hidden'}>
-        <SectionHeader icon={<FileX size={16} />} title="وثائق المؤسسات المنتهية" />
-        <div className="grid grid-cols-3 gap-3">
-          <StatCard
-            label="سجل تجاري منتهي"
-            count={companyExpired.commercial_reg}
-            color="red"
-            loading={dataLoading}
-            onClick={() => openCompanyModal('سجل تجاري منتهي', predicates.hasExpiredCommercialReg)}
-          />
-          <StatCard
-            label="اشتراك قوى منتهي"
-            count={companyExpired.power_subscription}
-            color="red"
-            loading={dataLoading}
-            onClick={() => openCompanyModal('اشتراك قوى منتهي', predicates.hasExpiredPowerDate)}
-          />
-          <StatCard
-            label="اشتراك مقيم منتهي"
-            count={companyExpired.moqeem_subscription}
-            color="red"
-            loading={dataLoading}
-            onClick={() => openCompanyModal('اشتراك مقيم منتهي', predicates.hasExpiredMoqeemDate)}
-          />
-        </div>
-      </section>
-
       {/* ── Section F ─ بيانات المؤسسات الناقصة ─────── */}
-      <section className={activeTab === 'companies' ? '' : 'hidden'}>
+      <section>
         <SectionHeader icon={<FileMinus size={16} />} title="بيانات المؤسسات الناقصة" />
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
           <StatCard
@@ -276,43 +142,8 @@ export default function StatsDashboard() {
         </div>
       </section>
 
-      {/* ── Section C ─ وثائق الموظفين المنتهية ───────── */}
-      <section className={activeTab === 'employees' ? '' : 'hidden'}>
-        <SectionHeader icon={<FileX size={16} />} title="وثائق الموظفين المنتهية" />
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-          <StatCard
-            label="إقامة منتهية"
-            count={employeeExpired.residence}
-            color="red"
-            loading={dataLoading}
-            onClick={() => openEmployeeModal('إقامة منتهية', predicates.hasExpiredResidence)}
-          />
-          <StatCard
-            label="عقود منتهية"
-            count={employeeExpired.contract}
-            color="red"
-            loading={dataLoading}
-            onClick={() => openEmployeeModal('عقود منتهية', predicates.hasExpiredContract)}
-          />
-          <StatCard
-            label="عقود أجير منتهية"
-            count={employeeExpired.hired_worker_contract}
-            color="red"
-            loading={dataLoading}
-            onClick={() => openEmployeeModal('عقود أجير منتهية', predicates.hasExpiredHiredWorkerContract)}
-          />
-          <StatCard
-            label="تأمين صحي منته"
-            count={employeeExpired.health_insurance}
-            color="red"
-            loading={dataLoading}
-            onClick={() => openEmployeeModal('تأمين صحي منته', predicates.hasExpiredHealthInsurance)}
-          />
-        </div>
-      </section>
-
       {/* ── Section D ─ بيانات الموظفين الناقصة ───────── */}
-      <section className={activeTab === 'employees' ? '' : 'hidden'}>
+      <section>
         <SectionHeader icon={<FileMinus size={16} />} title="بيانات الموظفين الناقصة" />
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
           <StatCard
@@ -377,37 +208,6 @@ export default function StatsDashboard() {
             color="gray"
             loading={dataLoading}
             onClick={() => openEmployeeModal('رقم موحد ناقص', predicates.isMissingCompanyUnifiedNumber)}
-          />
-        </div>
-      </section>
-
-      {/* ── Section E ─ تنبيهات الموظفين ────────────── */}
-      <section className={activeTab === 'employees' ? '' : 'hidden'}>
-        <SectionHeader icon={<AlertTriangle size={16} />} title="تنبيهات الموظفين" />
-        <div className="grid grid-cols-3 gap-3">
-          <StatCard
-            label="طارئ"
-            count={employeeAlerts.urgent}
-            color="red"
-            loading={!thresholdsLoaded || dataLoading}
-            badge={employeeBadge}
-            onClick={() => openEmployeeModal('تنبيهات الموظفين — طارئ', (r, t) => predicates.isUrgentAlertEmployee(r, employeeThresholds as EmployeeThresholds, t))}
-          />
-          <StatCard
-            label="عاجل"
-            count={employeeAlerts.high}
-            color="orange"
-            loading={!thresholdsLoaded || dataLoading}
-            badge={employeeBadge}
-            onClick={() => openEmployeeModal('تنبيهات الموظفين — عاجل', (r, t) => predicates.isHighAlertEmployee(r, employeeThresholds as EmployeeThresholds, t))}
-          />
-          <StatCard
-            label="متوسط"
-            count={employeeAlerts.medium}
-            color="yellow"
-            loading={!thresholdsLoaded || dataLoading}
-            badge={employeeBadge}
-            onClick={() => openEmployeeModal('تنبيهات الموظفين — متوسط', (r, t) => predicates.isMediumAlertEmployee(r, employeeThresholds as EmployeeThresholds, t))}
           />
         </div>
       </section>

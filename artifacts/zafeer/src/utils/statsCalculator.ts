@@ -6,14 +6,8 @@ import type {
   StatsEmployeeRow,
   CompanyClassification,
   EmployeeClassification,
-  CompanyAlertStatsResult,
-  CompanyExpiredDocsResult,
   CompanyMissingDataResult,
-  EmployeeExpiredDocsResult,
   EmployeeMissingDocsResult,
-  EmployeeAlertStatsResult,
-  StatusThresholds,
-  EmployeeThresholds,
 } from '@/types/statsTypes'
 
 // days remaining until expiry - negative means expired
@@ -64,80 +58,6 @@ export function classifyEmployee(row: StatsEmployeeRow, today: Date): EmployeeCl
 
 function isActive(row: StatsEmployeeRow): boolean {
   return row.is_deleted !== true
-}
-
-// Section B - company alerts
-function getCompanyAlertLevel(
-  row: StatsCompanyRow,
-  thresholds: StatusThresholds,
-  today: Date
-): 'urgent' | 'high' | 'medium' | null {
-  const checks = [
-    { date: row.commercial_registration_expiry, u: thresholds.commercial_reg_urgent_days, h: thresholds.commercial_reg_high_days, m: thresholds.commercial_reg_medium_days },
-    { date: row.ending_subscription_power_date, u: thresholds.power_subscription_urgent_days, h: thresholds.power_subscription_high_days, m: thresholds.power_subscription_medium_days },
-    { date: row.ending_subscription_moqeem_date, u: thresholds.moqeem_subscription_urgent_days, h: thresholds.moqeem_subscription_high_days, m: thresholds.moqeem_subscription_medium_days },
-  ]
-
-  let topLevel: 'urgent' | 'high' | 'medium' | null = null
-
-  for (const { date, u, h, m } of checks) {
-    const days = daysBetween(today, date)
-    if (days === null || days <= 0) continue
-    let level: 'urgent' | 'high' | 'medium' | null = null
-    if (days <= u) level = 'urgent'
-    else if (days <= h) level = 'high'
-    else if (days <= m) level = 'medium'
-    if (level === 'urgent') return 'urgent'
-    if (level === 'high') topLevel = 'high'
-    else if (level === 'medium' && topLevel !== 'high') topLevel = 'medium'
-  }
-
-  return topLevel
-}
-
-export function calculateCompanyAlertStats(
-  rows: StatsCompanyRow[],
-  thresholds: StatusThresholds,
-  today: Date
-): CompanyAlertStatsResult {
-  let urgent = 0, high = 0, medium = 0
-  for (const row of rows) {
-    const level = getCompanyAlertLevel(row, thresholds, today)
-    if (level === 'urgent') urgent++
-    else if (level === 'high') high++
-    else if (level === 'medium') medium++
-  }
-  return { urgent, high, medium }
-}
-
-// Section C - employee expired docs
-export function calculateEmployeeExpiredDocs(
-  rows: StatsEmployeeRow[],
-  today: Date
-): EmployeeExpiredDocsResult {
-  let residence = 0, contract = 0, hired_worker_contract = 0, health_insurance = 0
-  for (const row of rows) {
-    if (!isActive(row)) continue
-    if (isDateExpired(row.residence_expiry, today)) residence++
-    if (isDateExpired(row.contract_expiry, today)) contract++
-    if (isDateExpired(row.hired_worker_contract_expiry, today)) hired_worker_contract++
-    if (isDateExpired(row.health_insurance_expiry, today)) health_insurance++
-  }
-  return { residence, contract, hired_worker_contract, health_insurance }
-}
-
-// Section G - company expired docs
-export function calculateCompanyExpiredDocs(
-  rows: StatsCompanyRow[],
-  today: Date
-): CompanyExpiredDocsResult {
-  let commercial_reg = 0, power_subscription = 0, moqeem_subscription = 0
-  for (const row of rows) {
-    if (isDateExpired(row.commercial_registration_expiry, today)) commercial_reg++
-    if (isDateExpired(row.ending_subscription_power_date, today)) power_subscription++
-    if (isDateExpired(row.ending_subscription_moqeem_date, today)) moqeem_subscription++
-  }
-  return { commercial_reg, power_subscription, moqeem_subscription }
 }
 
 // Section F - company missing data
@@ -199,79 +119,14 @@ export function calculateEmployeeMissingDocs(rows: StatsEmployeeRow[]): Employee
   }
 }
 
-// Section E - employee alerts
-function getEmployeeAlertLevel(
-  row: StatsEmployeeRow,
-  thresholds: EmployeeThresholds,
-  today: Date
-): 'urgent' | 'high' | 'medium' | null {
-  if (!isActive(row)) return null
-
-  const checks = [
-    { date: row.residence_expiry, u: thresholds.residence_urgent_days, h: thresholds.residence_high_days, m: thresholds.residence_medium_days },
-    { date: row.contract_expiry, u: thresholds.contract_urgent_days, h: thresholds.contract_high_days, m: thresholds.contract_medium_days },
-    { date: row.hired_worker_contract_expiry, u: thresholds.hired_worker_contract_urgent_days, h: thresholds.hired_worker_contract_high_days, m: thresholds.hired_worker_contract_medium_days },
-    { date: row.health_insurance_expiry, u: thresholds.health_insurance_urgent_days, h: thresholds.health_insurance_high_days, m: thresholds.health_insurance_medium_days },
-  ]
-
-  let topLevel: 'urgent' | 'high' | 'medium' | null = null
-  for (const { date, u, h, m } of checks) {
-    const days = daysBetween(today, date)
-    if (days === null || days <= 0) continue
-    let level: 'urgent' | 'high' | 'medium' | null = null
-    if (days <= u) level = 'urgent'
-    else if (days <= h) level = 'high'
-    else if (days <= m) level = 'medium'
-    if (level === 'urgent') return 'urgent'
-    if (level === 'high') topLevel = 'high'
-    else if (level === 'medium' && topLevel !== 'high') topLevel = 'medium'
-  }
-  return topLevel
-}
-
-export function calculateEmployeeAlertStats(
-  rows: StatsEmployeeRow[],
-  thresholds: EmployeeThresholds,
-  today: Date
-): EmployeeAlertStatsResult {
-  let urgent = 0, high = 0, medium = 0
-  for (const row of rows) {
-    const level = getEmployeeAlertLevel(row, thresholds, today)
-    if (level === 'urgent') urgent++
-    else if (level === 'high') high++
-    else if (level === 'medium') medium++
-  }
-  return { urgent, high, medium }
-}
-
-// Predicate functions - used by StatsDetailModal
-// to filter entities at click time (lazy)
+// Predicate functions - used by StatsDetailModal to filter entities at click time (lazy)
 export const predicates = {
-  // Company expired docs (Section G)
-  hasExpiredCommercialReg: (row: StatsCompanyRow, today: Date) => isDateExpired(row.commercial_registration_expiry, today),
-  hasExpiredPowerDate: (row: StatsCompanyRow, today: Date) => isDateExpired(row.ending_subscription_power_date, today),
-  hasExpiredMoqeemDate: (row: StatsCompanyRow, today: Date) => isDateExpired(row.ending_subscription_moqeem_date, today),
-
   // Company missing data (Section F)
   isMissingCommercialReg: (row: StatsCompanyRow) => isDateMissing(row.commercial_registration_expiry),
   isMissingPowerDate: (row: StatsCompanyRow) => isDateMissing(row.ending_subscription_power_date),
   isMissingMoqeemDate: (row: StatsCompanyRow) => isDateMissing(row.ending_subscription_moqeem_date),
   isMissingLaborSubscription: (row: StatsCompanyRow) => isStringMissing(row.labor_subscription_number),
   isMissingInsuranceNumber: (row: StatsCompanyRow) => isStringMissing(row.social_insurance_number),
-
-  // Company alerts
-  isUrgentAlertCompany: (row: StatsCompanyRow, thresholds: StatusThresholds, today: Date) =>
-    getCompanyAlertLevel(row, thresholds, today) === 'urgent',
-  isHighAlertCompany: (row: StatsCompanyRow, thresholds: StatusThresholds, today: Date) =>
-    getCompanyAlertLevel(row, thresholds, today) === 'high',
-  isMediumAlertCompany: (row: StatsCompanyRow, thresholds: StatusThresholds, today: Date) =>
-    getCompanyAlertLevel(row, thresholds, today) === 'medium',
-
-  // Employee expired docs (Section C)
-  hasExpiredResidence: (row: StatsEmployeeRow, today: Date) => isActive(row) && isDateExpired(row.residence_expiry, today),
-  hasExpiredContract: (row: StatsEmployeeRow, today: Date) => isActive(row) && isDateExpired(row.contract_expiry, today),
-  hasExpiredHiredWorkerContract: (row: StatsEmployeeRow, today: Date) => isActive(row) && isDateExpired(row.hired_worker_contract_expiry, today),
-  hasExpiredHealthInsurance: (row: StatsEmployeeRow, today: Date) => isActive(row) && isDateExpired(row.health_insurance_expiry, today),
 
   // Employee missing date fields (Section D - date-specific)
   isMissingResidenceDate: (row: StatsEmployeeRow) => isActive(row) && isDateMissing(row.residence_expiry),
@@ -285,12 +140,4 @@ export const predicates = {
   isMissingBankAccount: (row: StatsEmployeeRow) => isActive(row) && isStringMissing(row.bank_account),
   isMissingResidenceImage: (row: StatsEmployeeRow) => isActive(row) && isStringMissing(row.residence_image_url),
   isMissingCompanyUnifiedNumber: (row: StatsEmployeeRow) => isActive(row) && (row.company_unified_number === null || row.company_unified_number === undefined),
-
-  // Employee alerts
-  isUrgentAlertEmployee: (row: StatsEmployeeRow, thresholds: EmployeeThresholds, today: Date) =>
-    getEmployeeAlertLevel(row, thresholds, today) === 'urgent',
-  isHighAlertEmployee: (row: StatsEmployeeRow, thresholds: EmployeeThresholds, today: Date) =>
-    getEmployeeAlertLevel(row, thresholds, today) === 'high',
-  isMediumAlertEmployee: (row: StatsEmployeeRow, thresholds: EmployeeThresholds, today: Date) =>
-    getEmployeeAlertLevel(row, thresholds, today) === 'medium',
 }
