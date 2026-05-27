@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+﻿import { useEffect, useMemo, useState } from 'react'
 import { supabase, Employee, Company } from '@/lib/supabase'
 import { AlertCard, Alert } from '@/components/alerts/AlertCard'
 import { EmployeeAlertCard, EmployeeAlert } from '@/components/alerts/EmployeeAlertCard'
@@ -698,157 +698,93 @@ export default function Alerts({ initialTab = 'all', initialFilter = 'all' }: Al
         </div>
 
         {/* فلاتر البحث والتنقل */}
-        <div className="app-panel mb-8 p-6">
-          {/* تبويبات (المؤسسات / الموظفين) */}
-          <div className="mb-6 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-            <div className="app-toggle-shell w-fit">
-              <button
-                onClick={() => setActiveTab('all')}
-                className={`px-4 py-2 rounded-md font-medium transition-colors ${
-                  activeTab === 'all' ? 'app-tab-button-active' : 'app-tab-button'
-                }`}
-              >
-                الكل ({totalAlerts})
-              </button>
-              <button
-                onClick={() => setActiveTab('companies')}
-                className={`px-4 py-2 rounded-md font-medium transition-colors ${
-                  activeTab === 'companies' ? 'app-tab-button-active' : 'app-tab-button'
-                }`}
-              >
-                المؤسسات ({companyAlertsStats.total})
-              </button>
-              <button
-                onClick={() => setActiveTab('employees')}
-                className={`px-4 py-2 rounded-md font-medium transition-colors ${
-                  activeTab === 'employees' ? 'app-tab-button-active' : 'app-tab-button'
-                }`}
-              >
-                الموظفين ({employeeAlertsStats.total})
-              </button>
+        <div className="app-panel mb-8 v3-panel">
+          <div className="v3-bar">
+            {/* Entity type chips */}
+            <div className="v3-chips">
+              <button type="button" onClick={() => setActiveTab('all')} className={`v3-chip ${activeTab === 'all' ? 'v3-on' : ''}`}>الكل ({totalAlerts})</button>
+              <button type="button" onClick={() => setActiveTab('companies')} className={`v3-chip ${activeTab === 'companies' ? 'v3-on' : ''}`}>مؤسسات ({companyAlertsStats.total})</button>
+              <button type="button" onClick={() => setActiveTab('employees')} className={`v3-chip ${activeTab === 'employees' ? 'v3-on' : ''}`}>موظفين ({employeeAlertsStats.total})</button>
             </div>
 
-            {/* البحث والفلاتر */}
-            <FilterBar>
-              <SearchInput
-                type="text"
-                placeholder="البحث في التنبيهات..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                wrapperClassName="min-w-[220px] flex-1"
-              />
+            {/* Read/New chips */}
+            <div className="v3-chips">
+              <button type="button" onClick={() => setReadFilterTab('new')} className={`v3-chip ${readFilterTab === 'new' ? 'v3-on' : ''}`}>جديدة ({totalAlerts})</button>
+              <button type="button" onClick={() => setReadFilterTab('read')} className={`v3-chip ${readFilterTab === 'read' ? 'v3-on' : ''}`}>مقروءة ({totalReadAlerts})</button>
+            </div>
 
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="secondary" className="justify-between min-w-[180px]">
-                    <span className="truncate">الأولويات: {getPriorityFilterLabel(activeFilter)}</span>
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="start" sideOffset={8} className="w-56">
-                  <DropdownMenuLabel>اختر الأولويات</DropdownMenuLabel>
-                  <DropdownMenuItem onSelect={() => clearPriorityFilter()}>
-                    جميع الأولويات
-                  </DropdownMenuItem>
-                  <DropdownMenuSeparator />
-                  {PRIORITY_OPTIONS.map((option) => (
-                    <DropdownMenuCheckboxItem
-                      key={option.value}
-                      checked={activeFilter.includes(option.value)}
-                      onCheckedChange={() => togglePriorityFilter(option.value)}
-                      onSelect={(event) => event.preventDefault()}
-                    >
-                      {option.label}
-                    </DropdownMenuCheckboxItem>
-                  ))}
-                </DropdownMenuContent>
-              </DropdownMenu>
+            <div className="v3-vsep" />
 
-              <Select
-                value={alertStatusFilter}
-                onValueChange={(value) => setAlertStatusFilter(value as typeof alertStatusFilter)}
-              >
-                <SelectTrigger className="min-w-[160px]">
-                  <SelectValue placeholder="حالة التنبيه" />
-                </SelectTrigger>
+            {/* Search */}
+            <SearchInput
+              type="text"
+              placeholder="البحث..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              wrapperClassName="v3-search"
+            />
+
+            <div className="v3-vsep" />
+
+            {/* Priority */}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="secondary" className="h-9 px-3 text-sm">
+                  <span className="truncate max-w-[120px]">{getPriorityFilterLabel(activeFilter)}</span>
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="start" sideOffset={8} className="w-56">
+                <DropdownMenuLabel>اختر الأولويات</DropdownMenuLabel>
+                <DropdownMenuItem onSelect={() => clearPriorityFilter()}>جميع الأولويات</DropdownMenuItem>
+                <DropdownMenuSeparator />
+                {PRIORITY_OPTIONS.map((option) => (
+                  <DropdownMenuCheckboxItem key={option.value} checked={activeFilter.includes(option.value)} onCheckedChange={() => togglePriorityFilter(option.value)} onSelect={(event) => event.preventDefault()}>
+                    {option.label}
+                  </DropdownMenuCheckboxItem>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
+
+            {/* Secondary controls */}
+            <div className="v3-secondary">
+              <Select value={alertStatusFilter} onValueChange={(value) => setAlertStatusFilter(value as typeof alertStatusFilter)}>
+                <SelectTrigger className="h-9 min-w-[100px] text-sm"><SelectValue placeholder="الحالة" /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">الكل</SelectItem>
                   <SelectItem value="active">نشط</SelectItem>
                   <SelectItem value="expired">منتهي</SelectItem>
                 </SelectContent>
               </Select>
-
-              <Select
-                value={alertSortField}
-                onValueChange={(value) => setAlertSortField(value as AlertSortField)}
-              >
-                <SelectTrigger className="min-w-[180px]">
-                  <SelectValue placeholder="اختر الترتيب" />
-                </SelectTrigger>
+              <Select value={alertSortField} onValueChange={(value) => setAlertSortField(value as AlertSortField)}>
+                <SelectTrigger className="h-9 min-w-[130px] text-sm"><SelectValue placeholder="الترتيب" /></SelectTrigger>
                 <SelectContent>
                   {ALERT_SORT_FIELDS.map((field) => (
-                    <SelectItem key={field.value} value={field.value}>
-                      {field.label}
-                    </SelectItem>
+                    <SelectItem key={field.value} value={field.value}>{field.label}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
-
-              <Select
-                value={alertSortDir}
-                onValueChange={(value) => setAlertSortDir(value as SortDirection)}
-              >
-                <SelectTrigger className="min-w-[140px]">
-                  <SelectValue placeholder="اتجاه" />
-                </SelectTrigger>
+              <Select value={alertSortDir} onValueChange={(value) => setAlertSortDir(value as SortDirection)}>
+                <SelectTrigger className="h-9 min-w-[90px] text-sm"><SelectValue placeholder="↕" /></SelectTrigger>
                 <SelectContent>
                   {ALERT_SORT_DIRECTIONS.map((direction) => (
-                    <SelectItem key={direction.value} value={direction.value}>
-                      {direction.label}
-                    </SelectItem>
+                    <SelectItem key={direction.value} value={direction.value}>{direction.label}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
-            </FilterBar>
-          </div>
-
-          {/* [NEW] تبويبات (جديد / مقروء) */}
-          <div className="border-t border-neutral-200 pt-6">
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-              <div className="app-toggle-shell w-full sm:w-auto">
-                <button
-                  onClick={() => setReadFilterTab('new')}
-                  className={`px-6 py-2 rounded-md font-medium transition-colors w-1/2 sm:w-auto ${
-                    readFilterTab === 'new' ? 'app-toggle-button-active' : 'app-toggle-button'
-                  }`}
-                >
-                  تنبيهات جديدة ({totalAlerts})
-                </button>
-                <button
-                  onClick={() => setReadFilterTab('read')}
-                  className={`px-6 py-2 rounded-md font-medium transition-colors w-1/2 sm:w-auto ${
-                    readFilterTab === 'read' ? 'app-toggle-button-active' : 'app-toggle-button'
-                  }`}
-                >
-                  مقروءة ({totalReadAlerts})
-                </button>
-              </div>
-
-              {/* [NEW] زر تم الاطلاع على الكل */}
-              {readFilterTab === 'new' && totalAlerts > 0 && (
-                <Button onClick={handleMarkAllAsRead} variant="default">
-                  <CheckCircle2 className="w-5 h-5" />
-                  <span>تم الاطلاع على الكل</span>
-                </Button>
-              )}
-
-              {/* [NEW] زر إعادة الكل إلى غير مقروء */}
-              {readFilterTab === 'read' && totalReadAlerts > 0 && (
-                <Button onClick={handleMarkAllAsUnread} variant="secondary">
-                  <Mail className="w-5 h-5" />
-                  <span>إعادة الكل إلى غير مقروء</span>
-                </Button>
-              )}
             </div>
+
+            {/* Action */}
+            {readFilterTab === 'new' && totalAlerts > 0 && (
+              <Button onClick={handleMarkAllAsRead} variant="default" className="h-9 px-3 text-sm whitespace-nowrap">
+                <CheckCircle2 className="w-4 h-4" />
+                <span>اطلع على الكل</span>
+              </Button>
+            )}
+            {readFilterTab === 'read' && totalReadAlerts > 0 && (
+              <Button onClick={handleMarkAllAsUnread} variant="secondary" className="h-9 px-3 text-sm whitespace-nowrap">
+                <Mail className="w-4 h-4" />
+              </Button>
+            )}
           </div>
         </div>
 
