@@ -4,6 +4,7 @@ import { useLocation } from 'react-router-dom'
 import { createPortal } from 'react-dom'
 import { useModalScrollLock } from '@/hooks/useModalScrollLock'
 import Layout from '@/components/layout/Layout'
+import { MultiSelectDropdown } from '@/components/ui/MultiSelectDropdown'
 import {
   BarChart3,
   RefreshCw,
@@ -5129,28 +5130,24 @@ tr:last-child td{border-bottom:none}
                   <label className="mb-1 block text-xs font-medium text-foreground-secondary">
                     نوع الالتزام
                   </label>
-                  <select
-                    multiple
-                    value={obligationsTypeFilter}
-                    onChange={(e) =>
+                  <MultiSelectDropdown
+                    options={[
+                      { value: 'advance', label: 'سلف' },
+                      { value: 'transfer', label: 'نقل كفالة' },
+                      { value: 'renewal', label: 'تجديد' },
+                      { value: 'penalty', label: 'جزاءات' },
+                      { value: 'other', label: 'أخرى' },
+                    ]}
+                    selected={obligationsTypeFilter}
+                    onChange={(values) =>
                       setObligationsTypeFilter(
-                        Array.from(e.currentTarget.selectedOptions)
-                          .map((option) => option.value)
-                          .filter(
-                            (value): value is 'transfer' | 'renewal' | 'penalty' | 'advance' | 'other' =>
-                              value !== 'all'
-                          )
+                        values.filter(
+                          (v): v is 'transfer' | 'renewal' | 'penalty' | 'advance' | 'other' => true
+                        )
                       )
                     }
-                    className="w-full rounded-xl border border-border-300 bg-surface py-2 px-3 text-sm"
-                  >
-                    <option value="all">جميع الأنواع</option>
-                    <option value="advance">سلف</option>
-                    <option value="transfer">نقل كفالة</option>
-                    <option value="renewal">تجديد</option>
-                    <option value="penalty">جزاءات</option>
-                    <option value="other">أخرى</option>
-                  </select>
+                    placeholder="جميع الأنواع"
+                  />
                 </div>
 
                 {/* فلتر من شهر */}
