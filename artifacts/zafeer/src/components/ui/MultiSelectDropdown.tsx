@@ -22,6 +22,7 @@ function getCountLabel(placeholder: string, count: number): string {
   if (placeholder === 'جميع المهن') return `${count} مهن`
   if (placeholder === 'جميع الأولويات' || placeholder === 'الأولويات') return `${count} أولويات`
   if (placeholder.startsWith('جميع حالات')) return `${count} حالات`
+  if (placeholder === 'جميع الأنواع') return `${count} أنواع`
   return `${count} عناصر`
 }
 

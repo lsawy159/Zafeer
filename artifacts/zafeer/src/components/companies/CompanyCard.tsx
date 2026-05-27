@@ -162,7 +162,7 @@ function CompanyCard({
 
       {/* مربعات الحالات - grid من عمودين */}
       <div className="border-t border-neutral-200 pt-3">
-        <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
+        <div className="grid grid-cols-3 gap-2">
           {/* حالة السجل التجاري */}
           <div>
             <div className="mb-1 text-[12px] font-semibold text-neutral-600">
@@ -170,7 +170,7 @@ function CompanyCard({
             </div>
             {company.commercial_registration_expiry ? (
               <div
-                className={`min-h-[74px] rounded-lg border-2 px-2 py-1 text-xs font-medium ${commercialRegStatus.color.backgroundColor} ${commercialRegStatus.color.textColor} ${commercialRegStatus.color.borderColor}`}
+                className={`h-[74px] overflow-hidden rounded-lg border-2 px-2 py-1 text-xs font-medium ${commercialRegStatus.color.backgroundColor} ${commercialRegStatus.color.textColor} ${commercialRegStatus.color.borderColor}`}
               >
                 <div className="flex items-center gap-1">
                   <div className="text-xs">
@@ -201,7 +201,7 @@ function CompanyCard({
             <div className="mb-1 text-[12px] font-semibold text-neutral-600">اشتراك قوى</div>
             {company.ending_subscription_power_date ? (
               <div
-                className={`min-h-[74px] rounded-lg border-2 px-2 py-1 text-xs font-medium ${powerStatus.color.backgroundColor} ${powerStatus.color.textColor} ${powerStatus.color.borderColor}`}
+                className={`h-[74px] overflow-hidden rounded-lg border-2 px-2 py-1 text-xs font-medium ${powerStatus.color.backgroundColor} ${powerStatus.color.textColor} ${powerStatus.color.borderColor}`}
               >
                 <div className="flex items-center gap-1">
                   <div className="text-xs">
@@ -232,7 +232,7 @@ function CompanyCard({
             <div className="mb-1 text-[12px] font-semibold text-neutral-600">اشتراك مقيم</div>
             {company.ending_subscription_moqeem_date ? (
               <div
-                className={`min-h-[74px] rounded-lg border-2 px-2 py-1 text-xs font-medium ${moqeemStatus.color.backgroundColor} ${moqeemStatus.color.textColor} ${moqeemStatus.color.borderColor}`}
+                className={`h-[74px] overflow-hidden rounded-lg border-2 px-2 py-1 text-xs font-medium ${moqeemStatus.color.backgroundColor} ${moqeemStatus.color.textColor} ${moqeemStatus.color.borderColor}`}
               >
                 <div className="flex items-center gap-1">
                   <div className="text-xs">

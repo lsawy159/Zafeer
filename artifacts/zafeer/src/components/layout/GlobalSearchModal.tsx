@@ -7,6 +7,7 @@ import {
 import { supabase, Company, Employee, Project, EmployeeWithRelations } from '@/lib/supabase'
 import EmployeeCard from '@/components/employees/EmployeeCard'
 import CompanyDetailModal from '@/components/companies/CompanyDetailModal'
+import CompanyModal from '@/components/companies/CompanyModal'
 import ProjectDetailModal from '@/components/projects/ProjectDetailModal'
 
 type SearchTab = 'employees' | 'companies' | 'projects' | 'transfers' | 'payroll'
@@ -412,7 +413,15 @@ function InfoRow({ icon, label, value }: { icon: React.ReactNode; label: string;
 
 // ─── Detail renderer ──────────────────────────────────────────────────────────
 
-function DetailRenderer({ detail, onClose }: { detail: OpenDetail; onClose: () => void }) {
+function DetailRenderer({
+  detail,
+  onClose,
+  onEditCompany,
+}: {
+  detail: OpenDetail
+  onClose: () => void
+  onEditCompany: (company: Company) => void
+}) {
   if (detail.kind === 'employee') {
     return (
       <EmployeeCard
@@ -423,7 +432,7 @@ function DetailRenderer({ detail, onClose }: { detail: OpenDetail; onClose: () =
     )
   }
   if (detail.kind === 'company') {
-    return <CompanyDetailModal company={detail.data} onClose={onClose} />
+    return <CompanyDetailModal company={detail.data} onClose={onClose} onEdit={onEditCompany} />
   }
   if (detail.kind === 'project') {
     return (
@@ -475,6 +484,8 @@ export function GlobalSearchModal({ open, onClose }: GlobalSearchModalProps) {
   // Detail modal state — independent of search open state
   const [openDetail, setOpenDetail] = useState<OpenDetail | null>(null)
   const [detailLoading, setDetailLoading] = useState(false)
+  const [editCompany, setEditCompany] = useState<Company | null>(null)
+  const [showCompanyEdit, setShowCompanyEdit] = useState(false)
 
   // Reset on open
   useEffect(() => {
@@ -492,6 +503,33 @@ export function GlobalSearchModal({ open, onClose }: GlobalSearchModalProps) {
     setResults([])
     setActiveIndex(0)
   }, [activeTab])
+
+  const handleEditCompany = (company: Company) => {
+    setEditCompany(company)
+    setShowCompanyEdit(true)
+  }
+
+  const handleCompanyEditClose = () => {
+    setShowCompanyEdit(false)
+    setEditCompany(null)
+  }
+
+  const handleCompanyEditSuccess = async () => {
+    const companyId = editCompany?.id
+    handleCompanyEditClose()
+    if (companyId) {
+      try {
+        const updated = await fetchFullCompany(companyId)
+        if (updated) {
+          setOpenDetail({ kind: 'company', data: updated })
+          return
+        }
+      } catch {
+        // fall through to close
+      }
+    }
+    setOpenDetail(null)
+  }
 
   // Fetch (once, cached) then filter client-side on every keystroke
   useEffect(() => {
@@ -695,7 +733,21 @@ export function GlobalSearchModal({ open, onClose }: GlobalSearchModalProps) {
 
   // ── Detail modal portal (independent of search open state) ─────────────────
   const detailPortal = openDetail && !detailLoading ? createPortal(
-    <DetailRenderer detail={openDetail} onClose={() => setOpenDetail(null)} />,
+    <DetailRenderer
+      detail={openDetail}
+      onClose={() => setOpenDetail(null)}
+      onEditCompany={handleEditCompany}
+    />,
+    document.body
+  ) : null
+
+  const companyEditPortal = showCompanyEdit && editCompany ? createPortal(
+    <CompanyModal
+      isOpen={showCompanyEdit}
+      company={editCompany}
+      onClose={handleCompanyEditClose}
+      onSuccess={handleCompanyEditSuccess}
+    />,
     document.body
   ) : null
 
@@ -704,6 +756,7 @@ export function GlobalSearchModal({ open, onClose }: GlobalSearchModalProps) {
       {searchPortal}
       {loadingPortal}
       {detailPortal}
+      {companyEditPortal}
     </>
   )
 }

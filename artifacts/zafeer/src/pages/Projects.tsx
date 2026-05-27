@@ -6,7 +6,7 @@ import ProjectModal from '@/components/projects/ProjectModal'
 import ProjectCard from '@/components/projects/ProjectCard'
 import ProjectDetailModal from '@/components/projects/ProjectDetailModal'
 import ProjectStatistics from '@/components/projects/ProjectStatistics'
-import { FolderKanban, Plus, Shield } from 'lucide-react'
+import { FolderKanban, Plus, Shield, ArrowUpDown } from 'lucide-react'
 import { toast } from 'sonner'
 import { usePermissions } from '@/utils/permissions'
 import { useCardColumns } from '@/hooks/useUiPreferences'
@@ -18,6 +18,11 @@ import {
   DropdownMenu,
   DropdownMenuCheckboxItem,
   DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/DropdownMenu'
 import { useDeleteAdminProject, ConflictResponse } from '@workspace/api-client-react'
@@ -25,18 +30,26 @@ import { useDeleteAdminProject, ConflictResponse } from '@workspace/api-client-r
 type SortField = 'name' | 'created_at' | 'status' | 'employee_count' | 'total_salaries'
 type SortDirection = 'asc' | 'desc'
 type ProjectStatus = 'all' | 'active' | 'inactive' | 'completed'
+type ProjectStatusFilter = Exclude<ProjectStatus, 'all'>
 type ActiveTab = 'list' | 'statistics'
 
-const PROJECT_STATUS_OPTIONS: Array<{ value: Exclude<ProjectStatus, 'all'>; label: string }> = [
+const PROJECT_STATUS_OPTIONS: Array<{ value: ProjectStatusFilter; label: string }> = [
   { value: 'active', label: 'نشط' },
   { value: 'inactive', label: 'متوقف' },
   { value: 'completed', label: 'مكتمل' },
 ]
 
-const PROJECT_STATUS_LABELS: Record<Exclude<ProjectStatus, 'all'>, string> = {
+const PROJECT_STATUS_LABELS: Record<ProjectStatusFilter, string> = {
   active: 'نشط',
   inactive: 'متوقف',
   completed: 'مكتمل',
+}
+
+function getStatusFilterLabel(selected: ProjectStatusFilter[]) {
+  if (selected.length === 0) return 'جميع الحالات'
+  if (selected.length === PROJECT_STATUS_OPTIONS.length) return 'جميع الحالات'
+  if (selected.length <= 2) return selected.map((status) => PROJECT_STATUS_LABELS[status]).join('، ')
+  return `${selected.length} حالات مختارة`
 }
 
 const compareNullableNumbers = (
@@ -71,7 +84,7 @@ export default function Projects() {
 
   // Filter states
   const [searchTerm, setSearchTerm] = useState('')
-  const [statusFilter, setStatusFilter] = useState<ProjectStatus[]>([])
+  const [statusFilter, setStatusFilter] = useState<ProjectStatusFilter[]>([])
 
   // Sort states
   const [sortField, setSortField] = useState<SortField>('name')
@@ -95,8 +108,7 @@ export default function Projects() {
       const { data: employees, error: employeesError } = await supabase
         .from('employees')
         .select('project_id, salary')
-        .is('is_deleted', null)
-        .or('is_deleted.eq.false')
+        .or('is_deleted.is.null,is_deleted.eq.false')
 
       if (employeesError) throw employeesError
 
@@ -355,46 +367,67 @@ export default function Projects() {
                   wrapperClassName="min-w-[220px] flex-1"
                 />
 
-                <div className="min-w-[150px]">
-                  <select
-                    multiple
-                    value={statusFilter}
-                    onChange={(e) =>
-                      setStatusFilter(
-                        Array.from(e.currentTarget.selectedOptions)
-                          .map((option) => option.value)
-                          .filter((value): value is Exclude<ProjectStatus, 'all'> => value !== 'all')
-                      )
-                    }
-                    className="focus-ring-brand w-full rounded-lg border border-input bg-surface px-4 py-2 text-sm transition-[border-color,box-shadow] duration-[var(--motion-fast)] ease-[var(--ease-out)]"
-                  >
-                    <option value="all">جميع الحالات</option>
-                    <option value="active">نشط</option>
-                    <option value="inactive">متوقف</option>
-                    <option value="completed">مكتمل</option>
-                  </select>
-                </div>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="secondary" className="h-9 px-3 text-sm">
+                      <span className="truncate max-w-[130px]">{getStatusFilterLabel(statusFilter)}</span>
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="start" sideOffset={8} className="w-44">
+                    <DropdownMenuLabel>اختر الحالة</DropdownMenuLabel>
+                    <DropdownMenuItem onSelect={() => setStatusFilter([])}>جميع الحالات</DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                    {PROJECT_STATUS_OPTIONS.map((option) => (
+                      <DropdownMenuCheckboxItem
+                        key={option.value}
+                        checked={statusFilter.includes(option.value)}
+                        onCheckedChange={() =>
+                          setStatusFilter((current) =>
+                            current.includes(option.value)
+                              ? current.filter((status) => status !== option.value)
+                              : [...current, option.value]
+                          )
+                        }
+                        onSelect={(event) => event.preventDefault()}
+                      >
+                        {option.label}
+                      </DropdownMenuCheckboxItem>
+                    ))}
+                  </DropdownMenuContent>
+                </DropdownMenu>
 
-                <div className="min-w-[170px]">
-                  <select
-                    value={`${sortField}_${sortDirection}`}
-                    onChange={(e) => {
-                      const [field, direction] = e.target.value.split('_')
-                      setSortField(field as SortField)
-                      setSortDirection(direction as SortDirection)
-                    }}
-                    className="focus-ring-brand w-full rounded-lg border border-input bg-surface px-4 py-2 text-sm transition-[border-color,box-shadow] duration-[var(--motion-fast)] ease-[var(--ease-out)]"
-                  >
-                    <option value="name_asc">الاسم (أ-ي)</option>
-                    <option value="name_desc">الاسم (ي-أ)</option>
-                    <option value="employee_count_desc">عدد الموظفين (الأكثر)</option>
-                    <option value="employee_count_asc">عدد الموظفين (الأقل)</option>
-                    <option value="total_salaries_desc">إجمالي الرواتب (الأكبر)</option>
-                    <option value="total_salaries_asc">إجمالي الرواتب (الأصغر)</option>
-                    <option value="created_at_desc">الأحدث</option>
-                    <option value="created_at_asc">الأقدم</option>
-                  </select>
-                </div>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="secondary" className="h-9 w-9 px-0" title="الترتيب">
+                      <ArrowUpDown className="w-4 h-4" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" sideOffset={8} className="w-52">
+                    <DropdownMenuLabel>الترتيب</DropdownMenuLabel>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuRadioGroup
+                      value={`${sortField}_${sortDirection}`}
+                      onValueChange={(value) => {
+                        const parts = value.split('_')
+                        const dir = parts.pop() as SortDirection
+                        setSortField(parts.join('_') as SortField)
+                        setSortDirection(dir)
+                      }}
+                    >
+                      <DropdownMenuRadioItem value="name_asc">الاسم (أ-ي)</DropdownMenuRadioItem>
+                      <DropdownMenuRadioItem value="name_desc">الاسم (ي-أ)</DropdownMenuRadioItem>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuRadioItem value="employee_count_desc">عدد الموظفين (الأكثر)</DropdownMenuRadioItem>
+                      <DropdownMenuRadioItem value="employee_count_asc">عدد الموظفين (الأقل)</DropdownMenuRadioItem>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuRadioItem value="total_salaries_desc">إجمالي الرواتب (الأكبر)</DropdownMenuRadioItem>
+                      <DropdownMenuRadioItem value="total_salaries_asc">إجمالي الرواتب (الأصغر)</DropdownMenuRadioItem>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuRadioItem value="created_at_desc">الأحدث</DropdownMenuRadioItem>
+                      <DropdownMenuRadioItem value="created_at_asc">الأقدم</DropdownMenuRadioItem>
+                    </DropdownMenuRadioGroup>
+                  </DropdownMenuContent>
+                </DropdownMenu>
               </FilterBar>
 
               {/* Projects Grid */}
