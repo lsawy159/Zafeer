@@ -5,7 +5,7 @@ import { useModalScrollLock } from '@/hooks/useModalScrollLock'
 import { supabase, Employee, Company, Project, type EmployeeWithRelations } from '@/lib/supabase'
 import { useAllEmployeesPage, EMPLOYEES_PAGE_QUERY_KEY } from '@/hooks/useEmployees'
 import { useProjects } from '@/hooks/useProjects'
-import { useEmployeeFilters } from '@/hooks/useEmployeeFilters'
+import { useEmployeeFilters, type CardSeverityFilter } from '@/hooks/useEmployeeFilters'
 import Layout from '@/components/layout/Layout'
 import EmployeeCard from '@/components/employees/EmployeeCard'
 import AddEmployeeModal from '@/components/employees/AddEmployeeModal'
@@ -292,6 +292,7 @@ export default function Employees() {
      healthInsuranceStatusDocFilter, setHealthInsuranceStatusDocFilter,
      hasAlertFilter, setHasAlertFilter,
      showAlertsOnly, setShowAlertsOnly,
+     cardSeverityFilter, setCardSeverityFilter,
      sortField, setSortField,
      sortDirection, setSortDirection,
      filteredEmployees,
@@ -379,6 +380,7 @@ export default function Employees() {
     residenceStatusDocFilter,
     healthInsuranceStatusDocFilter,
     hasAlertFilter,
+    cardSeverityFilter,
     showAlertsOnly,
   ]) // تحديث: insuranceFilter → healthInsuranceFilter
 
@@ -810,6 +812,7 @@ export default function Employees() {
     }
 
     let totalAlerts = 0
+    let expiredAlerts = 0
     let urgentAlerts = 0
     let highAlerts = 0
     let mediumAlerts = 0
@@ -846,7 +849,9 @@ export default function Employees() {
       if (highestSeverity === 0) continue
 
       totalAlerts += 1
-      if (highestSeverity >= 3) {
+      if (highestSeverity === 4) {
+        expiredAlerts += 1
+      } else if (highestSeverity === 3) {
         urgentAlerts += 1
       } else if (highestSeverity === 2) {
         highAlerts += 1
@@ -868,12 +873,20 @@ export default function Employees() {
         valueClass: 'text-rose-600 dark:text-rose-300',
       },
       {
-        key: 'urgent',
-        title: 'منتهي / طارئ',
-        value: urgentAlerts,
-        label: `${percent(urgentAlerts)}% من التنبيهات`,
+        key: 'expired',
+        title: 'منتهي',
+        value: expiredAlerts,
+        label: `${percent(expiredAlerts)}% من التنبيهات`,
         accentClass: 'border-red-500/20 bg-red-500/5',
         valueClass: 'text-red-600 dark:text-red-300',
+      },
+      {
+        key: 'urgent',
+        title: 'طارئ',
+        value: urgentAlerts,
+        label: `${percent(urgentAlerts)}% من التنبيهات`,
+        accentClass: 'border-orange-500/20 bg-orange-500/5',
+        valueClass: 'text-orange-600 dark:text-orange-300',
       },
       {
         key: 'high',
@@ -1044,6 +1057,7 @@ export default function Employees() {
     contractFilter,
     residenceFilter,
     healthInsuranceFilter,
+    cardSeverityFilter,
     sortField,
     sortDirection,
   ])
@@ -1094,11 +1108,16 @@ export default function Employees() {
               تنبيهات الموظفين
             </h3>
           </div>
-          <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+          <div className="grid grid-cols-2 gap-3 md:grid-cols-5">
             {employeeSummaryCards.map((card) => (
               <div
                 key={card.key}
-                className={`app-panel px-3 py-2.5 text-center ${card.accentClass}`}
+                onClick={() =>
+                  setCardSeverityFilter(cardSeverityFilter === card.key ? null : (card.key as CardSeverityFilter))
+                }
+                className={`app-panel cursor-pointer px-3 py-2.5 text-center transition-shadow ${card.accentClass} ${
+                  cardSeverityFilter === card.key ? 'ring-2 ring-offset-1 ring-primary shadow-md' : 'hover:shadow-sm'
+                }`}
               >
                 <div className="text-[11px] font-medium leading-4 text-foreground-secondary dark:text-foreground-secondary md:text-xs">
                   {card.title}
