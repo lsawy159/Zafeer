@@ -1,7 +1,7 @@
 // @author ZaFeer System
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.45.0'
 import { Resend } from 'https://esm.sh/resend@4.0.0'
-import ExcelJS from 'https://esm.sh/exceljs@4.4.0?bundle'
+import ExcelJS from 'npm:exceljs@4.4.0'
 import JSZip from 'https://esm.sh/jszip@3.10.1'
 
 const CORS_HEADERS = {
