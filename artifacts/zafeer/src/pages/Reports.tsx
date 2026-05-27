@@ -31,6 +31,7 @@ import {
 interface SubscriptionItem {
   type: string
   name: string
+  uniqueId: string
   expiryDate: string
   daysRemaining: number
   status: 'expired' | 'urgent' | 'medium' | 'valid'
@@ -197,6 +198,7 @@ export default function Reports() {
           items.push({
             type: field.type,
             name: employee.name,
+            uniqueId: employee.residence_number ?? employee.id,
             expiryDate: field.expiry,
             daysRemaining: differenceInDays(new Date(field.expiry), new Date()),
             status,
@@ -220,6 +222,7 @@ export default function Reports() {
           items.push({
             type: field.type,
             name: company.name,
+            uniqueId: company.unified_number ?? company.id,
             expiryDate: field.expiry,
             daysRemaining: differenceInDays(new Date(field.expiry), new Date()),
             status,
@@ -284,11 +287,14 @@ export default function Reports() {
 
   const exportExpiryReportToExcel = async () => {
     try {
+      const eligibleIds = new Set(filteredItems.map((item) => item.uniqueId))
       const XLSX = await loadXlsx()
       const wb = XLSX.utils.book_new()
 
       if (activeTab === 'employees') {
-        const rows = rawEmployees.map((emp) => ({
+        const rows = rawEmployees
+          .filter((emp) => eligibleIds.has(emp.residence_number ?? emp.id))
+          .map((emp) => ({
           'اسم الموظف': emp.name,
           'رقم الإقامة': emp.residence_number ?? '',
           'رقم جواز السفر': emp.passport_number ?? '',
@@ -319,7 +325,7 @@ export default function Reports() {
           'أيام متبقية لعقد الأجير': emp.hired_worker_contract_expiry
             ? differenceInDays(new Date(emp.hired_worker_contract_expiry), new Date())
             : '',
-        }))
+          }))
 
         const ws = XLSX.utils.json_to_sheet(rows)
         ws['!cols'] = [
@@ -331,7 +337,9 @@ export default function Reports() {
         ]
         XLSX.utils.book_append_sheet(wb, ws, 'الموظفين')
       } else {
-        const rows = rawCompanies.map((co) => ({
+        const rows = rawCompanies
+          .filter((co) => eligibleIds.has(co.unified_number ?? co.id))
+          .map((co) => ({
           'اسم المؤسسة': co.name,
           'الرقم الموحد': co.unified_number ?? '',
           'رقم السجل التجاري': co.labor_subscription_number ?? '',
@@ -354,7 +362,7 @@ export default function Reports() {
           'أيام متبقية لاشتراك قوى': co.ending_subscription_power_date
             ? differenceInDays(new Date(co.ending_subscription_power_date), new Date())
             : '',
-        }))
+          }))
 
         const ws = XLSX.utils.json_to_sheet(rows)
         ws['!cols'] = [
