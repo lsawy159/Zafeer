@@ -2,7 +2,7 @@ import { useEffect, useState, useRef, useCallback, useMemo } from 'react'
 import { useWindowVirtualizer } from '@tanstack/react-virtual'
 import { useQueryClient } from '@tanstack/react-query'
 import { useModalScrollLock } from '@/hooks/useModalScrollLock'
-import { supabase, Employee, Company, Project } from '@/lib/supabase'
+import { supabase, Employee, Company, Project, type EmployeeWithRelations } from '@/lib/supabase'
 import { useAllEmployeesPage, EMPLOYEES_PAGE_QUERY_KEY } from '@/hooks/useEmployees'
 import { useProjects } from '@/hooks/useProjects'
 import { useEmployeeFilters } from '@/hooks/useEmployeeFilters'
@@ -23,6 +23,9 @@ import {
   LayoutGrid,
   Table,
   Shield,
+  Bell,
+  User,
+  Eye,
 } from 'lucide-react'
 import CascadeDeleteModal, { type ObligationHeaderInfo } from '@/components/employees/CascadeDeleteModal'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/Tooltip'
@@ -43,7 +46,6 @@ import { SearchInput } from '@/components/ui/SearchInput'
 import { Button } from '@/components/ui/Button'
 import { EmployeesFiltersModal } from './employees/EmployeesFiltersModal'
 import { EmployeeGridCard } from './employees/EmployeeGridCard'
-import { EmployeeListRow } from './employees/EmployeeListRow'
 import { EmployeeDeleteConfirmModal } from './employees/EmployeeDeleteConfirmModal'
 import {
   DropdownMenu,
@@ -54,15 +56,71 @@ import {
 } from '@/components/ui/DropdownMenu'
 import {
   COLOR_THRESHOLD_FALLBACK,
-  getStatusForField,
   hasAlert,
   getFieldLabel,
+  getDaysRemaining,
 } from './employees/employeeUtils'
 import { BulkDeleteModal } from './employees/BulkDeleteModal'
 import { BulkDateModal } from './employees/BulkDateModal'
 
 const DELETE_BATCH_SIZE = 50
 
+type EmployeeDateField =
+  | 'contract_expiry'
+  | 'hired_worker_contract_expiry'
+  | 'residence_expiry'
+  | 'health_insurance_expiry'
+
+function getEmployeeDateDays(
+  employee: EmployeeWithRelations,
+  field: EmployeeDateField
+): number | null {
+  switch (field) {
+    case 'contract_expiry':
+      return getDaysRemaining(employee.contract_expiry)
+    case 'hired_worker_contract_expiry':
+      return getDaysRemaining(employee.hired_worker_contract_expiry)
+    case 'residence_expiry':
+      return getDaysRemaining(employee.residence_expiry)
+    case 'health_insurance_expiry':
+      return getDaysRemaining(employee.health_insurance_expiry)
+  }
+}
+
+function getEmployeeDateCellClass(
+  days: number | null,
+  field: EmployeeDateField,
+  thresholds: EmployeeNotificationThresholds
+): string {
+  const fieldThresholds = {
+    contract_expiry: {
+      urgent: thresholds.contract_urgent_days,
+      high: thresholds.contract_high_days,
+      medium: thresholds.contract_medium_days,
+    },
+    hired_worker_contract_expiry: {
+      urgent: thresholds.hired_worker_contract_urgent_days,
+      high: thresholds.hired_worker_contract_high_days,
+      medium: thresholds.hired_worker_contract_medium_days,
+    },
+    residence_expiry: {
+      urgent: thresholds.residence_urgent_days,
+      high: thresholds.residence_high_days,
+      medium: thresholds.residence_medium_days,
+    },
+    health_insurance_expiry: {
+      urgent: thresholds.health_insurance_urgent_days,
+      high: thresholds.health_insurance_high_days,
+      medium: thresholds.health_insurance_medium_days,
+    },
+  }[field]
+
+  if (days === null) return 'bg-neutral-100 text-neutral-500 border-neutral-200'
+  if (days < 0 || days <= fieldThresholds.urgent) return 'bg-red-100 text-red-700 border-red-300'
+  if (days <= fieldThresholds.high) return 'bg-orange-100 text-warning-700 border-orange-300'
+  if (days <= fieldThresholds.medium) return 'bg-yellow-100 text-yellow-700 border-yellow-300'
+  return 'bg-green-100 text-success-700 border-green-200'
+}
 function chunkArray<T>(items: T[], size: number): T[][] {
   const chunks: T[][] = []
   for (let i = 0; i < items.length; i += size) {
@@ -164,7 +222,8 @@ export default function Employees() {
 
   // حالة التنقل بالسهام
   const [selectedRowIndex, setSelectedRowIndex] = useState<number | null>(null)
-  const rowRefs = useRef<(HTMLElement | null)[]>([])
+  const tableRef = useRef<HTMLTableElement>(null)
+  const rowRefs = useRef<(HTMLTableRowElement | null)[]>([])
 
   // حالة نوع العرض
   const [viewMode, setViewMode] = useState<'table' | 'grid'>('grid')
@@ -734,6 +793,109 @@ export default function Employees() {
       0
     ), [employees, colorThresholds])
 
+  const employeeSummaryCards = useMemo(() => {
+    const thresholds = colorThresholds ?? COLOR_THRESHOLD_FALLBACK
+
+    const getSeverity = (
+      daysRemaining: number | null,
+      urgentDays: number,
+      highDays: number,
+      mediumDays: number
+    ) => {
+      if (daysRemaining === null || daysRemaining > mediumDays) return 0
+      if (daysRemaining < 0) return 4
+      if (daysRemaining <= urgentDays) return 3
+      if (daysRemaining <= highDays) return 2
+      return 1
+    }
+
+    let totalAlerts = 0
+    let urgentAlerts = 0
+    let highAlerts = 0
+    let mediumAlerts = 0
+
+    for (const employee of employees) {
+      const severities = [
+        getSeverity(
+          getDaysRemaining(employee.contract_expiry),
+          thresholds.contract_urgent_days,
+          thresholds.contract_high_days,
+          thresholds.contract_medium_days
+        ),
+        getSeverity(
+          getDaysRemaining(employee.hired_worker_contract_expiry),
+          thresholds.hired_worker_contract_urgent_days,
+          thresholds.hired_worker_contract_high_days,
+          thresholds.hired_worker_contract_medium_days
+        ),
+        getSeverity(
+          getDaysRemaining(employee.residence_expiry),
+          thresholds.residence_urgent_days,
+          thresholds.residence_high_days,
+          thresholds.residence_medium_days
+        ),
+        getSeverity(
+          getDaysRemaining(employee.health_insurance_expiry),
+          thresholds.health_insurance_urgent_days,
+          thresholds.health_insurance_high_days,
+          thresholds.health_insurance_medium_days
+        ),
+      ]
+
+      const highestSeverity = Math.max(...severities)
+      if (highestSeverity === 0) continue
+
+      totalAlerts += 1
+      if (highestSeverity >= 3) {
+        urgentAlerts += 1
+      } else if (highestSeverity === 2) {
+        highAlerts += 1
+      } else {
+        mediumAlerts += 1
+      }
+    }
+
+    const percent = (value: number) =>
+      totalAlerts > 0 ? Math.round((value / totalAlerts) * 100) : 0
+
+    return [
+      {
+        key: 'total',
+        title: 'إجمالي التنبيهات',
+        value: totalAlerts,
+        label: 'الموظفون الذين لديهم تنبيه واحد على الأقل',
+        accentClass: 'border-rose-500/20 bg-rose-500/5',
+        valueClass: 'text-rose-600 dark:text-rose-300',
+      },
+      {
+        key: 'urgent',
+        title: 'منتهي / طارئ',
+        value: urgentAlerts,
+        label: `${percent(urgentAlerts)}% من التنبيهات`,
+        accentClass: 'border-red-500/20 bg-red-500/5',
+        valueClass: 'text-red-600 dark:text-red-300',
+      },
+      {
+        key: 'high',
+        title: 'عاجل',
+        value: highAlerts,
+        label: `${percent(highAlerts)}% من التنبيهات`,
+        accentClass: 'border-amber-500/20 bg-amber-500/5',
+        valueClass: 'text-amber-600 dark:text-amber-300',
+      },
+      {
+        key: 'medium',
+        title: 'متوسط',
+        value: mediumAlerts,
+        label: `${percent(mediumAlerts)}% من التنبيهات`,
+        accentClass: 'border-sky-500/20 bg-sky-500/5',
+        valueClass: 'text-sky-600 dark:text-sky-300',
+      },
+    ]
+  }, [employees, colorThresholds])
+
+  const employeeTableThresholds = colorThresholds ?? COLOR_THRESHOLD_FALLBACK
+
   // Sort handling functions
   const handleSort = (field: typeof sortField) => {
     if (sortField === field) {
@@ -752,16 +914,6 @@ export default function Employees() {
       <ArrowDown className="w-4 h-4" />
     )
   }
-
-  // Virtualizer for list/table view
-  const listContainerRef = useRef<HTMLDivElement>(null)
-  const rowVirtualizer = useWindowVirtualizer({
-    count: viewMode === 'table' ? sortedAndFilteredEmployees.length : 0,
-    estimateSize: () => 72,
-    overscan: 10,
-    scrollMargin: listContainerRef.current?.offsetTop ?? 0,
-  })
-  const virtualItems = rowVirtualizer.getVirtualItems()
 
   // Virtual grid: tracks container width to calculate columns, renders only visible rows
   const gridContainerRef = useRef<HTMLDivElement>(null)
@@ -922,30 +1074,9 @@ export default function Employees() {
               : `عرض ${sortedAndFilteredEmployees.length} من ${employees.length} موظف${activeFiltersCount > 0 ? ` (${activeFiltersCount} فلتر نشط)` : ''}`
           }
           breadcrumbs={[{ label: 'الرئيسية', href: '/dashboard' }, { label: 'الموظفين' }]}
-          className="mb-4"
+          className="mb-6"
           actions={
             <>
-              <div className="app-toggle-shell">
-                {!isMobileView && (
-                  <button
-                    onClick={() => setViewMode('table')}
-                    className={`app-toggle-button ${viewMode === 'table' ? 'app-toggle-button-active' : ''}`}
-                    title="عرض الشرائط"
-                  >
-                    <Table className="w-4 h-4" />
-                    <span className="hidden sm:inline">شرائط</span>
-                  </button>
-                )}
-                <button
-                  onClick={() => setViewMode('grid')}
-                  className={`app-toggle-button ${viewMode === 'grid' ? 'app-toggle-button-active' : ''}`}
-                  title="عرض الكروت"
-                >
-                  <LayoutGrid className="w-4 h-4" />
-                  <span className="hidden sm:inline">كروت</span>
-                </button>
-              </div>
-
               {canCreate('employees') && (
                 <Button onClick={() => setIsAddModalOpen(true)}>
                   <UserPlus className="w-4 h-4" />
@@ -956,10 +1087,56 @@ export default function Employees() {
           }
         />
 
+        <div className="app-panel mb-5 p-4 md:p-5">
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="flex items-center gap-2 text-base font-bold text-neutral-900 md:text-lg">
+              <Bell className="h-5 w-5 text-info-600" />
+              تنبيهات الموظفين
+            </h3>
+          </div>
+          <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+            {employeeSummaryCards.map((card) => (
+              <div
+                key={card.key}
+                className={`app-panel px-3 py-2.5 text-center ${card.accentClass}`}
+              >
+                <div className="text-[11px] font-medium leading-4 text-foreground-secondary dark:text-foreground-secondary md:text-xs">
+                  {card.title}
+                </div>
+                <div className={`text-lg font-bold leading-none md:text-xl ${card.valueClass}`}>
+                  {card.value.toLocaleString('en-US')}
+                </div>
+                <div className="text-[11px] leading-4 text-foreground-secondary dark:text-foreground-secondary md:text-xs">
+                  {card.label}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
         <FilterBar
           className="mb-6"
           actions={
             <>
+              <div className="app-toggle-shell">
+                {!isMobileView && (
+                  <button
+                    onClick={() => setViewMode('table')}
+                    className={`app-toggle-button ${viewMode === 'table' ? 'app-toggle-button-active' : ''}`}
+                    title="عرض الشرائط"
+                  >
+                    <Table className="w-4 h-4" />
+                  </button>
+                )}
+                <button
+                  onClick={() => setViewMode('grid')}
+                  className={`app-toggle-button ${viewMode === 'grid' ? 'app-toggle-button-active' : ''}`}
+                  title="عرض الكروت"
+                >
+                  <LayoutGrid className="w-4 h-4" />
+                </button>
+              </div>
+
               <Button onClick={() => setShowFiltersModal(true)} className="relative">
                 <Filter className="w-4 h-4" />
                 <span>الفلاتر</span>
@@ -1187,69 +1364,203 @@ export default function Employees() {
             })}
           </div>
         ) : (
-          <div ref={listContainerRef} className="space-y-3">
-            <div className="app-data-strip flex items-center justify-between">
-              <button
-                onClick={toggleSelectAll}
-                className="inline-flex items-center gap-2 text-sm font-medium text-foreground-secondary dark:text-foreground"
-                title={
-                  selectedEmployees.size === filteredEmployees.length
-                    ? 'إلغاء تحديد الكل'
-                    : 'تحديد الكل'
-                }
-              >
-                {selectedEmployees.size === filteredEmployees.length &&
-                filteredEmployees.length > 0 ? (
-                  <CheckSquare className="w-4 h-4 text-info-600" />
-                ) : (
-                  <Square className="w-4 h-4 text-foreground-tertiary" />
-                )}
-                تحديد الكل
-              </button>
-              <span className="text-xs text-foreground-secondary dark:text-foreground-secondary">
-                {sortedAndFilteredEmployees.length} نتيجة
-              </span>
-            </div>
-
-            {sortedAndFilteredEmployees.length === 0 ? (
-              <div className="text-center py-12 text-neutral-500">
-                <AlertCircle className="w-12 h-12 mx-auto mb-4 text-neutral-400" />
-                <p>لا توجد نتائج تطابق الفلاتر المحددة</p>
-              </div>
-            ) : (
-              <div
-                style={{ height: rowVirtualizer.getTotalSize(), position: 'relative' }}
-              >
-                {virtualItems.map((virtualRow) => {
-                  const employee = sortedAndFilteredEmployees[virtualRow.index]
-                  return (
-                    <div
-                      key={employee.id}
-                      style={{
-                        position: 'absolute',
-                        top: 0,
-                        transform: `translateY(${virtualRow.start - rowVirtualizer.options.scrollMargin}px)`,
-                        width: '100%',
-                      }}
-                      ref={rowVirtualizer.measureElement}
-                      data-index={virtualRow.index}
+          <div className="app-panel overflow-hidden">
+            {selectedEmployees.size > 0 && (
+              <div className="flex items-center justify-between border-b border-primary/30 bg-primary/10 px-6 py-4">
+                <div className="flex items-center gap-4">
+                  <span className="text-sm font-medium text-neutral-700">
+                    تم تحديد {selectedEmployees.size} موظف
+                  </span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Button
+                    onClick={() => setSelectedEmployees(new Set())}
+                    variant="secondary"
+                    size="sm"
+                  >
+                    إلغاء التحديد
+                  </Button>
+                  {canDelete('employees') && (
+                    <Button
+                      onClick={() => setShowBulkDeleteModal(true)}
+                      variant="destructive"
+                      size="sm"
                     >
-                      <EmployeeListRow
-                        employee={employee}
-                        index={virtualRow.index}
-                        isSelected={selectedRowIndex === virtualRow.index}
-                        isChecked={selectedEmployees.has(employee.id)}
-                        setRowRef={(el) => { rowRefs.current[virtualRow.index] = el }}
-                        canDeleteEmployee={canDelete('employees')}
-                        onEmployeeClick={handleEmployeeClick}
-                        onDeleteEmployee={handleDeleteEmployee}
-                        onToggleSelection={toggleEmployeeSelection}
-                      />
-                    </div>
-                  )
-                })}
+                      حذف المحدد
+                    </Button>
+                  )}
+                </div>
               </div>
             )}
+
+            <div className="overflow-x-auto max-h-[calc(100vh-400px)]">
+              {sortedAndFilteredEmployees.length === 0 ? (
+                <div className="text-center py-12 text-neutral-500">
+                  <AlertCircle className="w-12 h-12 mx-auto mb-4 text-neutral-400" />
+                  <p>لا توجد نتائج تطابق الفلاتر المحددة</p>
+                </div>
+              ) : (
+                <table className="w-full min-w-[1180px] text-sm" ref={tableRef}>
+                  <thead className="sticky top-0 z-[1] bg-neutral-50 shadow-sm">
+                    <tr>
+                      <th className="w-12 px-4 py-3 text-right font-semibold text-neutral-700">
+                        <input
+                          type="checkbox"
+                          checked={
+                            selectedEmployees.size > 0 &&
+                            selectedEmployees.size === sortedAndFilteredEmployees.length
+                          }
+                          onChange={toggleSelectAll}
+                          className="h-4 w-4 cursor-pointer rounded"
+                        />
+                      </th>
+                      <th className="px-4 py-3 text-right font-semibold text-neutral-700">
+                        اسم الموظف
+                      </th>
+                      <th className="px-4 py-3 text-right font-semibold text-neutral-700">
+                        رقم الإقامة
+                      </th>
+                      <th className="px-4 py-3 text-right font-semibold text-neutral-700">
+                        تاريخ انتهاء العقد
+                      </th>
+                      <th className="px-4 py-3 text-right font-semibold text-neutral-700">
+                        تاريخ انتهاء عقد أجير
+                      </th>
+                      <th className="px-4 py-3 text-right font-semibold text-neutral-700">
+                        تاريخ انتهاء الإقامة
+                      </th>
+                      <th className="px-4 py-3 text-right font-semibold text-neutral-700">
+                        تاريخ انتهاء التأمين الصحي
+                      </th>
+                      <th className="px-4 py-3 text-right font-semibold text-neutral-700">
+                        المؤسسة
+                      </th>
+                      <th className="px-4 py-3 text-right font-semibold text-neutral-700">
+                        الإجراءات
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {sortedAndFilteredEmployees.map((employee, index) => {
+                      const contractDays = getEmployeeDateDays(employee, 'contract_expiry')
+                      const hiredWorkerDays = getEmployeeDateDays(
+                        employee,
+                        'hired_worker_contract_expiry'
+                      )
+                      const residenceDays = getEmployeeDateDays(employee, 'residence_expiry')
+                      const healthInsuranceDays = getEmployeeDateDays(
+                        employee,
+                        'health_insurance_expiry'
+                      )
+                      const isSelected = selectedRowIndex === index
+                      const isEmployeeSelected = selectedEmployees.has(employee.id)
+
+                      return (
+                        <tr
+                          key={employee.id}
+                          ref={(el) => {
+                            rowRefs.current[index] = el
+                          }}
+                          className={`cursor-pointer border-t transition hover:bg-neutral-50 ${
+                            isSelected ? 'bg-primary/10 border-l-4 border-primary' : ''
+                          }`}
+                          onClick={() => handleEmployeeClick(employee)}
+                        >
+                          <td
+                            className="px-4 py-3 text-right"
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            <input
+                              type="checkbox"
+                              checked={isEmployeeSelected}
+                              onChange={() => toggleEmployeeSelection(employee.id)}
+                              className="h-4 w-4 cursor-pointer rounded"
+                            />
+                          </td>
+                          <td className="px-4 py-3 font-medium text-neutral-900">
+                            <div className="flex items-center gap-2">
+                              <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg bg-primary/10">
+                                <User className="h-4 w-4 text-primary" />
+                              </div>
+                              <div className="min-w-0">
+                                <div className="truncate font-semibold text-neutral-900">
+                                  {employee.name}
+                                </div>
+                                <div className="truncate text-xs text-neutral-500">
+                                  {employee.company?.name || '-'}
+                                  {employee.project?.name ? ` • ${employee.project.name}` : ''}
+                                </div>
+                              </div>
+                            </div>
+                          </td>
+                          <td className="px-4 py-3 text-neutral-700">
+                            <span className="font-mono text-xs">
+                              {employee.residence_number || '-'}
+                            </span>
+                          </td>
+                          <td className="px-4 py-3">
+                            <span
+                              className={`inline-flex min-w-[110px] justify-center rounded-full border px-2 py-1 text-xs ${getEmployeeDateCellClass(contractDays, 'contract_expiry', employeeTableThresholds)}`}
+                            >
+                              {employee.contract_expiry || '-'}
+                            </span>
+                          </td>
+                          <td className="px-4 py-3">
+                            <span
+                              className={`inline-flex min-w-[110px] justify-center rounded-full border px-2 py-1 text-xs ${getEmployeeDateCellClass(hiredWorkerDays, 'hired_worker_contract_expiry', employeeTableThresholds)}`}
+                            >
+                              {employee.hired_worker_contract_expiry || '-'}
+                            </span>
+                          </td>
+                          <td className="px-4 py-3">
+                            <span
+                              className={`inline-flex min-w-[110px] justify-center rounded-full border px-2 py-1 text-xs ${getEmployeeDateCellClass(residenceDays, 'residence_expiry', employeeTableThresholds)}`}
+                            >
+                              {employee.residence_expiry || '-'}
+                            </span>
+                          </td>
+                          <td className="px-4 py-3">
+                            <span
+                              className={`inline-flex min-w-[110px] justify-center rounded-full border px-2 py-1 text-xs ${getEmployeeDateCellClass(healthInsuranceDays, 'health_insurance_expiry', employeeTableThresholds)}`}
+                            >
+                              {employee.health_insurance_expiry || '-'}
+                            </span>
+                          </td>
+                          <td className="px-4 py-3 text-neutral-700">
+                            {employee.company?.name || '-'}
+                          </td>
+                          <td className="px-4 py-3">
+                            <div
+                              className="flex items-center gap-2"
+                              onClick={(e) => e.stopPropagation()}
+                            >
+                              <Button
+                                onClick={() => handleEmployeeClick(employee)}
+                                variant="secondary"
+                                size="sm"
+                              >
+                                <Eye className="h-3.5 w-3.5" />
+                                عرض
+                              </Button>
+                              {canDelete('employees') && (
+                                <Button
+                                  onClick={() => handleDeleteEmployee(employee)}
+                                  variant="destructive"
+                                  size="sm"
+                                >
+                                  <Trash2 className="h-3.5 w-3.5" />
+                                  حذف
+                                </Button>
+                              )}
+                            </div>
+                          </td>
+                        </tr>
+                      )
+                    })}
+                  </tbody>
+                </table>
+              )}
+            </div>
           </div>
         )}
       </div>
