@@ -10,7 +10,17 @@ import {
   filterEmployeeAlertsByPriority,
 } from '@/utils/employeeAlerts'
 import { normalizeArabic } from '@/utils/textUtils'
-import { Bell, AlertTriangle, Building2, Users, X, CheckCircle2, Mail, ArrowUpDown } from 'lucide-react'
+import {
+  Bell,
+  AlertTriangle,
+  Building2,
+  Users,
+  X,
+  CheckCircle2,
+  Mail,
+  ArrowUpDown,
+  Clock,
+} from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import Layout from '@/components/layout/Layout'
 import CompanyCard from '@/components/companies/CompanyCard'
@@ -21,6 +31,11 @@ import { PageHeader } from '@/components/ui/PageHeader'
 import { FilterBar } from '@/components/ui/FilterBar'
 import { SearchInput } from '@/components/ui/SearchInput'
 import { Button } from '@/components/ui/Button'
+import {
+  DEFAULT_EXPIRED_INCLUSION,
+  getExpiredInclusionSettings,
+  type ExpiredInclusionSettings,
+} from '@/utils/expiredInclusionSettings'
 import {
   DropdownMenu,
   DropdownMenuCheckboxItem,
@@ -153,6 +168,9 @@ export default function Alerts({ initialTab = 'all', initialFilter = 'all' }: Al
   const [selectedEmployee, setSelectedEmployee] = useState<
     (Employee & { company: Company }) | null
   >(null)
+  const [expiredInclusion, setExpiredInclusion] = useState<ExpiredInclusionSettings>(
+    DEFAULT_EXPIRED_INCLUSION
+  )
   const navigate = useNavigate()
   const togglePriorityFilter = (priority: AlertPriority) => {
     setActiveFilter((current) =>
@@ -171,6 +189,10 @@ export default function Alerts({ initialTab = 'all', initialFilter = 'all' }: Al
   useEffect(() => {
     fetchData()
     loadReadAlerts()
+  }, [])
+
+  useEffect(() => {
+    void getExpiredInclusionSettings().then(setExpiredInclusion)
   }, [])
 
   // التحقق من صلاحية العرض - بعد جميع الـ hooks
@@ -503,19 +525,56 @@ export default function Alerts({ initialTab = 'all', initialFilter = 'all' }: Al
   }
 
   // إحصائيات التنبيهات (فقط غير المقروءة و urgent/high) - هذه خاصة بالصفحة الداخلية
-  const unreadCompanyAlerts = companyAlerts.filter(
+  const includeExpiredAlerts = expiredInclusion.include_in_alerts
+  const visibleCompanyAlerts = includeExpiredAlerts
+    ? companyAlerts
+    : companyAlerts.filter(
+        (alert) =>
+          alert.days_remaining === undefined ||
+          alert.days_remaining === null ||
+          alert.days_remaining >= 0
+      )
+  const visibleEmployeeAlerts = includeExpiredAlerts
+    ? employeeAlerts
+    : employeeAlerts.filter(
+        (alert) =>
+          alert.days_remaining === undefined ||
+          alert.days_remaining === null ||
+          alert.days_remaining >= 0
+      )
+
+  const unreadCompanyAlerts = visibleCompanyAlerts.filter(
     (alert) =>
       !readAlerts.has(alert.id) && (alert.priority === 'urgent' || alert.priority === 'high')
   )
-  const unreadEmployeeAlerts = employeeAlerts.filter(
+  const unreadEmployeeAlerts = visibleEmployeeAlerts.filter(
     (alert) =>
       !readAlerts.has(alert.id) && (alert.priority === 'urgent' || alert.priority === 'high')
   )
 
-  const companyAlertsStats = getAlertsStats(unreadCompanyAlerts)
-  const employeeAlertsStats = getEmployeeAlertsStats(unreadEmployeeAlerts)
+  const statsCompanyAlerts = includeExpiredAlerts
+    ? unreadCompanyAlerts
+    : unreadCompanyAlerts.filter(
+        (alert) =>
+          alert.days_remaining === undefined ||
+          alert.days_remaining === null ||
+          alert.days_remaining >= 0
+      )
+  const statsEmployeeAlerts = includeExpiredAlerts
+    ? unreadEmployeeAlerts
+    : unreadEmployeeAlerts.filter(
+        (alert) =>
+          alert.days_remaining === undefined ||
+          alert.days_remaining === null ||
+          alert.days_remaining >= 0
+      )
+
+  const companyAlertsStats = getAlertsStats(statsCompanyAlerts)
+  const employeeAlertsStats = getEmployeeAlertsStats(statsEmployeeAlerts)
   const totalAlerts = companyAlertsStats.total + employeeAlertsStats.total
   const totalUrgentAlerts = companyAlertsStats.urgent + employeeAlertsStats.urgent
+  const totalHighAlerts = companyAlertsStats.high + employeeAlertsStats.high
+  const totalMediumAlerts = companyAlertsStats.medium + employeeAlertsStats.medium
 
   // [MODIFIED] فلترة التنبيهات بناءً على التبويب "جديد" أو "مقروء"
 
@@ -523,7 +582,7 @@ export default function Alerts({ initialTab = 'all', initialFilter = 'all' }: Al
   const normalizedSearchTerm = normalizeArabic(searchTerm).trim().toLowerCase()
 
   const filteredCompanyAlerts = useMemo(() => {
-    let filtered = companyAlerts.filter(
+    let filtered = visibleCompanyAlerts.filter(
       (alert) => alert.priority === 'urgent' || alert.priority === 'high'
     )
 
@@ -557,7 +616,7 @@ export default function Alerts({ initialTab = 'all', initialFilter = 'all' }: Al
       compareAlerts(left, right, alertSortField, alertSortDir, (alert) => alert.company.name)
     )
   }, [
-    companyAlerts,
+    visibleCompanyAlerts,
     alertStatusFilter,
     activeFilter,
     normalizedSearchTerm,
@@ -568,7 +627,7 @@ export default function Alerts({ initialTab = 'all', initialFilter = 'all' }: Al
   ])
 
   const filteredEmployeeAlerts = useMemo(() => {
-    let filtered = employeeAlerts.filter(
+    let filtered = visibleEmployeeAlerts.filter(
       (alert) => alert.priority === 'urgent' || alert.priority === 'high'
     )
 
@@ -603,7 +662,7 @@ export default function Alerts({ initialTab = 'all', initialFilter = 'all' }: Al
       compareAlerts(left, right, alertSortField, alertSortDir, (alert) => alert.employee.name)
     )
   }, [
-    employeeAlerts,
+    visibleEmployeeAlerts,
     alertStatusFilter,
     activeFilter,
     normalizedSearchTerm,
@@ -638,7 +697,7 @@ export default function Alerts({ initialTab = 'all', initialFilter = 'all' }: Al
         />
 
         {/* إحصائيات سريعة (تبقى كما هي، تعرض غير المقروء فقط لهذه الصفحة) */}
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4 mb-8">
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-6 mb-8">
           <div className="app-panel p-6">
             <div className="flex items-center justify-between">
               <div>
@@ -654,11 +713,35 @@ export default function Alerts({ initialTab = 'all', initialFilter = 'all' }: Al
           <div className="rounded-2xl border border-red-200 bg-red-50 p-6 shadow-soft">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-red-700 mb-1">تنبيهات طارئة وعاجلة</p>
+                <p className="text-sm text-red-700 mb-1">طارئ</p>
                 <p className="text-3xl font-bold text-red-600">{totalUrgentAlerts}</p>
               </div>
               <div className="rounded-xl bg-red-100 p-3 text-red-600">
                 <AlertTriangle className="w-7 h-7" />
+              </div>
+            </div>
+          </div>
+
+          <div className="rounded-2xl border border-orange-200 bg-orange-50 p-6 shadow-soft">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-orange-700 mb-1">عاجل</p>
+                <p className="text-3xl font-bold text-orange-600">{totalHighAlerts}</p>
+              </div>
+              <div className="rounded-xl bg-orange-100 p-3 text-orange-600">
+                <AlertTriangle className="w-7 h-7" />
+              </div>
+            </div>
+          </div>
+
+          <div className="rounded-2xl border border-yellow-200 bg-yellow-50 p-6 shadow-soft">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-yellow-700 mb-1">متوسط</p>
+                <p className="text-3xl font-bold text-yellow-600">{totalMediumAlerts}</p>
+              </div>
+              <div className="rounded-xl bg-yellow-100 p-3 text-yellow-600">
+                <Clock className="w-7 h-7" />
               </div>
             </div>
           </div>

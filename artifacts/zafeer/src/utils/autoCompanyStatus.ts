@@ -561,11 +561,13 @@ export interface CompanyStatusStats {
   // إحصائيات موحدة (تشمل جميع الحالات)
   totalValid: number // ساري - أخضر
   totalMedium: number // متوسط - أصفر
-  totalCritical: number // طارئ + عاجل معاً (urgent + high) - أحمر/برتقالي
+  totalUrgent: number // طارئ فقط (urgent) - أحمر
+  totalHigh: number // عاجل فقط (high) - برتقالي
   totalExpired: number // منتهي
   totalValidPercentage: number
   totalMediumPercentage: number
-  totalCriticalPercentage: number // نسبة (طارئ + عاجل)
+  totalUrgentPercentage: number // نسبة (طارئ)
+  totalHighPercentage: number // نسبة (عاجل)
   totalExpiredPercentage: number
   totalCriticalAlerts: number // عدد المؤسسات التي تحتاج اهتمام عاجل (urgent + high)
   totalMediumAlerts: number // عدد المؤسسات متوسطة الأهمية
@@ -632,7 +634,8 @@ export const calculateCompanyStatusStats = (
 
   let totalValid = 0
   let totalMedium = 0
-  let totalCritical = 0
+  let totalUrgent = 0
+  let totalHigh = 0
   let totalExpired = 0
 
   companies.forEach((company) => {
@@ -652,11 +655,11 @@ export const calculateCompanyStatusStats = (
     }
     // إذا كان هناك حالة طارئة (وليس منتهية)، المؤسسة طارئة
     else if (priorities.includes('urgent')) {
-      totalCritical++
+      totalUrgent++
     }
-    // إذا كان هناك حالة عاجلة (وليس طارئة أو منتهية)، المؤسسة طارئة أيضاً
+    // إذا كان هناك حالة عاجلة (وليس طارئة أو منتهية)، المؤسسة عاجلة
     else if (priorities.includes('high')) {
-      totalCritical++
+      totalHigh++
     }
     // إذا كان هناك حالة متوسطة (وليس طارئة أو منتهية)، المؤسسة متوسطة
     else if (priorities.includes('medium')) {
@@ -677,8 +680,10 @@ export const calculateCompanyStatusStats = (
     totalCompanies > 0 ? Math.round((totalValid / totalCompanies) * 100) : 0
   const totalMediumPercentage =
     totalCompanies > 0 ? Math.round((totalMedium / totalCompanies) * 100) : 0
-  const totalCriticalPercentage =
-    totalCompanies > 0 ? Math.round((totalCritical / totalCompanies) * 100) : 0
+  const totalUrgentPercentage =
+    totalCompanies > 0 ? Math.round((totalUrgent / totalCompanies) * 100) : 0
+  const totalHighPercentage =
+    totalCompanies > 0 ? Math.round((totalHigh / totalCompanies) * 100) : 0
   const totalExpiredPercentage =
     totalCompanies > 0 ? Math.round((totalExpired / totalCompanies) * 100) : 0
 
@@ -689,11 +694,13 @@ export const calculateCompanyStatusStats = (
     moqeemStats,
     totalValid,
     totalMedium,
-    totalCritical,
+    totalUrgent,
+    totalHigh,
     totalExpired,
     totalValidPercentage,
     totalMediumPercentage,
-    totalCriticalPercentage,
+    totalUrgentPercentage,
+    totalHighPercentage,
     totalExpiredPercentage,
     totalCriticalAlerts,
     totalMediumAlerts,

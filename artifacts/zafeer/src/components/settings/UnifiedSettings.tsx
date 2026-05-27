@@ -15,6 +15,12 @@ import { logger } from '@/utils/logger'
 import { invalidateEmployeeNotificationThresholdsCache } from '@/utils/employeeAlerts'
 import { invalidateNotificationThresholdsCache } from '@/utils/alerts'
 import { invalidateStatusThresholdsCache } from '@/utils/autoCompanyStatus'
+import {
+  DEFAULT_EXPIRED_INCLUSION,
+  getExpiredInclusionSettings,
+  saveExpiredInclusionSettings,
+  type ExpiredInclusionSettings,
+} from '@/utils/expiredInclusionSettings'
 
 /**
  * واجهة موحدة لجميع إعدادات النظام
@@ -193,9 +199,16 @@ export default function UnifiedSettings({ isReadOnly = false }: { isReadOnly?: b
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [activeTab, setActiveTab] = useState<'employees' | 'companies'>('employees')
+  const [expiredSettings, setExpiredSettings] = useState<ExpiredInclusionSettings>(
+    DEFAULT_EXPIRED_INCLUSION
+  )
 
   useEffect(() => {
     loadSettings()
+  }, [])
+
+  useEffect(() => {
+    void getExpiredInclusionSettings().then(setExpiredSettings)
   }, [])
 
   const loadSettings = async () => {
@@ -219,6 +232,20 @@ export default function UnifiedSettings({ isReadOnly = false }: { isReadOnly?: b
     } finally {
       setLoading(false)
     }
+  }
+
+  const handleExpiredInclusionChange = (
+    key: keyof ExpiredInclusionSettings,
+    checked: boolean
+  ) => {
+    setExpiredSettings((current) => {
+      const next = { ...current, [key]: checked }
+      void saveExpiredInclusionSettings(next).catch((error) => {
+        logger.error('Error saving expired inclusion settings:', error)
+        toast.error('طظ… ط§ظ„ط­ظپط¸ ط£ظˆ ط¬ط¯ط¯ ط§ظ„ظ…ط­ط§ظˆظ„ط©')
+      })
+      return next
+    })
   }
 
   const handleSave = async () => {
@@ -710,6 +737,47 @@ export default function UnifiedSettings({ isReadOnly = false }: { isReadOnly?: b
           </div>
         </div>
       )}
+
+      <div className="bg-white rounded-lg shadow-sm border border-neutral-200 p-3">
+        <div className="flex items-center gap-2 mb-3">
+          <div className="app-icon-chip">
+            <AlertTriangle className="w-5 h-5" />
+          </div>
+          <div>
+            <h3 className="text-base font-bold text-neutral-900">تضمين المنتهي</h3>
+            <p className="text-xs text-neutral-600 mt-0.5">
+              تحكم في إظهار العناصر المنتهية داخل التنبيهات والإشعارات.
+            </p>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+          {[
+            {
+              key: 'include_in_alerts' as const,
+              label: 'تضمين المنتهي في صفحة التنبيهات',
+            },
+            {
+              key: 'include_in_notifications' as const,
+              label: 'تضمين المنتهي في صفحة الإشعارات',
+            },
+          ].map(({ key, label }) => (
+            <label
+              key={key}
+              className="flex items-center gap-3 rounded-lg border border-neutral-200 bg-neutral-50 px-3 py-2 cursor-pointer"
+            >
+              <input
+                type="checkbox"
+                checked={expiredSettings[key]}
+                disabled={isReadOnly}
+                onChange={(event) => handleExpiredInclusionChange(key, event.target.checked)}
+                className="h-4 w-4 rounded border-neutral-300 text-primary focus:ring-primary"
+              />
+              <span className="text-sm text-neutral-700">{label}</span>
+            </label>
+          ))}
+        </div>
+      </div>
 
       {/* أزرار الحفظ */}
       {!isReadOnly && (

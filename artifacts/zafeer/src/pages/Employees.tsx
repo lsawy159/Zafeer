@@ -5,7 +5,7 @@ import { useModalScrollLock } from '@/hooks/useModalScrollLock'
 import { supabase, Employee, Company, Project, type EmployeeWithRelations } from '@/lib/supabase'
 import { useAllEmployeesPage, EMPLOYEES_PAGE_QUERY_KEY } from '@/hooks/useEmployees'
 import { useProjects } from '@/hooks/useProjects'
-import { useEmployeeFilters } from '@/hooks/useEmployeeFilters'
+import { useEmployeeFilters, type CardSeverityFilter } from '@/hooks/useEmployeeFilters'
 import Layout from '@/components/layout/Layout'
 import EmployeeCard from '@/components/employees/EmployeeCard'
 import AddEmployeeModal from '@/components/employees/AddEmployeeModal'
@@ -292,6 +292,7 @@ export default function Employees() {
      healthInsuranceStatusDocFilter, setHealthInsuranceStatusDocFilter,
      hasAlertFilter, setHasAlertFilter,
      showAlertsOnly, setShowAlertsOnly,
+     cardSeverityFilter, setCardSeverityFilter,
      sortField, setSortField,
      sortDirection, setSortDirection,
      filteredEmployees,
@@ -379,6 +380,7 @@ export default function Employees() {
     residenceStatusDocFilter,
     healthInsuranceStatusDocFilter,
     hasAlertFilter,
+    cardSeverityFilter,
     showAlertsOnly,
   ]) // تحديث: insuranceFilter → healthInsuranceFilter
 
@@ -810,6 +812,7 @@ export default function Employees() {
     }
 
     let totalAlerts = 0
+    let expiredAlerts = 0
     let urgentAlerts = 0
     let highAlerts = 0
     let mediumAlerts = 0
@@ -846,7 +849,9 @@ export default function Employees() {
       if (highestSeverity === 0) continue
 
       totalAlerts += 1
-      if (highestSeverity >= 3) {
+      if (highestSeverity === 4) {
+        expiredAlerts += 1
+      } else if (highestSeverity === 3) {
         urgentAlerts += 1
       } else if (highestSeverity === 2) {
         highAlerts += 1
@@ -855,8 +860,36 @@ export default function Employees() {
       }
     }
 
-    const percent = (value: number) =>
-      totalAlerts > 0 ? Math.round((value / totalAlerts) * 100) : 0
+    const minUrgent = Math.min(
+      thresholds.residence_urgent_days,
+      thresholds.contract_urgent_days,
+      thresholds.health_insurance_urgent_days,
+      thresholds.hired_worker_contract_urgent_days,
+    )
+    const maxUrgent = Math.max(
+      thresholds.residence_urgent_days,
+      thresholds.contract_urgent_days,
+      thresholds.health_insurance_urgent_days,
+      thresholds.hired_worker_contract_urgent_days,
+    )
+    const minHigh = Math.min(
+      thresholds.residence_high_days,
+      thresholds.contract_high_days,
+      thresholds.health_insurance_high_days,
+      thresholds.hired_worker_contract_high_days,
+    )
+    const maxHigh = Math.max(
+      thresholds.residence_high_days,
+      thresholds.contract_high_days,
+      thresholds.health_insurance_high_days,
+      thresholds.hired_worker_contract_high_days,
+    )
+    const maxMedium = Math.max(
+      thresholds.residence_medium_days,
+      thresholds.contract_medium_days,
+      thresholds.health_insurance_medium_days,
+      thresholds.hired_worker_contract_medium_days,
+    )
 
     return [
       {
@@ -868,10 +901,18 @@ export default function Employees() {
         valueClass: 'text-rose-600 dark:text-rose-300',
       },
       {
+        key: 'expired',
+        title: 'منتهي',
+        value: expiredAlerts,
+        label: 'أقل من 0 يوم',
+        accentClass: 'border-red-500/20 bg-red-500/5',
+        valueClass: 'text-red-600 dark:text-red-300',
+      },
+      {
         key: 'urgent',
-        title: 'منتهي / طارئ',
+        title: 'طارئ',
         value: urgentAlerts,
-        label: `${percent(urgentAlerts)}% من التنبيهات`,
+        label: `0 - ${maxUrgent} يوم`,
         accentClass: 'border-red-500/20 bg-red-500/5',
         valueClass: 'text-red-600 dark:text-red-300',
       },
@@ -879,17 +920,17 @@ export default function Employees() {
         key: 'high',
         title: 'عاجل',
         value: highAlerts,
-        label: `${percent(highAlerts)}% من التنبيهات`,
-        accentClass: 'border-amber-500/20 bg-amber-500/5',
-        valueClass: 'text-amber-600 dark:text-amber-300',
+        label: `${minUrgent + 1} - ${maxHigh} يوم`,
+        accentClass: 'border-orange-500/20 bg-orange-500/5',
+        valueClass: 'text-orange-600 dark:text-orange-300',
       },
       {
         key: 'medium',
         title: 'متوسط',
         value: mediumAlerts,
-        label: `${percent(mediumAlerts)}% من التنبيهات`,
-        accentClass: 'border-sky-500/20 bg-sky-500/5',
-        valueClass: 'text-sky-600 dark:text-sky-300',
+        label: `${minHigh + 1} - ${maxMedium} يوم`,
+        accentClass: 'border-yellow-500/20 bg-yellow-500/5',
+        valueClass: 'text-yellow-600 dark:text-yellow-300',
       },
     ]
   }, [employees, colorThresholds])
@@ -1044,6 +1085,7 @@ export default function Employees() {
     contractFilter,
     residenceFilter,
     healthInsuranceFilter,
+    cardSeverityFilter,
     sortField,
     sortDirection,
   ])
@@ -1094,11 +1136,16 @@ export default function Employees() {
               تنبيهات الموظفين
             </h3>
           </div>
-          <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+          <div className="grid grid-cols-2 gap-3 md:grid-cols-5">
             {employeeSummaryCards.map((card) => (
               <div
                 key={card.key}
-                className={`app-panel px-3 py-2.5 text-center ${card.accentClass}`}
+                onClick={() =>
+                  setCardSeverityFilter(cardSeverityFilter === card.key ? null : (card.key as CardSeverityFilter))
+                }
+                className={`app-panel cursor-pointer px-3 py-2.5 text-center transition-shadow ${card.accentClass} ${
+                  cardSeverityFilter === card.key ? 'ring-2 ring-offset-1 ring-primary shadow-md' : 'hover:shadow-sm'
+                }`}
               >
                 <div className="text-[11px] font-medium leading-4 text-foreground-secondary dark:text-foreground-secondary md:text-xs">
                   {card.title}

@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback, useRef, useMemo, type CSSProperties } from 'react'
+﻿import { useEffect, useState, useCallback, useRef, useMemo, type CSSProperties } from 'react'
 import { useModalScrollLock } from '@/hooks/useModalScrollLock'
 import { supabase, Company } from '@/lib/supabase'
 import Layout from '@/components/layout/Layout'
@@ -44,6 +44,8 @@ import {
   calculatePowerSubscriptionStatus,
   calculateMoqeemSubscriptionStatus,
   calculateCompanyStatusStats,
+  getStatusThresholds,
+  DEFAULT_STATUS_THRESHOLDS,
 } from '@/utils/autoCompanyStatus'
 import { CompaniesFiltersModal } from './companies/CompaniesFiltersModal'
 
@@ -62,6 +64,8 @@ type MoqeemSubscriptionStatus = 'expired' | 'expiring_soon' | 'valid'
 type AvailableSlotsFilter = 'all' | '0' | '1' | '2' | '3' | '4+'
 type ExemptionsFilter = string
 type ViewMode = 'grid' | 'table'
+type CompanyCardStatus = 'ساري' | 'متوسط' | 'عاجل' | 'طارئ' | 'منتهي'
+type CardStatusFilter = 'all' | CompanyCardStatus | null
 
 function normalizeArrayFilter(value: unknown): string[] {
   if (Array.isArray(value)) {
@@ -175,6 +179,7 @@ export default function Companies() {
   const [powerSubscriptionStatus, setPowerSubscriptionStatus] = useState<string[]>([])
   const [moqeemSubscriptionStatus, setMoqeemSubscriptionStatus] = useState<string[]>([])
   const [showAlertsOnly, setShowAlertsOnly] = useState(false)
+  const [cardStatusFilter, setCardStatusFilter] = useState<CardStatusFilter>(null)
 
   const [employeeCountMin, setEmployeeCountMin] = useState<number | null>(null)
   const [employeeCountMax, setEmployeeCountMax] = useState<number | null>(null)
@@ -183,6 +188,7 @@ export default function Companies() {
   const [createdAtTo, setCreatedAtTo] = useState<string | null>(null)
   const [exemptionsFilter, setExemptionsFilter] = useState<ExemptionsFilter>('all')
   const [showFiltersModal, setShowFiltersModal] = useState(false)
+  const [companyThresholds, setCompanyThresholds] = useState(DEFAULT_STATUS_THRESHOLDS)
 
   // قفل التمرير عند فتح أي مودال
   useModalScrollLock(showDeleteModal || showBulkDeleteModal || showFiltersModal)
@@ -292,6 +298,7 @@ export default function Companies() {
     powerSubscriptionStatus,
     moqeemSubscriptionStatus,
     showAlertsOnly,
+    cardStatusFilter,
     employeeCountMin,
     employeeCountMax,
     availableSlotsFilter,
@@ -411,6 +418,19 @@ export default function Companies() {
     )
   }, [])
 
+  const getCompanyUnifiedStatus = useCallback((company: Company): CompanyCardStatus => {
+    const crStatus = calculateCommercialRegistrationStatus(company.commercial_registration_expiry)
+    const powerStatus = calculatePowerSubscriptionStatus(company.ending_subscription_power_date)
+    const moqeemStatus = calculateMoqeemSubscriptionStatus(company.ending_subscription_moqeem_date)
+    const allStatuses = [crStatus, powerStatus, moqeemStatus]
+
+    if (allStatuses.some((status) => status.status === 'منتهي')) return 'منتهي'
+    if (allStatuses.some((status) => status.priority === 'urgent')) return 'طارئ'
+    if (allStatuses.some((status) => status.priority === 'high')) return 'عاجل'
+    if (allStatuses.some((status) => status.priority === 'medium')) return 'متوسط'
+    return 'ساري'
+  }, [])
+
   const companyAlertsCount = useMemo(() => {
     return companies.filter((company) => hasCompanyAlert(company)).length
   }, [companies, hasCompanyAlert])
@@ -485,6 +505,14 @@ export default function Companies() {
     // Apply alerts filter
     if (showAlertsOnly) {
       filtered = filtered.filter((company) => hasCompanyAlert(company))
+    }
+
+    if (cardStatusFilter) {
+      if (cardStatusFilter === 'all') {
+        filtered = filtered.filter((company) => hasCompanyAlert(company))
+      } else {
+        filtered = filtered.filter((company) => getCompanyUnifiedStatus(company) === cardStatusFilter)
+      }
     }
 
     // Apply employee count filter
@@ -598,6 +626,7 @@ export default function Companies() {
     powerSubscriptionStatus,
     moqeemSubscriptionStatus,
     showAlertsOnly,
+    cardStatusFilter,
     employeeCountMin,
     employeeCountMax,
     availableSlotsFilter,
@@ -608,7 +637,12 @@ export default function Companies() {
     sortDirection,
     getDaysRemaining,
     hasCompanyAlert,
+    getCompanyUnifiedStatus,
   ])
+
+  useEffect(() => {
+    void getStatusThresholds().then(setCompanyThresholds)
+  }, [])
 
   useEffect(() => {
     loadCompanies()
@@ -676,6 +710,7 @@ export default function Companies() {
     setPowerSubscriptionStatus([])
     setMoqeemSubscriptionStatus([])
     setShowAlertsOnly(false)
+    setCardStatusFilter(null)
 
     setEmployeeCountMin(null)
     setEmployeeCountMax(null)
@@ -886,6 +921,7 @@ export default function Companies() {
     powerSubscriptionStatus.length > 0,
     moqeemSubscriptionStatus.length > 0,
     showAlertsOnly,
+    cardStatusFilter !== null,
 
     employeeCountMin !== null || employeeCountMax !== null,
     availableSlotsFilter !== 'all',
@@ -1002,6 +1038,7 @@ export default function Companies() {
     powerSubscriptionStatus,
     moqeemSubscriptionStatus,
     showAlertsOnly,
+    cardStatusFilter,
     employeeCountMin,
     employeeCountMax,
     availableSlotsFilter,
@@ -1119,38 +1156,86 @@ export default function Companies() {
               }))
             )
             return (
-              <div className="grid grid-cols-2 gap-6 md:grid-cols-4">
-                <div className="app-panel p-4 text-center">
+              <div className="grid grid-cols-2 gap-4 md:grid-cols-6">
+                <div
+                  className={`app-panel p-4 text-center cursor-pointer transition-shadow ${
+                    cardStatusFilter === 'all' ? 'ring-2 ring-offset-1 ring-primary shadow-md' : 'hover:shadow-sm'
+                  }`}
+                  onClick={() => setCardStatusFilter(cardStatusFilter === 'all' ? null : 'all')}
+                >
                   <div className="text-2xl font-bold text-foreground dark:text-white">
                     {stats.totalCompanies}
                   </div>
                   <div className="text-sm text-foreground-secondary dark:text-foreground-secondary">إجمالي المؤسسات</div>
                 </div>
 
-                <div className="app-panel border-emerald-500/20 bg-emerald-500/5 p-4 text-center">
+                <div
+                  className={`app-panel border-emerald-500/20 bg-emerald-500/5 p-4 text-center cursor-pointer transition-shadow ${
+                    cardStatusFilter === 'ساري' ? 'ring-2 ring-offset-1 ring-emerald-500 shadow-md' : 'hover:shadow-sm'
+                  }`}
+                  onClick={() => setCardStatusFilter(cardStatusFilter === 'ساري' ? null : 'ساري')}
+                >
                   <div className="text-2xl font-bold text-emerald-600 dark:text-emerald-300">
                     {stats.totalValid}
                   </div>
                   <div className="text-sm text-foreground-secondary dark:text-foreground-secondary">
-                    ساري ({stats.totalValidPercentage}%)
+                    {`أكثر من ${companyThresholds.commercial_reg_medium_days} يوم`}
                   </div>
                 </div>
 
-                <div className="app-panel border-amber-500/20 bg-amber-500/5 p-4 text-center">
+                <div
+                  className={`app-panel border-amber-500/20 bg-amber-500/5 p-4 text-center cursor-pointer transition-shadow ${
+                    cardStatusFilter === 'متوسط' ? 'ring-2 ring-offset-1 ring-amber-500 shadow-md' : 'hover:shadow-sm'
+                  }`}
+                  onClick={() => setCardStatusFilter(cardStatusFilter === 'متوسط' ? null : 'متوسط')}
+                >
                   <div className="text-2xl font-bold text-amber-600 dark:text-amber-300">
                     {stats.totalMedium}
                   </div>
                   <div className="text-sm text-foreground-secondary dark:text-foreground-secondary">
-                    متوسط ({stats.totalMediumPercentage}%)
+                    {`${companyThresholds.commercial_reg_high_days + 1} - ${companyThresholds.commercial_reg_medium_days} يوم`}
                   </div>
                 </div>
 
-                <div className="app-panel border-rose-500/20 bg-rose-500/5 p-4 text-center">
-                  <div className="text-2xl font-bold text-rose-600 dark:text-rose-300">
-                    {stats.totalCritical + stats.totalExpired}
+                <div
+                  className={`app-panel border-orange-500/20 bg-orange-500/5 p-4 text-center cursor-pointer transition-shadow ${
+                    cardStatusFilter === 'عاجل' ? 'ring-2 ring-offset-1 ring-orange-500 shadow-md' : 'hover:shadow-sm'
+                  }`}
+                  onClick={() => setCardStatusFilter(cardStatusFilter === 'عاجل' ? null : 'عاجل')}
+                >
+                  <div className="text-2xl font-bold text-orange-600 dark:text-orange-300">
+                    {stats.totalHigh}
                   </div>
                   <div className="text-sm text-foreground-secondary dark:text-foreground-secondary">
-                    طارئ/منتهي ({stats.totalCriticalPercentage + stats.totalExpiredPercentage}%)
+                    {`${companyThresholds.commercial_reg_urgent_days + 1} - ${companyThresholds.commercial_reg_high_days} يوم`}
+                  </div>
+                </div>
+
+                <div
+                  className={`app-panel border-red-500/20 bg-red-500/5 p-4 text-center cursor-pointer transition-shadow ${
+                    cardStatusFilter === 'طارئ' ? 'ring-2 ring-offset-1 ring-red-500 shadow-md' : 'hover:shadow-sm'
+                  }`}
+                  onClick={() => setCardStatusFilter(cardStatusFilter === 'طارئ' ? null : 'طارئ')}
+                >
+                  <div className="text-2xl font-bold text-red-600 dark:text-red-300">
+                    {stats.totalUrgent}
+                  </div>
+                  <div className="text-sm text-foreground-secondary dark:text-foreground-secondary">
+                    {`0 - ${companyThresholds.commercial_reg_urgent_days} يوم`}
+                  </div>
+                </div>
+
+                <div
+                  className={`app-panel border-neutral-500/20 bg-neutral-500/5 p-4 text-center cursor-pointer transition-shadow ${
+                    cardStatusFilter === 'منتهي' ? 'ring-2 ring-offset-1 ring-neutral-500 shadow-md' : 'hover:shadow-sm'
+                  }`}
+                  onClick={() => setCardStatusFilter(cardStatusFilter === 'منتهي' ? null : 'منتهي')}
+                >
+                  <div className="text-2xl font-bold text-neutral-600 dark:text-neutral-300">
+                    {stats.totalExpired}
+                  </div>
+                  <div className="text-sm text-foreground-secondary dark:text-foreground-secondary">
+                    أقل من 0 يوم
                   </div>
                 </div>
               </div>

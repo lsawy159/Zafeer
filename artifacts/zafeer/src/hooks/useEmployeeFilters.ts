@@ -21,6 +21,8 @@ interface UseEmployeeFiltersParams {
   colorThresholds: EmployeeNotificationThresholds | null
 }
 
+export type CardSeverityFilter = 'total' | 'expired' | 'urgent' | 'high' | 'medium' | null
+
 type DocumentFilterStatus = 'منتهي' | 'قريب من الانتهاء' | 'صالح'
 
 function getDocumentFilterStatus(
@@ -53,10 +55,33 @@ export function useEmployeeFilters({ employees, colorThresholds }: UseEmployeeFi
    const [healthInsuranceStatusDocFilter, setHealthInsuranceStatusDocFilter] = useState<string[]>([])
    const [hasAlertFilter, setHasAlertFilter] = useState(false)
    const [showAlertsOnly, setShowAlertsOnly] = useState(false)
+   const [cardSeverityFilter, setCardSeverityFilter] = useState<CardSeverityFilter>(null)
   const [sortField, setSortField] = useState<SortField>('name')
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc')
 
   const thresholds = colorThresholds ?? COLOR_THRESHOLD_FALLBACK
+
+  const getHighestSeverity = (emp: EmployeeWithCompany): number => {
+    const getSeverity = (
+      expiryDate: string | null | undefined,
+      fieldType: 'contract' | 'hired_worker_contract' | 'residence' | 'health_insurance'
+    ) => {
+      const status = getStatusForField(expiryDate, fieldType, thresholds)
+
+      if (status === 'منتهي') return 4
+      if (status === 'طارئ') return 3
+      if (status === 'عاجل') return 2
+      if (status === 'متوسط') return 1
+      return 0
+    }
+
+    return Math.max(
+      getSeverity(emp.contract_expiry, 'contract'),
+      getSeverity(emp.hired_worker_contract_expiry, 'hired_worker_contract'),
+      getSeverity(emp.residence_expiry, 'residence'),
+      getSeverity(emp.health_insurance_expiry, 'health_insurance')
+    )
+  }
 
   const filteredEmployees = useMemo(
     () =>
@@ -115,6 +140,26 @@ export function useEmployeeFilters({ employees, colorThresholds }: UseEmployeeFi
             ? empHasAlert
             : insuranceStatus === healthInsuranceFilter)
 
+        const matchesCardFilter =
+          !cardSeverityFilter ||
+          (() => {
+            const highestSeverity = getHighestSeverity(emp)
+            switch (cardSeverityFilter) {
+              case 'total':
+                return highestSeverity > 0
+              case 'expired':
+                return highestSeverity === 4
+              case 'urgent':
+                return highestSeverity === 3
+              case 'high':
+                return highestSeverity === 2
+              case 'medium':
+                return highestSeverity === 1
+              default:
+                return true
+            }
+          })()
+
           const matchesAlertsToggle = !(showAlertsOnly || hasAlertFilter) || empHasAlert
 
           // Document status filters
@@ -157,6 +202,7 @@ export function useEmployeeFilters({ employees, colorThresholds }: UseEmployeeFi
            matchesHiredWorkerContract &&
            matchesResidence &&
            matchesInsurance &&
+           matchesCardFilter &&
            matchesAlertsToggle &&
             matchesContractStatusDoc &&
             matchesHiredWorkerContractStatusDoc &&
@@ -182,6 +228,7 @@ export function useEmployeeFilters({ employees, colorThresholds }: UseEmployeeFi
        healthInsuranceStatusDocFilter,
        hasAlertFilter,
        showAlertsOnly,
+       cardSeverityFilter,
        thresholds,
      ]
   )
@@ -274,10 +321,11 @@ export function useEmployeeFilters({ employees, colorThresholds }: UseEmployeeFi
      contractStatusDocFilter.length > 0,
      hiredWorkerContractStatusDocFilter.length > 0,
      residenceStatusDocFilter.length > 0,
-     healthInsuranceStatusDocFilter.length > 0,
-     hasAlertFilter,
-     showAlertsOnly,
-   ].filter(Boolean).length
+      healthInsuranceStatusDocFilter.length > 0,
+      hasAlertFilter,
+      showAlertsOnly,
+      cardSeverityFilter !== null,
+    ].filter(Boolean).length
 
   const hasActiveFilters = activeFiltersCount > 0
 
@@ -298,6 +346,7 @@ export function useEmployeeFilters({ employees, colorThresholds }: UseEmployeeFi
      setHealthInsuranceStatusDocFilter([])
      setHasAlertFilter(false)
      setShowAlertsOnly(false)
+     setCardSeverityFilter(null)
    }
 
   function applyUrlFilter(filter: string | null) {
@@ -375,6 +424,8 @@ export function useEmployeeFilters({ employees, colorThresholds }: UseEmployeeFi
      setHasAlertFilter,
      showAlertsOnly,
      setShowAlertsOnly,
+     cardSeverityFilter,
+     setCardSeverityFilter,
      sortField,
      setSortField,
      sortDirection,
