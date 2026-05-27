@@ -1,6 +1,7 @@
 // @author ZaFeer System
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.45.0'
 import { Resend } from 'https://esm.sh/resend@4.0.0'
+import ExcelJS from 'https://esm.sh/exceljs@4.4.0?bundle'
 import JSZip from 'https://esm.sh/jszip@3.10.1'
 
 // ─── Inlined helpers (from _shared/alert-helpers.ts) ──────────────────────────
@@ -205,7 +206,7 @@ function buildDigestHtml(counts: DigestSeverityCounts, today: string): string {
     ${badge('تنبيه', '#ca8a04', counts.medium)}
 
     <p style="color:#6b7280;margin:14px 0 0;font-size:13px;">
-      ${counts.attachment_available ? 'مرفق ملف ZIP يحتوي على تفاصيل CSV الكاملة.' : 'تعذر إرفاق ملف التفاصيل (ZIP) في هذا الإرسال.'}
+      ${counts.attachment_available ? 'مرفق ملف ZIP يحتوي على ملفات Excel متعددة الشيتات وملف CSV للمؤجلات.' : 'تعذر إرفاق ملف التفاصيل (ZIP) في هذا الإرسال.'}
     </p>
 
     <hr style="border:none;border-top:1px solid #e5e7eb;margin:24px 0;">
@@ -217,7 +218,7 @@ function buildDigestHtml(counts: DigestSeverityCounts, today: string): string {
 </html>`
 }
 
-// ─── CSV builders (same logic as send-alert-report) ───────────────────────────
+// ─── Excel builders (same logic as send-alert-report) ─────────────────────────
 
 const DEFAULT_THRESHOLDS: Record<string, number> = {
   residence_urgent_days: 7, residence_high_days: 15, residence_medium_days: 30,
@@ -226,6 +227,146 @@ const DEFAULT_THRESHOLDS: Record<string, number> = {
   health_insurance_urgent_days: 30, health_insurance_high_days: 45, health_insurance_medium_days: 60,
   power_subscription_urgent_days: 7, power_subscription_high_days: 15, power_subscription_medium_days: 30,
   moqeem_subscription_urgent_days: 7, moqeem_subscription_high_days: 15, moqeem_subscription_medium_days: 30,
+}
+
+function getCellArgb(days: number | null, thresholds: Thresholds): string | null {
+  if (days === null) return null
+  if (days < 0) return 'FFFECACA'
+  const sev = getSeverityLevel(days, thresholds)
+  if (sev === 'عاجل') return 'FFFEE2E2'
+  if (sev === 'تحذير') return 'FFFFEDD5'
+  if (sev === 'تنبيه') return 'FFFEF9C3'
+  return 'FFDCFCE7'
+}
+
+function buildEmployeeCategorySheet(
+  employees: Record<string, unknown>[],
+  companyNameMap: Map<string, string>,
+  thresholds: Record<string, number>,
+  docType: 'residence' | 'contract' | 'health_insurance' | 'hired_worker_contract',
+  dateKey: string,
+  dateLabel: string,
+): Record<string, unknown>[] {
+  const rows: Record<string, unknown>[] = []
+  const docThresholds = getThresholdsForType(thresholds, docType)
+
+  for (const emp of employees) {
+    const dateValue = emp[dateKey] as string | null
+    const days = daysUntil(dateValue)
+    const sev = getSeverityLevel(days, docThresholds)
+    if (sev === null) continue
+
+    rows.push({
+      'رقم الإقامة': emp.residence_number ?? '',
+      'اسم الموظف': emp.name,
+      'اسم الشركة': companyNameMap.get(emp.company_id as string) ?? '',
+      [dateLabel]: formatDateDDMMYYYY(dateValue),
+      'الأيام المتبقية': days !== null ? String(days) : '',
+      _days: days,
+      'مستوى الخطورة': sev,
+    })
+  }
+
+  return rows
+}
+
+function buildCompanyCategorySheet(
+  companies: Record<string, unknown>[],
+  thresholds: Record<string, number>,
+  docType: 'commercial_reg' | 'power_subscription' | 'moqeem_subscription',
+  dateKey: string,
+  dateLabel: string,
+): Record<string, unknown>[] {
+  const rows: Record<string, unknown>[] = []
+  const docThresholds = getThresholdsForType(thresholds, docType)
+
+  for (const co of companies) {
+    const dateValue = co[dateKey] as string | null
+    const days = daysUntil(dateValue)
+    const sev = getSeverityLevel(days, docThresholds)
+    if (sev === null) continue
+
+    rows.push({
+      'الرقم الموحد': co.unified_number ?? '',
+      'اسم المؤسسة': co.name,
+      [dateLabel]: formatDateDDMMYYYY(dateValue),
+      'الأيام المتبقية': days !== null ? String(days) : '',
+      _days: days,
+      'مستوى الخطورة': sev,
+    })
+  }
+
+  return rows
+}
+
+async function buildXlsxWorkbook(
+  sheets: {
+    name: string
+    headers: string[]
+    keys: string[]
+    widths: number[]
+    rows: Record<string, unknown>[]
+    daysKey: string | null
+    thresholds: Thresholds | null
+  }[],
+): Promise<Uint8Array> {
+  const wb = new ExcelJS.Workbook()
+  wb.creator = 'ZaFeer System'
+
+  for (const sheet of sheets) {
+    const ws = wb.addWorksheet(sheet.name)
+
+    ws.columns = sheet.keys.map((key, i) => ({
+      header: sheet.headers[i],
+      key,
+      width: sheet.widths[i] ?? 18,
+    }))
+
+    ws.getRow(1).eachCell((cell) => {
+      cell.font = { bold: true, color: { argb: 'FF1F2937' } }
+      cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFD1D5DB' } }
+      cell.alignment = { horizontal: 'center', vertical: 'middle' }
+      cell.border = {
+        bottom: { style: 'thin', color: { argb: 'FF9CA3AF' } },
+      }
+    })
+
+    for (const rowData of sheet.rows) {
+      const displayRow: Record<string, unknown> = {}
+      for (const key of sheet.keys) {
+        displayRow[key] = rowData[key] ?? ''
+      }
+
+      const addedRow = ws.addRow(displayRow)
+
+      if (sheet.daysKey && sheet.thresholds) {
+        const days = (rowData._days as number | null | undefined) ?? null
+        const argb = getCellArgb(days, sheet.thresholds)
+        if (argb) {
+          const daysColIdx = sheet.keys.indexOf(sheet.daysKey) + 1
+          if (daysColIdx > 0) {
+            addedRow.getCell(daysColIdx).fill = {
+              type: 'pattern',
+              pattern: 'solid',
+              fgColor: { argb },
+            }
+            if (daysColIdx > 1) {
+              addedRow.getCell(daysColIdx - 1).fill = {
+                type: 'pattern',
+                pattern: 'solid',
+                fgColor: { argb },
+              }
+            }
+          }
+        }
+      }
+    }
+
+    ws.views = [{ state: 'frozen', ySplit: 1, xSplit: 0 }]
+  }
+
+  const buffer = await wb.xlsx.writeBuffer()
+  return new Uint8Array(buffer as ArrayBuffer)
 }
 
 async function buildAlertCsvZip(
@@ -298,9 +439,154 @@ async function buildAlertCsvZip(
 
   if (empRows.length === 0 && coRows.length === 0) return { zipBytes: null, empRows, coRows }
 
+  const employeeRecords = (employees ?? []) as Record<string, unknown>[]
+  const companyRecords = (companies ?? []) as Record<string, unknown>[]
+
+  const employeeResidenceRows = buildEmployeeCategorySheet(employeeRecords, companyNameMap, thresholds, 'residence', 'residence_expiry', 'تاريخ انتهاء الإقامة')
+  const employeeHealthRows = buildEmployeeCategorySheet(employeeRecords, companyNameMap, thresholds, 'health_insurance', 'health_insurance_expiry', 'تاريخ انتهاء التأمين الطبي')
+  const employeeContractRows = buildEmployeeCategorySheet(employeeRecords, companyNameMap, thresholds, 'contract', 'contract_expiry', 'تاريخ انتهاء العقد')
+  const employeeWorkerRows = buildEmployeeCategorySheet(employeeRecords, companyNameMap, thresholds, 'hired_worker_contract', 'hired_worker_contract_expiry', 'تاريخ انتهاء عقد الأجير')
+  const companyCommercialRows = buildCompanyCategorySheet(companyRecords, thresholds, 'commercial_reg', 'commercial_registration_expiry', 'تاريخ انتهاء السجل التجاري')
+  const companyPowerRows = buildCompanyCategorySheet(companyRecords, thresholds, 'power_subscription', 'ending_subscription_power_date', 'تاريخ انتهاء اشتراك قوى')
+  const companyMoqeemRows = buildCompanyCategorySheet(companyRecords, thresholds, 'moqeem_subscription', 'ending_subscription_moqeem_date', 'تاريخ انتهاء اشتراك مقيم')
+
   const zip = new JSZip()
-  if (empRows.length > 0) zip.file('employees.csv', arrayToCsv(empRows))
-  if (coRows.length > 0) zip.file('companies.csv', arrayToCsv(coRows))
+
+  const employeesXlsx = await buildXlsxWorkbook([
+    {
+      name: 'الكامل',
+      headers: [
+        'رقم الإقامة',
+        'اسم الموظف',
+        'اسم الشركة',
+        'تاريخ انتهاء الإقامة',
+        'الأيام المتبقية (الإقامة)',
+        'تاريخ انتهاء العقد',
+        'الأيام المتبقية (العقد)',
+        'تاريخ انتهاء التأمين الطبي',
+        'الأيام المتبقية (التأمين)',
+        'تاريخ انتهاء عقد الأجير',
+        'الأيام المتبقية (عقد الأجير)',
+        'مستوى الخطورة',
+      ],
+      keys: [
+        'رقم الإقامة',
+        'اسم الموظف',
+        'اسم الشركة',
+        'تاريخ انتهاء الإقامة',
+        'الأيام المتبقية (الإقامة)',
+        'تاريخ انتهاء العقد',
+        'الأيام المتبقية (العقد)',
+        'تاريخ انتهاء التأمين الطبي',
+        'الأيام المتبقية (التأمين)',
+        'تاريخ انتهاء عقد الأجير',
+        'الأيام المتبقية (عقد الأجير)',
+        'مستوى الخطورة',
+      ],
+      widths: [14, 22, 22, 18, 14, 18, 14, 18, 14, 18, 14, 12],
+      rows: empRows,
+      daysKey: null,
+      thresholds: null,
+    },
+    {
+      name: 'إقامة',
+      headers: ['رقم الإقامة', 'اسم الموظف', 'اسم الشركة', 'تاريخ انتهاء الإقامة', 'الأيام المتبقية', 'مستوى الخطورة'],
+      keys: ['رقم الإقامة', 'اسم الموظف', 'اسم الشركة', 'تاريخ انتهاء الإقامة', 'الأيام المتبقية', 'مستوى الخطورة'],
+      widths: [14, 22, 22, 18, 14, 12],
+      rows: employeeResidenceRows,
+      daysKey: 'الأيام المتبقية',
+      thresholds: getThresholdsForType(thresholds, 'residence'),
+    },
+    {
+      name: 'تأمين طبي',
+      headers: ['رقم الإقامة', 'اسم الموظف', 'اسم الشركة', 'تاريخ انتهاء التأمين الطبي', 'الأيام المتبقية', 'مستوى الخطورة'],
+      keys: ['رقم الإقامة', 'اسم الموظف', 'اسم الشركة', 'تاريخ انتهاء التأمين الطبي', 'الأيام المتبقية', 'مستوى الخطورة'],
+      widths: [14, 22, 22, 20, 14, 12],
+      rows: employeeHealthRows,
+      daysKey: 'الأيام المتبقية',
+      thresholds: getThresholdsForType(thresholds, 'health_insurance'),
+    },
+    {
+      name: 'عقد عمل',
+      headers: ['رقم الإقامة', 'اسم الموظف', 'اسم الشركة', 'تاريخ انتهاء العقد', 'الأيام المتبقية', 'مستوى الخطورة'],
+      keys: ['رقم الإقامة', 'اسم الموظف', 'اسم الشركة', 'تاريخ انتهاء العقد', 'الأيام المتبقية', 'مستوى الخطورة'],
+      widths: [14, 22, 22, 18, 14, 12],
+      rows: employeeContractRows,
+      daysKey: 'الأيام المتبقية',
+      thresholds: getThresholdsForType(thresholds, 'contract'),
+    },
+    {
+      name: 'عقد أجير',
+      headers: ['رقم الإقامة', 'اسم الموظف', 'اسم الشركة', 'تاريخ انتهاء عقد الأجير', 'الأيام المتبقية', 'مستوى الخطورة'],
+      keys: ['رقم الإقامة', 'اسم الموظف', 'اسم الشركة', 'تاريخ انتهاء عقد الأجير', 'الأيام المتبقية', 'مستوى الخطورة'],
+      widths: [14, 22, 22, 20, 14, 12],
+      rows: employeeWorkerRows,
+      daysKey: 'الأيام المتبقية',
+      thresholds: getThresholdsForType(thresholds, 'hired_worker_contract'),
+    },
+  ])
+  zip.file('employees.xlsx', employeesXlsx)
+
+  const companiesXlsx = await buildXlsxWorkbook([
+    {
+      name: 'الكامل',
+      headers: [
+        'الرقم الموحد',
+        'اسم المؤسسة',
+        'تاريخ انتهاء السجل التجاري',
+        'الأيام المتبقية (السجل)',
+        'تاريخ انتهاء اشتراك قوى',
+        'الأيام المتبقية (قوى)',
+        'تاريخ انتهاء اشتراك مقيم',
+        'الأيام المتبقية (مقيم)',
+        'مستوى الخطورة',
+      ],
+      keys: [
+        'الرقم الموحد',
+        'اسم المؤسسة',
+        'تاريخ انتهاء السجل التجاري',
+        'الأيام المتبقية (السجل)',
+        'تاريخ انتهاء اشتراك قوى',
+        'الأيام المتبقية (قوى)',
+        'تاريخ انتهاء اشتراك مقيم',
+        'الأيام المتبقية (مقيم)',
+        'مستوى الخطورة',
+      ],
+      widths: [14, 24, 20, 14, 18, 14, 18, 14, 12],
+      rows: coRows,
+      daysKey: null,
+      thresholds: null,
+    },
+    {
+      name: 'سجل تجاري',
+      headers: ['الرقم الموحد', 'اسم المؤسسة', 'تاريخ انتهاء السجل التجاري', 'الأيام المتبقية', 'مستوى الخطورة'],
+      keys: ['الرقم الموحد', 'اسم المؤسسة', 'تاريخ انتهاء السجل التجاري', 'الأيام المتبقية', 'مستوى الخطورة'],
+      widths: [14, 24, 20, 14, 12],
+      rows: companyCommercialRows,
+      daysKey: 'الأيام المتبقية',
+      thresholds: getThresholdsForType(thresholds, 'commercial_reg'),
+    },
+    {
+      name: 'اشتراك قوى',
+      headers: ['الرقم الموحد', 'اسم المؤسسة', 'تاريخ انتهاء اشتراك قوى', 'الأيام المتبقية', 'مستوى الخطورة'],
+      keys: ['الرقم الموحد', 'اسم المؤسسة', 'تاريخ انتهاء اشتراك قوى', 'الأيام المتبقية', 'مستوى الخطورة'],
+      widths: [14, 24, 18, 14, 12],
+      rows: companyPowerRows,
+      daysKey: 'الأيام المتبقية',
+      thresholds: getThresholdsForType(thresholds, 'power_subscription'),
+    },
+    {
+      name: 'اشتراك مقيم',
+      headers: ['الرقم الموحد', 'اسم المؤسسة', 'تاريخ انتهاء اشتراك مقيم', 'الأيام المتبقية', 'مستوى الخطورة'],
+      keys: ['الرقم الموحد', 'اسم المؤسسة', 'تاريخ انتهاء اشتراك مقيم', 'الأيام المتبقية', 'مستوى الخطورة'],
+      widths: [14, 24, 18, 14, 12],
+      rows: companyMoqeemRows,
+      daysKey: 'الأيام المتبقية',
+      thresholds: getThresholdsForType(thresholds, 'moqeem_subscription'),
+    },
+  ])
+  zip.file('companies.xlsx', companiesXlsx)
+
   const zipBytes = await zip.generateAsync({ type: 'uint8array', compression: 'DEFLATE' })
   return { zipBytes, empRows, coRows }
 }
@@ -407,7 +693,7 @@ Deno.serve(async (req: Request) => {
     day: 'numeric',
   }).format(new Date())
 
-  // 8. Build CSV ZIP attachment (best-effort — skip if fails)
+  // 8. Build Excel ZIP attachment (best-effort — skip if fails)
   const digestThresholds: Record<string, number> = { ...DEFAULT_THRESHOLDS }
   const { data: threshRow } = await admin
     .from('system_settings')
