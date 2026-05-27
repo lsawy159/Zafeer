@@ -1,9 +1,10 @@
 import React, { useState } from 'react'
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQuery } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
 import { Button } from '@/components/ui/Button'
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner'
 import { EmptyState } from '@/components/ui/EmptyState'
+import { Skeleton } from '@/components/ui/Skeleton'
 import { formatDateWithHijri } from '@/utils/dateFormatter'
 import { toast } from 'sonner'
 import { logger } from '@/utils/logger'
@@ -12,6 +13,7 @@ import {
   saveBackupSettings,
   triggerManualBackup,
   type BackupRecord,
+  type BackupSettingsSaveResult,
   type BackupSettings,
 } from '@/lib/backupService'
 import { fetchRestoreHistory, type RestoreHistoryRecord } from '@/lib/restoreService'
@@ -70,6 +72,7 @@ interface ScheduleFormProps {
 function ScheduleForm({ initial, onSaved }: ScheduleFormProps) {
   const [form, setForm] = useState<BackupSettings>(initial)
   const [dirty, setDirty] = useState(false)
+  const [saveStarted, setSaveStarted] = useState(false)
 
   const update = <K extends keyof BackupSettings>(k: K, v: BackupSettings[K]) => {
     setForm((prev) => ({ ...prev, [k]: v }))
@@ -78,15 +81,21 @@ function ScheduleForm({ initial, onSaved }: ScheduleFormProps) {
 
   const saveMutation = useMutation({
     mutationFn: () => saveBackupSettings(form),
-    onSuccess: () => {
-      toast.success('تم حفظ إعدادات الجدولة')
+    onSuccess: (result: BackupSettingsSaveResult) => {
+      if (result.refreshStatus === 'skipped') {
+        toast.success('تم حفظ إعدادات الجدولة')
+      } else {
+        toast.success('تم حفظ إعدادات الجدولة وتحديث موعد التشغيل التالي')
+      }
       setDirty(false)
+      setSaveStarted(false)
       onSaved()
     },
     onError: (err) => {
       logger.error('[BackupTab] save settings error:', err)
       const msg = err instanceof Error ? err.message : ((err as Record<string, unknown>)?.message as string | undefined) ?? String(err)
       toast.error('فشل حفظ الإعدادات: ' + msg)
+      setSaveStarted(false)
     },
   })
 
@@ -262,12 +271,15 @@ function ScheduleForm({ initial, onSaved }: ScheduleFormProps) {
       {dirty && (
         <div className="flex justify-end">
           <Button
-            onClick={() => saveMutation.mutate()}
-            disabled={saveMutation.isPending}
+            onClick={() => {
+              setSaveStarted(true)
+              saveMutation.mutate()
+            }}
+            disabled={saveMutation.isPending || saveStarted}
             className="flex items-center gap-2"
             size="sm"
           >
-            {saveMutation.isPending ? (
+            {saveMutation.isPending || saveStarted ? (
               <Loader2 className="h-3.5 w-3.5 animate-spin" />
             ) : (
               <Save className="h-3.5 w-3.5" />
@@ -325,8 +337,8 @@ const RESTORE_STATUS_AR: Record<string, string> = {
 }
 
 export function BackupTab(): React.JSX.Element {
-  const qc = useQueryClient()
   const [csvDownloadingId, setCsvDownloadingId] = useState<string | null>(null)
+  const [manualBackupStarted, setManualBackupStarted] = useState(false)
 
   // Backup settings
   const {
@@ -379,11 +391,12 @@ export function BackupTab(): React.JSX.Element {
       toast.success('تم بدء النسخة الاحتياطية بنجاح')
       refetchHistory()
       refetchSettings()
-      qc.invalidateQueries({ queryKey: ['backup-history'] })
+      setManualBackupStarted(false)
     },
     onError: (err) => {
       logger.error('[BackupTab] manual trigger error:', err)
       toast.error('فشل إنشاء النسخة الاحتياطية: ' + (err instanceof Error ? err.message : String(err)))
+      setManualBackupStarted(false)
     },
   })
 
@@ -397,14 +410,6 @@ export function BackupTab(): React.JSX.Element {
     } finally {
       setCsvDownloadingId(null)
     }
-  }
-
-  if (settingsLoading || historyLoading || restoreHistoryLoading) {
-    return (
-      <div className="flex items-center justify-center py-16">
-        <LoadingSpinner />
-      </div>
-    )
   }
 
   const completedBackups = backups.filter((b) => b.status === 'completed')
@@ -422,7 +427,11 @@ export function BackupTab(): React.JSX.Element {
       </div>
 
       {/* ── Schedule Settings ── */}
-      {settings && (
+      {settingsLoading ? (
+        <div className="flex justify-center py-8">
+          <LoadingSpinner />
+        </div>
+      ) : settings ? (
         <ScheduleForm
           initial={settings}
           onSaved={() => {
@@ -430,7 +439,7 @@ export function BackupTab(): React.JSX.Element {
             refetchHistory()
           }}
         />
-      )}
+      ) : null}
 
       {/* ── Status Cards ── */}
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
@@ -477,12 +486,15 @@ export function BackupTab(): React.JSX.Element {
             </div>
           </div>
           <Button
-            onClick={() => triggerMutation.mutate()}
-            disabled={triggerMutation.isPending}
+            onClick={() => {
+              setManualBackupStarted(true)
+              triggerMutation.mutate()
+            }}
+            disabled={triggerMutation.isPending || manualBackupStarted}
             className="flex items-center gap-2 min-w-[150px]"
             aria-label={triggerMutation.isPending ? 'جاري إنشاء النسخة' : 'إنشاء نسخة احتياطية الآن'}
           >
-            {triggerMutation.isPending ? (
+            {triggerMutation.isPending || manualBackupStarted ? (
               <>
                 <Loader2 className="h-4 w-4 animate-spin" />
                 جاري النسخ...
@@ -511,12 +523,12 @@ export function BackupTab(): React.JSX.Element {
           </button>
         </div>
 
-        {backups.length === 0 ? (
-          <EmptyState
-            icon={<Database className="h-10 w-10 text-neutral-400" />}
-            title="لا توجد نسخ احتياطية"
-            description="لم يتم إنشاء أي نسخ احتياطية بعد"
-          />
+        {historyLoading ? (
+          <div className="space-y-2">
+            <Skeleton className="h-16 w-full" />
+            <Skeleton className="h-16 w-full" />
+            <Skeleton className="h-16 w-full" />
+          </div>
         ) : (
           <div className="space-y-2">
             {backups.map((backup) => (
@@ -532,7 +544,7 @@ export function BackupTab(): React.JSX.Element {
       </div>
 
       {/* ── Restore History ── */}
-      {restoreHistory.length > 0 && (
+      {(restoreHistoryLoading || restoreHistory.length > 0) && (
         <div>
           <div className="mb-3 flex items-center justify-between">
             <h4 className="text-sm font-semibold text-foreground">سجل عمليات الاستعادة</h4>

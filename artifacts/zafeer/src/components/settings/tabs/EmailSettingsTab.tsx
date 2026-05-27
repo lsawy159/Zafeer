@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase'
 import { toast } from 'sonner'
+import { logger } from '@/utils/logger'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { Badge } from '@/components/ui/Badge'
@@ -8,6 +9,10 @@ import { Skeleton } from '@/components/ui/Skeleton'
 import { Switch } from '@/components/ui/switch'
 import { SendEmailModal } from '@/components/settings/backup/SendEmailModal'
 import type { BackupRecord } from '@/lib/backupService'
+import {
+  createSectionLoadState,
+  type SettingsSectionLoadState,
+} from '@/components/settings/tabs/settingsSectionState'
 import {
   safeParseConfig,
   createDefaultConfig,
@@ -119,15 +124,16 @@ export function EmailSettingsTab() {
   const [newRecipientError, setNewRecipientError] = useState<string | null>(null)
 
   const [recentBackups, setRecentBackups] = useState<BackupRecord[]>([])
-  const [isLoadingBackups, setIsLoadingBackups] = useState(true)
+  const [recentBackupsState, setRecentBackupsState] = useState<SettingsSectionLoadState>(
+    createSectionLoadState('recentBackups', 'loading')
+  )
+  const [queueStats, setQueueStats] = useState<QueueStats | null>(null)
+  const [queueStatsLoading, setQueueStatsLoading] = useState(false)
+  const [queueStatsError, setQueueStatsError] = useState(true)
   const [backupEmailModalTarget, setBackupEmailModalTarget] = useState<BackupRecord | null>(null)
 
   const [csvSending, setCsvSending] = useState(false)
   const [csvSendMsg, setCsvSendMsg] = useState<{ ok: boolean; text: string } | null>(null)
-
-  const [queueStats, setQueueStats] = useState<QueueStats | null>(null)
-  const [queueStatsLoading, setQueueStatsLoading] = useState(true)
-  const [queueStatsError, setQueueStatsError] = useState(false)
 
   const loadEmailSettings = async () => {
     setIsLoadingEmailSettings(true)
@@ -157,7 +163,7 @@ export function EmailSettingsTab() {
           : createDefaultConfig()
       )
     } catch (error) {
-      console.error('[EmailSettingsTab] load email settings error:', error)
+      logger.error('[EmailSettingsTab] load email settings error:', error)
       toast.error('فشل تحميل إعدادات البريد')
       setRecipientsConfig(createDefaultConfig())
     } finally {
@@ -167,73 +173,42 @@ export function EmailSettingsTab() {
   }
 
   const loadRecentBackups = async () => {
-    setIsLoadingBackups(true)
+    setRecentBackupsState(createSectionLoadState('recentBackups', 'loading'))
     try {
-      const query = () =>
-        supabase
-          .from('backups')
-          .select('id, backup_type, started_at, completed_at, file_size, status')
-          .eq('status', 'completed')
-          .order('completed_at', { ascending: false })
-          .limit(10)
-
-      const { data, error } = await query()
+      const { data, error } = await supabase
+        .from('backup_history')
+        .select('id, backup_type, started_at, completed_at, file_size, status')
+        .eq('status', 'completed')
+        .order('completed_at', { ascending: false })
+        .limit(10)
 
       if (error) {
-        const fallback = await supabase
-          .from('backup_history')
-          .select('id, backup_type, started_at, completed_at, file_size, status')
-          .eq('status', 'completed')
-          .order('completed_at', { ascending: false })
-          .limit(10)
-
-        if (fallback.error) {
-          throw fallback.error
-        }
-
-        setRecentBackups((fallback.data ?? []) as BackupRecord[])
-        return
+        throw error
       }
 
       setRecentBackups((data ?? []) as BackupRecord[])
+      setRecentBackupsState(createSectionLoadState('recentBackups', 'ready'))
     } catch (error) {
-      console.error('[EmailSettingsTab] load recent backups error:', error)
+      logger.error('[EmailSettingsTab] load recent backups error:', error)
       setRecentBackups([])
-    } finally {
-      setIsLoadingBackups(false)
+      setRecentBackupsState(
+        createSectionLoadState('recentBackups', 'degraded', {
+          userMessage: 'تعذر تحميل سجل النسخ الاحتياطية',
+          diagnosticClass: 'actionable_failure',
+        })
+      )
     }
   }
 
   const loadQueueStats = async () => {
-    setQueueStatsLoading(true)
-    setQueueStatsError(false)
-    try {
-      const [pendingRes, sentRes, failedRes] = await Promise.all([
-        supabase.from('email_queue').select('id', { count: 'exact', head: true }).eq('status', 'pending'),
-        supabase.from('email_queue').select('id', { count: 'exact', head: true }).eq('status', 'sent'),
-        supabase.from('email_queue').select('id', { count: 'exact', head: true }).eq('status', 'failed'),
-      ])
-
-      if (pendingRes.error) throw pendingRes.error
-      if (sentRes.error) throw sentRes.error
-      if (failedRes.error) throw failedRes.error
-
-      setQueueStats({
-        pending: pendingRes.count ?? 0,
-        sent: sentRes.count ?? 0,
-        failed: failedRes.count ?? 0,
-      })
-    } catch (error) {
-      console.error('[EmailSettingsTab] load queue stats error:', error)
-      setQueueStats(null)
-      setQueueStatsError(true)
-    } finally {
-      setQueueStatsLoading(false)
-    }
+    setQueueStatsLoading(false)
+    setQueueStatsError(true)
+    setQueueStats(null)
   }
 
   useEffect(() => {
-    void Promise.all([loadEmailSettings(), loadRecentBackups(), loadQueueStats()])
+    void Promise.all([loadEmailSettings(), loadRecentBackups()])
+    void loadQueueStats()
   }, [])
 
   async function saveEmailSettings() {
@@ -260,7 +235,7 @@ export function EmailSettingsTab() {
 
       toast.success('تم حفظ الإعدادات')
     } catch (error) {
-      console.error('[EmailSettingsTab] save email settings error:', error)
+      logger.error('[EmailSettingsTab] save email settings error:', error)
       toast.error('فشل الحفظ')
     } finally {
       setIsSavingEmailSettings(false)
@@ -295,7 +270,7 @@ export function EmailSettingsTab() {
       toast.success(options?.successMessage ?? 'تم الحفظ')
       return true
     } catch (error) {
-      console.error('[EmailSettingsTab] save recipients config error:', error)
+      logger.error('[EmailSettingsTab] save recipients config error:', error)
       toast.error(options?.errorMessage ?? 'فشل الحفظ — حاول مرة أخرى')
       return false
     } finally {
@@ -435,7 +410,7 @@ export function EmailSettingsTab() {
         setCsvSendMsg({ ok: true, text: 'تم إرسال التقرير بنجاح.' })
       }
     } catch (error) {
-      console.error('[EmailSettingsTab] send csv report error:', error)
+      logger.error('[EmailSettingsTab] send csv report error:', error)
       setCsvSendMsg({
         ok: false,
         text: error instanceof Error ? error.message : 'حدث خطأ غير متوقع',
@@ -772,11 +747,17 @@ export function EmailSettingsTab() {
           </Button>
         </div>
 
-        {isLoadingBackups ? (
+        {recentBackupsState.status === 'loading' ? (
           <div className="space-y-3">
             <Skeleton className="h-20 w-full" />
             <Skeleton className="h-20 w-full" />
             <Skeleton className="h-20 w-full" />
+          </div>
+        ) : recentBackupsState.status === 'degraded' ? (
+          <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 px-3.5 py-3">
+            <p className="text-sm font-medium text-amber-700 dark:text-amber-400">
+              {recentBackupsState.userMessage ?? 'تعذر تحميل سجل النسخ الاحتياطية'}
+            </p>
           </div>
         ) : recentBackups.length === 0 ? (
           <p className="text-sm text-foreground-tertiary">لا توجد نسخ احتياطية مكتملة</p>
@@ -857,7 +838,13 @@ export function EmailSettingsTab() {
               </p>
             </div>
           </div>
-          <Button type="button" variant="secondary" size="sm" onClick={loadQueueStats}>
+          <Button
+            type="button"
+            variant="secondary"
+            size="sm"
+            onClick={loadQueueStats}
+            disabled={queueStatsError === true && !queueStatsLoading}
+          >
             <RefreshCw className={`h-4 w-4 ${queueStatsLoading ? 'animate-spin' : ''}`} />
             تحديث
           </Button>

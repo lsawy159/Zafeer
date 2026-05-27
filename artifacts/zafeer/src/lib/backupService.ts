@@ -29,6 +29,12 @@ export interface BackupSettings {
   next_run_at: string | null
 }
 
+export interface BackupSettingsSaveResult {
+  persisted: true
+  refreshStatus: 'skipped' | 'completed'
+  refreshMessage?: string
+}
+
 const BACKUP_SETTING_KEYS = [
   'backup_schedule_enabled',
   'backup_frequency',
@@ -112,7 +118,7 @@ export async function fetchBackupSettings(): Promise<BackupSettings> {
   }
 }
 
-export async function saveBackupSettings(settings: BackupSettings): Promise<void> {
+export async function saveBackupSettings(settings: BackupSettings): Promise<BackupSettingsSaveResult> {
   const rows = [
     { setting_key: 'backup_schedule_enabled',           setting_value: JSON.stringify(settings.schedule_enabled) },
     { setting_key: 'backup_frequency',                  setting_value: JSON.stringify(settings.frequency) },
@@ -130,9 +136,21 @@ export async function saveBackupSettings(settings: BackupSettings): Promise<void
 
   if (error) throw error
 
-  // Recalculate next_run_at via DB function
+  // Try to refresh next_run_at only when the capability exists.
   const { error: rpcErr } = await supabase.rpc('refresh_next_backup_at')
-  if (rpcErr) logger.warn('[BackupService] refresh_next_backup_at failed:', rpcErr)
+  if (rpcErr) {
+    logger.debug('[BackupService] refresh_next_backup_at skipped:', rpcErr)
+    return {
+      persisted: true,
+      refreshStatus: 'skipped',
+      refreshMessage: 'refresh_next_backup_at unavailable',
+    }
+  }
+
+  return {
+    persisted: true,
+    refreshStatus: 'completed',
+  }
 }
 
 export async function triggerManualBackup(): Promise<BackupRecord | null> {

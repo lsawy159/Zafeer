@@ -8,6 +8,9 @@ import { supabase } from '@/lib/supabase'
 import { logger } from './securityLogger'
 import AuditService from './auditService'
 
+let globalErrorLoggingRegistered = false
+let securityInitialized = false
+
 /**
  * Wrap a function to automatically log failures
  */
@@ -103,6 +106,12 @@ export interface SecurityContext {
  * Log all API/database errors automatically
  */
 export function setupGlobalErrorLogging() {
+  if (globalErrorLoggingRegistered) {
+    return
+  }
+
+  globalErrorLoggingRegistered = true
+
   // Log unhandled promise rejections
   window.addEventListener('unhandledrejection', (event) => {
     logger.error('Unhandled promise rejection:', event.reason)
@@ -224,6 +233,12 @@ export const activityTracker = new ActivityTracker()
  * Setup security features on app initialization
  */
 export async function initializeSecurity() {
+  if (securityInitialized) {
+    return
+  }
+
+  securityInitialized = true
+
   // Setup global error logging
   setupGlobalErrorLogging()
 
