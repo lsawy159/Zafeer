@@ -1137,12 +1137,12 @@ export default function Companies() {
           }
         />
 
-        {/* Company Status Statistics Section - إحصائيات موحدة تشمل جميع الحالات */}
-        <div className="app-panel mb-6 p-6">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="text-lg font-bold text-neutral-900 flex items-center gap-2">
-              <Building2 className="w-5 h-5 text-info-600" />
-              إحصائيات المؤسسات (موحدة - تشمل جميع الحالات)
+        {/* Company Status Statistics Section */}
+        <div className="app-panel mb-5 p-4 md:p-5">
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="flex items-center gap-2 text-base font-bold text-neutral-900 md:text-lg">
+              <Building2 className="h-5 w-5 text-info-600" />
+              إحصائيات المؤسسات
             </h3>
           </div>
           {(() => {
@@ -1155,89 +1155,85 @@ export default function Companies() {
                 ending_subscription_moqeem_date: c.ending_subscription_moqeem_date ?? null,
               }))
             )
+            const companySummaryCards = [
+              {
+                key: 'companies' as const,
+                title: 'إجمالي المؤسسات',
+                value: companies.length,
+                label: '',
+                accentClass: '',
+                valueClass: 'text-foreground dark:text-white',
+              },
+              {
+                key: 'all' as const,
+                title: 'إجمالي التنبيهات',
+                value: companyAlertsCount,
+                label: 'المؤسسات التي لديها تنبيه واحد على الأقل',
+                accentClass: 'border-rose-500/20 bg-rose-500/5',
+                valueClass: 'text-rose-600 dark:text-rose-300',
+              },
+              {
+                key: 'منتهي' as const,
+                title: 'منتهي',
+                value: stats.totalExpired,
+                label: 'أقل من 0 يوم',
+                accentClass: 'border-red-500/20 bg-red-500/5',
+                valueClass: 'text-red-600 dark:text-red-300',
+              },
+              {
+                key: 'طارئ' as const,
+                title: 'طارئ',
+                value: stats.totalUrgent,
+                label: `0 - ${companyThresholds.commercial_reg_urgent_days} يوم`,
+                accentClass: 'border-red-500/20 bg-red-500/5',
+                valueClass: 'text-red-600 dark:text-red-300',
+              },
+              {
+                key: 'عاجل' as const,
+                title: 'عاجل',
+                value: stats.totalHigh,
+                label: `${companyThresholds.commercial_reg_urgent_days + 1} - ${companyThresholds.commercial_reg_high_days} يوم`,
+                accentClass: 'border-orange-500/20 bg-orange-500/5',
+                valueClass: 'text-orange-600 dark:text-orange-300',
+              },
+              {
+                key: 'متوسط' as const,
+                title: 'متوسط',
+                value: stats.totalMedium,
+                label: `${companyThresholds.commercial_reg_high_days + 1} - ${companyThresholds.commercial_reg_medium_days} يوم`,
+                accentClass: 'border-yellow-500/20 bg-yellow-500/5',
+                valueClass: 'text-yellow-600 dark:text-yellow-300',
+              },
+            ]
             return (
-              <div className="grid grid-cols-2 gap-4 md:grid-cols-6">
-                <div
-                  className={`app-panel p-4 text-center cursor-pointer transition-shadow ${
-                    cardStatusFilter === 'all' ? 'ring-2 ring-offset-1 ring-primary shadow-md' : 'hover:shadow-sm'
-                  }`}
-                  onClick={() => setCardStatusFilter(cardStatusFilter === 'all' ? null : 'all')}
-                >
-                  <div className="text-2xl font-bold text-foreground dark:text-white">
-                    {stats.totalCompanies}
+              <div className="grid grid-cols-2 gap-3 md:grid-cols-6">
+                {companySummaryCards.map((card) => (
+                  <div
+                    key={card.key}
+                    onClick={() => {
+                      if (card.key === 'companies') {
+                        setCardStatusFilter(null)
+                      } else {
+                        setCardStatusFilter(cardStatusFilter === card.key ? null : card.key as CardStatusFilter)
+                      }
+                    }}
+                    className={`app-panel cursor-pointer px-3 py-2.5 text-center transition-shadow ${card.accentClass} ${
+                      (card.key === 'companies' ? cardStatusFilter === null : cardStatusFilter === card.key)
+                        ? 'ring-2 ring-offset-1 ring-primary shadow-md'
+                        : 'hover:shadow-sm'
+                    }`}
+                  >
+                    <div className="text-[11px] font-medium leading-4 text-foreground-secondary dark:text-foreground-secondary md:text-xs">
+                      {card.title}
+                    </div>
+                    <div className={`text-lg font-bold leading-none md:text-xl ${card.valueClass}`}>
+                      {card.value.toLocaleString('en-US')}
+                    </div>
+                    <div className="text-[11px] leading-4 text-foreground-secondary dark:text-foreground-secondary md:text-xs">
+                      {card.label}
+                    </div>
                   </div>
-                  <div className="text-sm text-foreground-secondary dark:text-foreground-secondary">إجمالي المؤسسات</div>
-                </div>
-
-                <div
-                  className={`app-panel border-emerald-500/20 bg-emerald-500/5 p-4 text-center cursor-pointer transition-shadow ${
-                    cardStatusFilter === 'ساري' ? 'ring-2 ring-offset-1 ring-emerald-500 shadow-md' : 'hover:shadow-sm'
-                  }`}
-                  onClick={() => setCardStatusFilter(cardStatusFilter === 'ساري' ? null : 'ساري')}
-                >
-                  <div className="text-2xl font-bold text-emerald-600 dark:text-emerald-300">
-                    {stats.totalValid}
-                  </div>
-                  <div className="text-sm text-foreground-secondary dark:text-foreground-secondary">
-                    {`أكثر من ${companyThresholds.commercial_reg_medium_days} يوم`}
-                  </div>
-                </div>
-
-                <div
-                  className={`app-panel border-amber-500/20 bg-amber-500/5 p-4 text-center cursor-pointer transition-shadow ${
-                    cardStatusFilter === 'متوسط' ? 'ring-2 ring-offset-1 ring-amber-500 shadow-md' : 'hover:shadow-sm'
-                  }`}
-                  onClick={() => setCardStatusFilter(cardStatusFilter === 'متوسط' ? null : 'متوسط')}
-                >
-                  <div className="text-2xl font-bold text-amber-600 dark:text-amber-300">
-                    {stats.totalMedium}
-                  </div>
-                  <div className="text-sm text-foreground-secondary dark:text-foreground-secondary">
-                    {`${companyThresholds.commercial_reg_high_days + 1} - ${companyThresholds.commercial_reg_medium_days} يوم`}
-                  </div>
-                </div>
-
-                <div
-                  className={`app-panel border-orange-500/20 bg-orange-500/5 p-4 text-center cursor-pointer transition-shadow ${
-                    cardStatusFilter === 'عاجل' ? 'ring-2 ring-offset-1 ring-orange-500 shadow-md' : 'hover:shadow-sm'
-                  }`}
-                  onClick={() => setCardStatusFilter(cardStatusFilter === 'عاجل' ? null : 'عاجل')}
-                >
-                  <div className="text-2xl font-bold text-orange-600 dark:text-orange-300">
-                    {stats.totalHigh}
-                  </div>
-                  <div className="text-sm text-foreground-secondary dark:text-foreground-secondary">
-                    {`${companyThresholds.commercial_reg_urgent_days + 1} - ${companyThresholds.commercial_reg_high_days} يوم`}
-                  </div>
-                </div>
-
-                <div
-                  className={`app-panel border-red-500/20 bg-red-500/5 p-4 text-center cursor-pointer transition-shadow ${
-                    cardStatusFilter === 'طارئ' ? 'ring-2 ring-offset-1 ring-red-500 shadow-md' : 'hover:shadow-sm'
-                  }`}
-                  onClick={() => setCardStatusFilter(cardStatusFilter === 'طارئ' ? null : 'طارئ')}
-                >
-                  <div className="text-2xl font-bold text-red-600 dark:text-red-300">
-                    {stats.totalUrgent}
-                  </div>
-                  <div className="text-sm text-foreground-secondary dark:text-foreground-secondary">
-                    {`0 - ${companyThresholds.commercial_reg_urgent_days} يوم`}
-                  </div>
-                </div>
-
-                <div
-                  className={`app-panel border-neutral-500/20 bg-neutral-500/5 p-4 text-center cursor-pointer transition-shadow ${
-                    cardStatusFilter === 'منتهي' ? 'ring-2 ring-offset-1 ring-neutral-500 shadow-md' : 'hover:shadow-sm'
-                  }`}
-                  onClick={() => setCardStatusFilter(cardStatusFilter === 'منتهي' ? null : 'منتهي')}
-                >
-                  <div className="text-2xl font-bold text-neutral-600 dark:text-neutral-300">
-                    {stats.totalExpired}
-                  </div>
-                  <div className="text-sm text-foreground-secondary dark:text-foreground-secondary">
-                    أقل من 0 يوم
-                  </div>
-                </div>
+                ))}
               </div>
             )
           })()}
