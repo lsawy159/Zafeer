@@ -212,11 +212,6 @@ export function EmployeeAlertCard({
           )}
         </div>
 
-        {/* Action required */}
-        <p className="rounded-lg bg-amber-50 px-3 py-2 text-[11px] leading-relaxed text-amber-800 border border-amber-100">
-          <span className="font-semibold">الإجراء: </span>
-          {alert.action_required}
-        </p>
       </div>
 
       {/* Footer actions */}

@@ -16,6 +16,7 @@ import { logger } from '../utils/logger'
 import { getNotificationThresholds } from '../utils/alerts'
 import { getEmployeeNotificationThresholdsPublic } from '../utils/employeeAlerts'
 import { calculateDaysRemaining } from '@/utils/statusHelpers'
+import { getExpiredInclusionSettings } from '../utils/expiredInclusionSettings'
 
 // ========================
 // ط§ظ„ط£ظ†ظˆط§ط¹ ظˆط§ظ„ظˆط§ط¬ظ‡ط§طھ
@@ -402,7 +403,17 @@ async function sendEmailNotifications(alerts: ExpiryAlert[]): Promise<void> {
     (alert) => alert.priority === 'urgent' || alert.priority === 'high'
   )
 
-  if (criticalAlerts.length === 0) {
+  const expiredSettings = await getExpiredInclusionSettings()
+  const filteredCritical = expiredSettings.include_in_notification_emails
+    ? criticalAlerts
+    : criticalAlerts.filter(
+        (alert) =>
+          alert.daysRemaining === undefined ||
+          alert.daysRemaining === null ||
+          alert.daysRemaining >= 0
+      )
+
+  if (filteredCritical.length === 0) {
     logger.debug(
       'ظ„ط§ طھظˆط¬ط¯ طھظ†ط¨ظٹظ‡ط§طھ ط¹ط§ط¬ظ„ط© ط£ظˆ ظ‡ط§ظ…ط© ظ„ط¥ط±ط³ط§ظ„ ظ…ظ„ط®طµ ظٹظˆظ…ظٹ'
     )
@@ -433,7 +444,7 @@ async function sendEmailNotifications(alerts: ExpiryAlert[]): Promise<void> {
 
   const now = Date.now()
   const DAY_MS = 24 * 60 * 60 * 1000
-  const eligibleAlerts = criticalAlerts.filter((a) => {
+  const eligibleAlerts = filteredCritical.filter((a) => {
     const last = sentMap[a.id]
     if (!last) return true
     return now - new Date(last).getTime() >= DAY_MS

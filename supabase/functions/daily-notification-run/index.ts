@@ -119,6 +119,7 @@ interface SystemSettings {
   quiet_hours_start: string
   quiet_hours_end: string
   admin_email: string
+  include_expired_in_daily_email: boolean
 }
 
 async function readSettings(admin: ReturnType<typeof createClient>): Promise<SystemSettings> {
@@ -141,10 +142,31 @@ async function readSettings(admin: ReturnType<typeof createClient>): Promise<Sys
     }
   }
 
+  const { data: expiredRow } = await admin
+    .from('system_settings')
+    .select('setting_value')
+    .eq('setting_key', 'expired_inclusion_settings')
+    .maybeSingle()
+
+  const expiredValue = expiredRow?.setting_value
+  const expiredObject =
+    expiredValue && typeof expiredValue === 'object'
+      ? (expiredValue as { include_in_daily_email?: boolean })
+      : typeof expiredValue === 'string'
+        ? (() => {
+            try {
+              return JSON.parse(expiredValue) as { include_in_daily_email?: boolean }
+            } catch {
+              return null
+            }
+          })()
+        : null
+
   return {
     quiet_hours_start: map['quiet_hours_start'] ?? '23:50',
     quiet_hours_end: map['quiet_hours_end'] ?? '08:30',
     admin_email: map['admin_email'] ?? '',
+    include_expired_in_daily_email: expiredObject?.include_in_daily_email ?? true,
   }
 }
 
@@ -246,6 +268,7 @@ function buildEmployeeCategorySheet(
   docType: 'residence' | 'contract' | 'health_insurance' | 'hired_worker_contract',
   dateKey: string,
   dateLabel: string,
+  includeExpired: boolean,
 ): Record<string, unknown>[] {
   const rows: Record<string, unknown>[] = []
   const docThresholds = getThresholdsForType(thresholds, docType)
@@ -255,6 +278,7 @@ function buildEmployeeCategorySheet(
     const days = daysUntil(dateValue)
     const sev = getSeverityLevel(days, docThresholds)
     if (sev === null) continue
+    if (!includeExpired && days !== null && days < 0) continue
 
     rows.push({
       'رقم الإقامة': emp.residence_number ?? '',
@@ -276,6 +300,7 @@ function buildCompanyCategorySheet(
   docType: 'commercial_reg' | 'power_subscription' | 'moqeem_subscription',
   dateKey: string,
   dateLabel: string,
+  includeExpired: boolean,
 ): Record<string, unknown>[] {
   const rows: Record<string, unknown>[] = []
   const docThresholds = getThresholdsForType(thresholds, docType)
@@ -285,6 +310,7 @@ function buildCompanyCategorySheet(
     const days = daysUntil(dateValue)
     const sev = getSeverityLevel(days, docThresholds)
     if (sev === null) continue
+    if (!includeExpired && days !== null && days < 0) continue
 
     rows.push({
       'الرقم الموحد': co.unified_number ?? '',
@@ -372,6 +398,7 @@ async function buildXlsxWorkbook(
 async function buildAlertCsvZip(
   admin: ReturnType<typeof createClient>,
   thresholds: Record<string, number>,
+  includeExpired: boolean,
 ): Promise<{ zipBytes: Uint8Array | null; empRows: Record<string, unknown>[]; coRows: Record<string, unknown>[] }> {
   const { data: employees } = await admin
     .from('employees')
@@ -398,6 +425,7 @@ async function buildAlertCsvZip(
     const hiSev = getSeverityLevel(hiDays, getThresholdsForType(thresholds, 'health_insurance'))
     const hwSev = getSeverityLevel(hwDays, getThresholdsForType(thresholds, 'hired_worker_contract'))
     if (!isEntityActive([resSev, conSev, hiSev, hwSev])) continue
+    if (!includeExpired && [resDays, conDays, hiDays, hwDays].every((days) => days !== null && days < 0)) continue
     empRows.push({
       'رقم الإقامة': emp.residence_number ?? '',
       'اسم الموظف': emp.name,
@@ -424,6 +452,7 @@ async function buildAlertCsvZip(
     const pwSev = getSeverityLevel(pwDays, getThresholdsForType(thresholds, 'power_subscription'))
     const mqSev = getSeverityLevel(mqDays, getThresholdsForType(thresholds, 'moqeem_subscription'))
     if (!isEntityActive([crSev, pwSev, mqSev])) continue
+    if (!includeExpired && [crDays, pwDays, mqDays].every((days) => days !== null && days < 0)) continue
     coRows.push({
       'الرقم الموحد': co.unified_number ?? '',
       'اسم المؤسسة': co.name,
@@ -442,13 +471,13 @@ async function buildAlertCsvZip(
   const employeeRecords = (employees ?? []) as Record<string, unknown>[]
   const companyRecords = (companies ?? []) as Record<string, unknown>[]
 
-  const employeeResidenceRows = buildEmployeeCategorySheet(employeeRecords, companyNameMap, thresholds, 'residence', 'residence_expiry', 'تاريخ انتهاء الإقامة')
-  const employeeHealthRows = buildEmployeeCategorySheet(employeeRecords, companyNameMap, thresholds, 'health_insurance', 'health_insurance_expiry', 'تاريخ انتهاء التأمين الطبي')
-  const employeeContractRows = buildEmployeeCategorySheet(employeeRecords, companyNameMap, thresholds, 'contract', 'contract_expiry', 'تاريخ انتهاء العقد')
-  const employeeWorkerRows = buildEmployeeCategorySheet(employeeRecords, companyNameMap, thresholds, 'hired_worker_contract', 'hired_worker_contract_expiry', 'تاريخ انتهاء عقد الأجير')
-  const companyCommercialRows = buildCompanyCategorySheet(companyRecords, thresholds, 'commercial_reg', 'commercial_registration_expiry', 'تاريخ انتهاء السجل التجاري')
-  const companyPowerRows = buildCompanyCategorySheet(companyRecords, thresholds, 'power_subscription', 'ending_subscription_power_date', 'تاريخ انتهاء اشتراك قوى')
-  const companyMoqeemRows = buildCompanyCategorySheet(companyRecords, thresholds, 'moqeem_subscription', 'ending_subscription_moqeem_date', 'تاريخ انتهاء اشتراك مقيم')
+  const employeeResidenceRows = buildEmployeeCategorySheet(employeeRecords, companyNameMap, thresholds, 'residence', 'residence_expiry', 'تاريخ انتهاء الإقامة', includeExpired)
+  const employeeHealthRows = buildEmployeeCategorySheet(employeeRecords, companyNameMap, thresholds, 'health_insurance', 'health_insurance_expiry', 'تاريخ انتهاء التأمين الطبي', includeExpired)
+  const employeeContractRows = buildEmployeeCategorySheet(employeeRecords, companyNameMap, thresholds, 'contract', 'contract_expiry', 'تاريخ انتهاء العقد', includeExpired)
+  const employeeWorkerRows = buildEmployeeCategorySheet(employeeRecords, companyNameMap, thresholds, 'hired_worker_contract', 'hired_worker_contract_expiry', 'تاريخ انتهاء عقد الأجير', includeExpired)
+  const companyCommercialRows = buildCompanyCategorySheet(companyRecords, thresholds, 'commercial_reg', 'commercial_registration_expiry', 'تاريخ انتهاء السجل التجاري', includeExpired)
+  const companyPowerRows = buildCompanyCategorySheet(companyRecords, thresholds, 'power_subscription', 'ending_subscription_power_date', 'تاريخ انتهاء اشتراك قوى', includeExpired)
+  const companyMoqeemRows = buildCompanyCategorySheet(companyRecords, thresholds, 'moqeem_subscription', 'ending_subscription_moqeem_date', 'تاريخ انتهاء اشتراك مقيم', includeExpired)
 
   const zip = new JSZip()
 
@@ -704,10 +733,30 @@ Deno.serve(async (req: Request) => {
     Object.assign(digestThresholds, threshRow.setting_value)
   }
 
-  const reportData = await buildAlertCsvZip(admin, digestThresholds).catch(() => null)
+  const reportData = await buildAlertCsvZip(
+    admin,
+    digestThresholds,
+    settings.include_expired_in_daily_email,
+  ).catch(() => null)
   const zipBytes = reportData?.zipBytes ?? null
   const empRows = reportData?.empRows ?? []
   const coRows = reportData?.coRows ?? []
+  const filteredEmpRows = settings.include_expired_in_daily_email
+    ? empRows
+    : empRows.filter(
+        (row) =>
+          (row._days as number | null | undefined) === null ||
+          (row._days as number | undefined) === undefined ||
+          (row._days as number) >= 0,
+      )
+  const filteredCoRows = settings.include_expired_in_daily_email
+    ? coRows
+    : coRows.filter(
+        (row) =>
+          (row._days as number | null | undefined) === null ||
+          (row._days as number | undefined) === undefined ||
+          (row._days as number) >= 0,
+      )
 
   const severityFromRow = (row: Record<string, unknown>): 'عاجل' | 'تحذير' | 'تنبيه' | null => {
     const raw = row['مستوى الخطورة']
@@ -715,24 +764,24 @@ Deno.serve(async (req: Request) => {
     return null
   }
 
-  const entityTotal = empRows.length + coRows.length
+  const entityTotal = filteredEmpRows.length + filteredCoRows.length
   const severityCounts: DigestSeverityCounts = {
     total_entities: entityTotal,
-    employees_count: empRows.length,
-    companies_count: coRows.length,
+    employees_count: filteredEmpRows.length,
+    companies_count: filteredCoRows.length,
     critical: 0,
     high: 0,
     medium: 0,
     attachment_available: zipBytes !== null,
   }
 
-  for (const r of empRows) {
+  for (const r of filteredEmpRows) {
     const sev = severityFromRow(r)
     if (sev === 'عاجل') severityCounts.critical++
     else if (sev === 'تحذير') severityCounts.high++
     else if (sev === 'تنبيه') severityCounts.medium++
   }
-  for (const r of coRows) {
+  for (const r of filteredCoRows) {
     const sev = severityFromRow(r)
     if (sev === 'عاجل') severityCounts.critical++
     else if (sev === 'تحذير') severityCounts.high++

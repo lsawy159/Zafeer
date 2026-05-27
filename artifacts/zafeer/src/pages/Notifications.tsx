@@ -44,6 +44,11 @@ import {
   SelectValue,
 } from '@/components/ui/Select'
 import { normalizeArabic } from '@/utils/textUtils'
+import {
+  DEFAULT_EXPIRED_INCLUSION,
+  getExpiredInclusionSettings,
+  type ExpiredInclusionSettings,
+} from '@/utils/expiredInclusionSettings'
 
 type FilterType = 'all' | 'unread' | 'read'
 type PriorityFilter = 'urgent' | 'high' | 'medium' | 'low'
@@ -194,6 +199,9 @@ export default function Notifications() {
   const [csvLastSent, setCsvLastSent] = useState<string | null>(null)
   const [csvSendResult, setCsvSendResult] = useState<{ ok: boolean; msg: string } | null>(null)
   const [adminEmail, setAdminEmail] = useState<string>('')
+  const [expiredInclusion, setExpiredInclusion] = useState<ExpiredInclusionSettings>(
+    DEFAULT_EXPIRED_INCLUSION
+  )
 
   // Snooze modal
   const [snoozeTarget, setSnoozeTarget] = useState<Notification | null>(null)
@@ -296,6 +304,10 @@ export default function Notifications() {
       supabase.removeChannel(channel)
     }
   }, [loadCsvSettings])
+
+  useEffect(() => {
+    void getExpiredInclusionSettings().then(setExpiredInclusion)
+  }, [])
 
   const loadNotifications = async () => {
     try {
@@ -584,9 +596,21 @@ export default function Notifications() {
   }
 
   const normalizedSearchTerm = normalizeArabic(searchTerm).trim().toLowerCase()
+  const visibleNotifications = useMemo(() => {
+    if (expiredInclusion.include_in_notifications) {
+      return notifications
+    }
+
+    return notifications.filter(
+      (notification) =>
+        notification.days_remaining === undefined ||
+        notification.days_remaining === null ||
+        notification.days_remaining >= 0
+    )
+  }, [expiredInclusion.include_in_notifications, notifications])
 
   const filteredNotifications = useMemo(() => {
-    const filtered = notifications.filter((notification) => {
+    const filtered = visibleNotifications.filter((notification) => {
       // استثناء المؤجلة والمنتظرة snooze من التبويب النشط
       if (isDeferredNotification(notification)) return false
 
@@ -610,17 +634,24 @@ export default function Notifications() {
     return [...filtered].sort((left, right) =>
       compareNotifications(left, right, notificationSortField, notificationSortDirection)
     )
-  }, [filterType, notificationSortDirection, notificationSortField, notifications, priorityFilter, normalizedSearchTerm])
+  }, [
+    filterType,
+    notificationSortDirection,
+    notificationSortField,
+    priorityFilter,
+    normalizedSearchTerm,
+    visibleNotifications,
+  ])
 
   const deferredNotifications = useMemo(() => {
-    const filtered = notifications.filter(isDeferredNotification)
+    const filtered = visibleNotifications.filter(isDeferredNotification)
 
     return [...filtered].sort((left, right) =>
       compareNotifications(left, right, notificationSortField, notificationSortDirection)
     )
-  }, [notifications, notificationSortDirection, notificationSortField])
+  }, [visibleNotifications, notificationSortDirection, notificationSortField])
 
-  const activeCountableNotifications = notifications.filter(
+  const activeCountableNotifications = visibleNotifications.filter(
     (notification) =>
       !isDeferredNotification(notification) &&
       isExpiryNotification(notification) &&

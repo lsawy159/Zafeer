@@ -7,6 +7,10 @@ import {
   getEmployeeNotificationThresholdsPublic,
   DEFAULT_EMPLOYEE_THRESHOLDS,
 } from '../utils/employeeAlerts'
+import {
+  getExpiredInclusionSettings,
+  DEFAULT_EXPIRED_INCLUSION,
+} from '../utils/expiredInclusionSettings'
 
 export interface AlertsStats {
   total: number
@@ -24,7 +28,8 @@ function isUrgentOrHigh(
   expiryDate: string | null | undefined,
   today: Date,
   urgentDays: number,
-  highDays: number
+  highDays: number,
+  includeExpired = true
 ): boolean {
   if (!expiryDate) return false
   const expiry = new Date(expiryDate)
@@ -32,6 +37,7 @@ function isUrgentOrHigh(
   todayNorm.setHours(0, 0, 0, 0)
   expiry.setHours(0, 0, 0, 0)
   const diff = differenceInDays(expiry, todayNorm)
+  if (!includeExpired && diff < 0) return false
   return diff < 0 || diff <= urgentDays || diff <= highDays
 }
 
@@ -54,7 +60,7 @@ async function fetchAlertsStatsQuery(): Promise<AlertsStats> {
     } = await supabase.auth.getUser()
     if (!user) return empty
 
-    const [companiesResult, employeesResult, companyThresholds, employeeThresholds] =
+    const [companiesResult, employeesResult, companyThresholds, employeeThresholds, expiredSettings] =
       await Promise.all([
         supabase
           .from('companies')
@@ -68,7 +74,10 @@ async function fetchAlertsStatsQuery(): Promise<AlertsStats> {
           ),
         getStatusThresholds().catch(() => DEFAULT_STATUS_THRESHOLDS),
         getEmployeeNotificationThresholdsPublic().catch(() => DEFAULT_EMPLOYEE_THRESHOLDS),
+        getExpiredInclusionSettings().catch(() => DEFAULT_EXPIRED_INCLUSION),
       ])
+
+    const includeExpired = expiredSettings.include_in_alerts
 
     if (companiesResult.error) throw companiesResult.error
     if (employeesResult.error) throw employeesResult.error
@@ -85,19 +94,22 @@ async function fetchAlertsStatsQuery(): Promise<AlertsStats> {
         company.commercial_registration_expiry,
         today,
         companyThresholds.commercial_reg_urgent_days,
-        companyThresholds.commercial_reg_high_days
+        companyThresholds.commercial_reg_high_days,
+        includeExpired
       )
       const pwAlert = isUrgentOrHigh(
         company.ending_subscription_power_date,
         today,
         companyThresholds.power_subscription_urgent_days,
-        companyThresholds.power_subscription_high_days
+        companyThresholds.power_subscription_high_days,
+        includeExpired
       )
       const mqAlert = isUrgentOrHigh(
         company.ending_subscription_moqeem_date,
         today,
         companyThresholds.moqeem_subscription_urgent_days,
-        companyThresholds.moqeem_subscription_high_days
+        companyThresholds.moqeem_subscription_high_days,
+        includeExpired
       )
 
       if (crAlert) commercialRegAlerts++
@@ -119,25 +131,29 @@ async function fetchAlertsStatsQuery(): Promise<AlertsStats> {
         emp.contract_expiry,
         today,
         employeeThresholds.contract_urgent_days,
-        employeeThresholds.contract_high_days
+        employeeThresholds.contract_high_days,
+        includeExpired
       )
       const rsAlert = isUrgentOrHigh(
         emp.residence_expiry,
         today,
         employeeThresholds.residence_urgent_days,
-        employeeThresholds.residence_high_days
+        employeeThresholds.residence_high_days,
+        includeExpired
       )
       const hiAlert = isUrgentOrHigh(
         emp.health_insurance_expiry,
         today,
         employeeThresholds.health_insurance_urgent_days,
-        employeeThresholds.health_insurance_high_days
+        employeeThresholds.health_insurance_high_days,
+        includeExpired
       )
       const hwAlert = isUrgentOrHigh(
         emp.hired_worker_contract_expiry,
         today,
         hwUrgentDays,
-        hwHighDays
+        hwHighDays,
+        includeExpired
       )
 
       if (ctAlert) contractAlerts++

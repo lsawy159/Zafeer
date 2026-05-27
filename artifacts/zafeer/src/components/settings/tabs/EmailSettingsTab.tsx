@@ -2,6 +2,12 @@ import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase'
 import { toast } from 'sonner'
 import { logger } from '@/utils/logger'
+import {
+  DEFAULT_EXPIRED_INCLUSION,
+  getExpiredInclusionSettings,
+  saveExpiredInclusionSettings,
+  type ExpiredInclusionSettings,
+} from '@/utils/expiredInclusionSettings'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { Badge } from '@/components/ui/Badge'
@@ -134,6 +140,9 @@ export function EmailSettingsTab() {
 
   const [csvSending, setCsvSending] = useState(false)
   const [csvSendMsg, setCsvSendMsg] = useState<{ ok: boolean; text: string } | null>(null)
+  const [expiredSettings, setExpiredSettings] = useState<ExpiredInclusionSettings>(
+    DEFAULT_EXPIRED_INCLUSION
+  )
 
   const loadEmailSettings = async () => {
     setIsLoadingEmailSettings(true)
@@ -210,6 +219,24 @@ export function EmailSettingsTab() {
     void Promise.all([loadEmailSettings(), loadRecentBackups()])
     void loadQueueStats()
   }, [])
+
+  useEffect(() => {
+    void getExpiredInclusionSettings().then(setExpiredSettings)
+  }, [])
+
+  function handleExpiredInclusionChange(
+    key: keyof ExpiredInclusionSettings,
+    checked: boolean
+  ) {
+    setExpiredSettings((current) => {
+      const next = { ...current, [key]: checked }
+      void saveExpiredInclusionSettings(next).catch((error) => {
+        logger.error('[EmailSettingsTab] save expired inclusion settings error:', error)
+        toast.error('فشل حفظ إعدادات تضمين المنتهي')
+      })
+      return next
+    })
+  }
 
   async function saveEmailSettings() {
     setAdminEmailError(null)
@@ -548,6 +575,48 @@ export function EmailSettingsTab() {
             </div>
           </div>
         )}
+      </section>
+
+      <section className="rounded-2xl border border-border bg-surface p-5 shadow-sm">
+        <div className="mb-4 flex items-center justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10">
+              <AlertTriangle className="h-5 w-5 text-amber-600" />
+            </div>
+            <div>
+              <h2 className="text-base font-semibold text-foreground">تضمين المنتهي</h2>
+              <p className="text-xs text-foreground-tertiary">
+                تحكم في إظهار العناصر المنتهية داخل ملخص اليومي وإشعارات البريد الفردية.
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+          {[
+            {
+              key: 'include_in_daily_email' as const,
+              label: 'تضمين المنتهي في الملخص اليومي',
+            },
+            {
+              key: 'include_in_notification_emails' as const,
+              label: 'تضمين المنتهي في إشعارات البريد الفردية',
+            },
+          ].map(({ key, label }) => (
+            <label
+              key={key}
+              className="flex items-center justify-between gap-3 rounded-xl border border-border/70 bg-surface-secondary/30 px-3.5 py-3"
+            >
+              <span className="text-sm text-foreground-secondary">{label}</span>
+              <input
+                type="checkbox"
+                checked={expiredSettings[key]}
+                onChange={(event) => handleExpiredInclusionChange(key, event.target.checked)}
+                className="h-4 w-4 rounded border-border text-primary focus:ring-primary"
+              />
+            </label>
+          ))}
+        </div>
       </section>
 
       <section className="rounded-2xl border border-border bg-surface p-5 shadow-sm">
