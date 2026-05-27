@@ -893,6 +893,14 @@ export default function Employees() {
 
     return [
       {
+        key: 'employees',
+        title: 'إجمالي الموظفين',
+        value: employees.length,
+        label: '',
+        accentClass: '',
+        valueClass: 'text-foreground dark:text-white',
+      },
+      {
         key: 'total',
         title: 'إجمالي التنبيهات',
         value: totalAlerts,
@@ -1136,15 +1144,21 @@ export default function Employees() {
               تنبيهات الموظفين
             </h3>
           </div>
-          <div className="grid grid-cols-2 gap-3 md:grid-cols-5">
+          <div className="grid grid-cols-2 gap-3 md:grid-cols-6">
             {employeeSummaryCards.map((card) => (
               <div
                 key={card.key}
-                onClick={() =>
-                  setCardSeverityFilter(cardSeverityFilter === card.key ? null : (card.key as CardSeverityFilter))
-                }
+                onClick={() => {
+                  if (card.key === 'employees') {
+                    setCardSeverityFilter(null)
+                  } else {
+                    setCardSeverityFilter(cardSeverityFilter === card.key ? null : (card.key as CardSeverityFilter))
+                  }
+                }}
                 className={`app-panel cursor-pointer px-3 py-2.5 text-center transition-shadow ${card.accentClass} ${
-                  cardSeverityFilter === card.key ? 'ring-2 ring-offset-1 ring-primary shadow-md' : 'hover:shadow-sm'
+                  (card.key === 'employees' ? cardSeverityFilter === null : cardSeverityFilter === card.key)
+                    ? 'ring-2 ring-offset-1 ring-primary shadow-md'
+                    : 'hover:shadow-sm'
                 }`}
               >
                 <div className="text-[11px] font-medium leading-4 text-foreground-secondary dark:text-foreground-secondary md:text-xs">
