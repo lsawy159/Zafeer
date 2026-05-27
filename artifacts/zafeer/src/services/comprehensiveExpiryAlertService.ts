@@ -535,13 +535,17 @@ async function sendEmailNotifications(alerts: ExpiryAlert[]): Promise<void> {
       `ظپط´ظ„ ط§ظ„ط­طµظˆظ„ ط¹ظ„ظ‰ ط§ظ„ظ…ط³طھظ‚ط¨ظ„ظٹظ† ظ…ظ† ط§ظ„ظ†ط¸ط§ظ… ط§ظ„ط¬ط¯ظٹط¯: ${err instanceof Error ? err.message : String(err)}`
     )
     // ًں”گ FALLBACK: ط§ط³طھط®ط¯ظ… ط§ظ„ط¨ط±ظٹط¯ ط§ظ„ط£ط³ط§ط³ظٹ ظپظ‚ط·
-    toEmails = [PRIMARY_ADMIN_EMAIL]
-    logger.warn(`ط§ظ„ط±ط¬ظˆط¹ ط¥ظ„ظ‰ ط§ظ„ط¨ط±ظٹط¯ ط§ظ„ط£ط³ط§ط³ظٹ: ${PRIMARY_ADMIN_EMAIL}`)
+    const primaryAdmin = PRIMARY_ADMIN_EMAIL.trim()
+    toEmails = primaryAdmin ? [primaryAdmin] : []
+    if (primaryAdmin) {
+      logger.warn(`Falling back to primary admin: ${primaryAdmin}`)
+    }
   }
 
   if (toEmails.length === 0) {
     logger.warn('ظ„ظ… ظٹطھظ… ط§ظ„ط¹ط«ظˆط± ط¹ظ„ظ‰ ط£ظٹ ظ…ط³طھظ‚ط¨ظ„ظٹظ† ظ„ظ„ط¥ط´ط¹ط§ط±')
-    toEmails = [PRIMARY_ADMIN_EMAIL]
+    const primaryAdmin = PRIMARY_ADMIN_EMAIL.trim()
+    toEmails = primaryAdmin ? [primaryAdmin] : []
   }
 
   logger.debug(

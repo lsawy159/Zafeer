@@ -45,6 +45,8 @@ interface LogEntry {
 class Logger {
   private logs: LogEntry[] = []
   private maxLogs = 100
+  private recentLogTimestamps = new Map<string, number>()
+  private duplicateWindowMs = 4000
 
   private recordLog(
     level: LogLevel,
@@ -74,6 +76,23 @@ class Logger {
     return isVerboseLoggingEnabled()
   }
 
+  private shouldSuppressDuplicate(level: LogLevel, formattedMessage: string): boolean {
+    if (level === LogLevel.ERROR) {
+      return false
+    }
+
+    const key = `${level}:${formattedMessage}`
+    const now = Date.now()
+    const lastSeen = this.recentLogTimestamps.get(key)
+
+    if (lastSeen && now - lastSeen < this.duplicateWindowMs) {
+      return true
+    }
+
+    this.recentLogTimestamps.set(key, now)
+    return false
+  }
+
   private formatMessage(level: LogLevel, ...args: unknown[]): string {
     const prefix = {
       [LogLevel.DEBUG]: '🔍 [DEBUG]',
@@ -90,6 +109,7 @@ class Logger {
     if (this.shouldLog(LogLevel.DEBUG)) {
       // Use console.warn for debug messages as console.log is not allowed
       const formatted = this.formatMessage(LogLevel.DEBUG, ...args)
+      if (this.shouldSuppressDuplicate(LogLevel.DEBUG, formatted)) return
       this.recordLog(LogLevel.DEBUG, formatted)
       console.warn(formatted)
     }
@@ -99,6 +119,7 @@ class Logger {
     if (this.shouldLog(LogLevel.INFO)) {
       // Use console.warn for info messages as console.info is not allowed
       const formatted = this.formatMessage(LogLevel.INFO, ...args)
+      if (this.shouldSuppressDuplicate(LogLevel.INFO, formatted)) return
       this.recordLog(LogLevel.INFO, formatted)
       console.warn(formatted)
     }
@@ -107,6 +128,7 @@ class Logger {
   warn(...args: unknown[]): void {
     if (this.shouldLog(LogLevel.WARN)) {
       const formatted = this.formatMessage(LogLevel.WARN, ...args)
+      if (this.shouldSuppressDuplicate(LogLevel.WARN, formatted)) return
       this.recordLog(LogLevel.WARN, formatted)
       console.warn(formatted)
     }

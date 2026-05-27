@@ -2,14 +2,14 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 import { logger } from '@/utils/logger'
 
 /**
- * @deprecated استخدم getAdminEmail() بدلاً منه — يقرأ من system_settings key admin_email
- * محتفظ به مؤقتاً لتوافق الكود القديم
+ * @deprecated Use getAdminEmail() instead - reads from system_settings key admin_email
+ * Kept for compatibility with older code paths.
  */
 export const PRIMARY_ADMIN_EMAIL = ''
 
 /**
- * يقرأ admin_email من system_settings.
- * يعيد null إذا لم يكن المفتاح موجوداً أو كانت القيمة فارغة.
+ * Read admin_email from system_settings.
+ * Returns null when the value is missing, empty, or malformed.
  */
 export async function getAdminEmail(supabase: SupabaseClient): Promise<string | null> {
   const { data, error } = await supabase
@@ -19,7 +19,6 @@ export async function getAdminEmail(supabase: SupabaseClient): Promise<string | 
     .single()
 
   if (error || !data) {
-    logger.warn('[getAdminEmail] admin_email غير موجود في system_settings')
     return null
   }
 
@@ -27,18 +26,19 @@ export async function getAdminEmail(supabase: SupabaseClient): Promise<string | 
     ? data.setting_value
     : String(data.setting_value ?? '')
 
-  if (!email || !email.includes('@')) {
-    logger.warn('[getAdminEmail] admin_email فارغ أو غير صالح — لا إرسال')
+  const trimmedEmail = email.trim()
+  if (!trimmedEmail) {
     return null
   }
 
-  return email
+  if (!trimmedEmail.includes('@')) {
+    logger.warn('[getAdminEmail] admin_email invalid, skipping send')
+    return null
+  }
+
+  return trimmedEmail
 }
 
-/**
- * 📧 Individual Additional Recipient
- * Stores permission flags for each notification type
- */
 export interface AdditionalRecipient {
   id: string
   email: string
@@ -49,19 +49,6 @@ export interface AdditionalRecipient {
   added_by: string
 }
 
-/**
- * 🎯 Complete Notification Recipients Configuration
- * Stored as JSONB in system_settings table
- *
- * Structure:
- * {
- *   "primary_admin": "ahmad.alsawy159@gmail.com",
- *   "primary_admin_locked": true,
- *   "additional_recipients": [...],
- *   "version": "1.0",
- *   "last_modified": "2026-02-04T..."
- * }
- */
 export interface NotificationRecipientsConfig {
   primary_admin: string
   primary_admin_locked: boolean
@@ -70,13 +57,9 @@ export interface NotificationRecipientsConfig {
   last_modified: string
 }
 
-/**
- * 🔄 Create Default Configuration
- * Used when notification_recipients setting doesn't exist
- */
 export function createDefaultConfig(): NotificationRecipientsConfig {
   return {
-    primary_admin: PRIMARY_ADMIN_EMAIL,
+    primary_admin: '',
     primary_admin_locked: true,
     additional_recipients: [],
     version: '1.0',
@@ -84,12 +67,6 @@ export function createDefaultConfig(): NotificationRecipientsConfig {
   }
 }
 
-/**
- * ✔️ Validate Configuration Structure
- * Ensures all required fields are present and correct type
- *
- * Returns { valid: boolean, config: NotificationRecipientsConfig, error?: string }
- */
 export function validateConfig(data: unknown): {
   valid: boolean
   config: NotificationRecipientsConfig
@@ -107,23 +84,26 @@ export function validateConfig(data: unknown): {
 
     const obj = data as Record<string, unknown>
 
-    // Check primary_admin
-    if (typeof obj.primary_admin !== 'string' || !obj.primary_admin.includes('@')) {
-      logger.warn(`Invalid primary_admin: ${obj.primary_admin}`)
-      obj.primary_admin = PRIMARY_ADMIN_EMAIL
+    if (typeof obj.primary_admin === 'string') {
+      const primaryAdmin = obj.primary_admin.trim()
+      if (primaryAdmin && !primaryAdmin.includes('@')) {
+        logger.warn(`Invalid primary_admin: ${obj.primary_admin}`)
+        obj.primary_admin = ''
+      } else {
+        obj.primary_admin = primaryAdmin
+      }
+    } else {
+      obj.primary_admin = ''
     }
 
-    // Check primary_admin_locked
     if (typeof obj.primary_admin_locked !== 'boolean') {
       obj.primary_admin_locked = true
     }
 
-    // Check additional_recipients is array
     if (!Array.isArray(obj.additional_recipients)) {
       logger.warn('additional_recipients is not an array, setting to []')
       obj.additional_recipients = []
     } else {
-      // Validate each recipient
       obj.additional_recipients = (obj.additional_recipients as unknown[]).filter((r) => {
         if (typeof r !== 'object' || r === null) return false
         const recipient = r as Record<string, unknown>
@@ -137,12 +117,10 @@ export function validateConfig(data: unknown): {
       })
     }
 
-    // Check version
     if (typeof obj.version !== 'string') {
       obj.version = '1.0'
     }
 
-    // Check last_modified
     if (typeof obj.last_modified !== 'string') {
       obj.last_modified = new Date().toISOString()
     }
@@ -162,18 +140,7 @@ export function validateConfig(data: unknown): {
 }
 
 /**
- * 📩 Build Recipient List for Specific Notification Type
- *
- * Returns:
- * - ALWAYS includes primary_admin
- * - Filters additional_recipients by permission flag
- * - Has fallback to primary_admin only if parsing fails
- *
- * Example:
- * ```
- * const recipients = getRecipientsForNotificationType(config, 'expiryAlerts')
- * // Returns: ['ahmad.alsawy159@gmail.com', 'admin2@company.com']
- * ```
+ * Build recipient list for a specific notification type.
  */
 export function getRecipientsForNotificationType(
   config: NotificationRecipientsConfig,
@@ -181,11 +148,11 @@ export function getRecipientsForNotificationType(
 ): string[] {
   const recipients = new Set<string>()
 
-  // 🔐 ALWAYS add primary admin - NEVER fails
-  recipients.add(PRIMARY_ADMIN_EMAIL)
+  if (config.primary_admin && config.primary_admin.includes('@')) {
+    recipients.add(config.primary_admin)
+  }
 
   try {
-    // Add filtered additional recipients based on permission flag
     const key = notificationType as keyof Omit<
       AdditionalRecipient,
       'id' | 'email' | 'added_at' | 'added_by'
@@ -200,23 +167,18 @@ export function getRecipientsForNotificationType(
     logger.error(
       `Error filtering recipients for ${notificationType}: ${err instanceof Error ? err.message : String(err)}`
     )
-    // Fall back to just primary admin
   }
 
   return Array.from(recipients)
 }
 
 /**
- * 🔍 Safe JSON Parse with Fallback
- *
- * If parsing fails, returns default config instead of throwing
- * This ensures notifications are NEVER blocked by parsing errors
+ * Safe JSON parse with fallback.
  */
 export function safeParseConfig(
   rawValue: string | Record<string, unknown> | null | undefined
 ): NotificationRecipientsConfig {
   if (!rawValue) {
-    logger.warn('No notification config provided, using default')
     return createDefaultConfig()
   }
 
@@ -243,18 +205,14 @@ export function safeParseConfig(
     logger.error(
       `Failed to parse notification config JSON: ${err instanceof Error ? err.message : String(err)}`
     )
-    logger.warn('Falling back to default config with primary admin only')
+    logger.warn('Falling back to default notification config')
     return createDefaultConfig()
   }
 }
 
-/**
- * 🧪 Test Helper - Create Sample Config
- * Used for testing and documentation
- */
 export function createSampleConfig(): NotificationRecipientsConfig {
   return {
-    primary_admin: PRIMARY_ADMIN_EMAIL,
+    primary_admin: '',
     primary_admin_locked: true,
     additional_recipients: [
       {
