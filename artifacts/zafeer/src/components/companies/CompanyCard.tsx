@@ -160,103 +160,78 @@ function CompanyCard({
         )}
       </div>
 
-      {/* مربعات الحالات - grid من عمودين */}
+      {/* مربعات الحالات — صفين: labels فوق، boxes تحت متساوية */}
       <div className="border-t border-neutral-200 pt-3">
-        <div className="grid grid-cols-3 gap-2">
-          {/* حالة السجل التجاري */}
-          <div>
-            <div className="mb-1 text-[12px] font-semibold text-neutral-600">
-              السجل التجاري
+        {/* صف Labels */}
+        <div className="mb-1 grid grid-cols-3 gap-2">
+          <div className="text-center text-[11px] font-semibold text-neutral-600">السجل التجاري</div>
+          <div className="text-center text-[11px] font-semibold text-neutral-600">اشتراك قوى</div>
+          <div className="text-center text-[11px] font-semibold text-neutral-600">اشتراك مقيم</div>
+        </div>
+        {/* صف Boxes — نفس الارتفاع، نفس البداية، نفس النهاية */}
+        <div className="grid grid-cols-3 gap-2" style={{ gridAutoRows: '74px' }}>
+          {/* السجل التجاري */}
+          {company.commercial_registration_expiry ? (
+            <div
+              className={`flex flex-col justify-center rounded-lg border-2 px-2 py-1 text-xs font-medium ${commercialRegStatus.color.backgroundColor} ${commercialRegStatus.color.textColor} ${commercialRegStatus.color.borderColor}`}
+            >
+              <div className="flex items-center gap-1">
+                <span>
+                  {commercialRegStatus.status === 'طارئ' ? '🚨' : commercialRegStatus.status === 'عاجل' ? '🔥' : commercialRegStatus.status === 'متوسط' ? '⚠️' : commercialRegStatus.status === 'ساري' ? '✅' : '❌'}
+                </span>
+                <span className="font-bold leading-tight">
+                  {commercialRegStatus.status}
+                  <br />({Math.abs(commercialRegStatus.daysRemaining)})
+                </span>
+              </div>
             </div>
-            {company.commercial_registration_expiry ? (
-              <div
-                className={`h-[74px] overflow-hidden rounded-lg border-2 px-2 py-1 text-xs font-medium ${commercialRegStatus.color.backgroundColor} ${commercialRegStatus.color.textColor} ${commercialRegStatus.color.borderColor}`}
-              >
-                <div className="flex items-center gap-1">
-                  <div className="text-xs">
-                    {commercialRegStatus.status === 'طارئ'
-                      ? '🚨'
-                      : commercialRegStatus.status === 'عاجل'
-                        ? '🔥'
-                        : commercialRegStatus.status === 'متوسط'
-                          ? '⚠️'
-                          : commercialRegStatus.status === 'ساري'
-                            ? '✅'
-                            : '❌'}
-                  </div>
-                  <span className="font-bold">
-                    {commercialRegStatus.status} ({Math.abs(commercialRegStatus.daysRemaining)})
-                  </span>
-                </div>
-              </div>
-            ) : (
-              <div className="rounded-lg border-2 border-neutral-200 bg-neutral-100 px-2 py-1 text-xs font-medium text-neutral-600">
-                غير محدد
-              </div>
-            )}
-          </div>
+          ) : (
+            <div className="flex items-center justify-center rounded-lg border-2 border-neutral-200 bg-neutral-100 px-2 py-1 text-xs font-medium text-neutral-500">
+              غير محدد
+            </div>
+          )}
 
-          {/* حالة اشتراك قوى */}
-          <div>
-            <div className="mb-1 text-[12px] font-semibold text-neutral-600">اشتراك قوى</div>
-            {company.ending_subscription_power_date ? (
-              <div
-                className={`h-[74px] overflow-hidden rounded-lg border-2 px-2 py-1 text-xs font-medium ${powerStatus.color.backgroundColor} ${powerStatus.color.textColor} ${powerStatus.color.borderColor}`}
-              >
-                <div className="flex items-center gap-1">
-                  <div className="text-xs">
-                    {powerStatus.status === 'طارئ'
-                      ? '🚨'
-                      : powerStatus.status === 'عاجل'
-                        ? '🔥'
-                        : powerStatus.status === 'متوسط'
-                          ? '⚠️'
-                          : powerStatus.status === 'ساري'
-                            ? '✅'
-                            : '❌'}
-                  </div>
-                  <span className="font-bold">
-                    {powerStatus.status} ({Math.abs(powerStatus.daysRemaining)})
-                  </span>
-                </div>
+          {/* اشتراك قوى */}
+          {company.ending_subscription_power_date ? (
+            <div
+              className={`flex flex-col justify-center rounded-lg border-2 px-2 py-1 text-xs font-medium ${powerStatus.color.backgroundColor} ${powerStatus.color.textColor} ${powerStatus.color.borderColor}`}
+            >
+              <div className="flex items-center gap-1">
+                <span>
+                  {powerStatus.status === 'طارئ' ? '🚨' : powerStatus.status === 'عاجل' ? '🔥' : powerStatus.status === 'متوسط' ? '⚠️' : powerStatus.status === 'ساري' ? '✅' : '❌'}
+                </span>
+                <span className="font-bold leading-tight">
+                  {powerStatus.status}
+                  <br />({Math.abs(powerStatus.daysRemaining)})
+                </span>
               </div>
-            ) : (
-              <div className="rounded-lg border-2 border-neutral-200 bg-neutral-100 px-2 py-1 text-xs font-medium text-neutral-600">
-                غير محدد
-              </div>
-            )}
-          </div>
+            </div>
+          ) : (
+            <div className="flex items-center justify-center rounded-lg border-2 border-neutral-200 bg-neutral-100 px-2 py-1 text-xs font-medium text-neutral-500">
+              غير محدد
+            </div>
+          )}
 
-          {/* حالة اشتراك مقيم */}
-          <div>
-            <div className="mb-1 text-[12px] font-semibold text-neutral-600">اشتراك مقيم</div>
-            {company.ending_subscription_moqeem_date ? (
-              <div
-                className={`h-[74px] overflow-hidden rounded-lg border-2 px-2 py-1 text-xs font-medium ${moqeemStatus.color.backgroundColor} ${moqeemStatus.color.textColor} ${moqeemStatus.color.borderColor}`}
-              >
-                <div className="flex items-center gap-1">
-                  <div className="text-xs">
-                    {moqeemStatus.status === 'طارئ'
-                      ? '🚨'
-                      : moqeemStatus.status === 'عاجل'
-                        ? '🔥'
-                        : moqeemStatus.status === 'متوسط'
-                          ? '⚠️'
-                          : moqeemStatus.status === 'ساري'
-                            ? '✅'
-                            : '❌'}
-                  </div>
-                  <span className="font-bold">
-                    {moqeemStatus.status} ({Math.abs(moqeemStatus.daysRemaining)})
-                  </span>
-                </div>
+          {/* اشتراك مقيم */}
+          {company.ending_subscription_moqeem_date ? (
+            <div
+              className={`flex flex-col justify-center rounded-lg border-2 px-2 py-1 text-xs font-medium ${moqeemStatus.color.backgroundColor} ${moqeemStatus.color.textColor} ${moqeemStatus.color.borderColor}`}
+            >
+              <div className="flex items-center gap-1">
+                <span>
+                  {moqeemStatus.status === 'طارئ' ? '🚨' : moqeemStatus.status === 'عاجل' ? '🔥' : moqeemStatus.status === 'متوسط' ? '⚠️' : moqeemStatus.status === 'ساري' ? '✅' : '❌'}
+                </span>
+                <span className="font-bold leading-tight">
+                  {moqeemStatus.status}
+                  <br />({Math.abs(moqeemStatus.daysRemaining)})
+                </span>
               </div>
-            ) : (
-              <div className="rounded-lg border-2 border-neutral-200 bg-neutral-100 px-2 py-1 text-xs font-medium text-neutral-600">
-                غير محدد
-              </div>
-            )}
-          </div>
+            </div>
+          ) : (
+            <div className="flex items-center justify-center rounded-lg border-2 border-neutral-200 bg-neutral-100 px-2 py-1 text-xs font-medium text-neutral-500">
+              غير محدد
+            </div>
+          )}
         </div>
       </div>
 
