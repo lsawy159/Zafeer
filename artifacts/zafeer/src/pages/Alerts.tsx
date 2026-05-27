@@ -10,7 +10,7 @@ import {
   filterEmployeeAlertsByPriority,
 } from '@/utils/employeeAlerts'
 import { normalizeArabic } from '@/utils/textUtils'
-import { Bell, AlertTriangle, Building2, Users, X, CheckCircle2, Mail } from 'lucide-react'
+import { Bell, AlertTriangle, Building2, Users, X, CheckCircle2, Mail, ArrowUpDown } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import Layout from '@/components/layout/Layout'
 import CompanyCard from '@/components/companies/CompanyCard'
@@ -27,6 +27,8 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuLabel,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/DropdownMenu'
@@ -60,17 +62,6 @@ const PRIORITY_LABELS: Record<AlertPriority, string> = {
   medium: 'متوسط',
   low: 'خفيف',
 }
-
-const ALERT_SORT_FIELDS: Array<{ value: AlertSortField; label: string }> = [
-  { value: 'priority', label: 'الأولوية' },
-  { value: 'entity_name', label: 'اسم الكيان' },
-  { value: 'days_remaining', label: 'الأيام المتبقية' },
-]
-
-const ALERT_SORT_DIRECTIONS: Array<{ value: SortDirection; label: string }> = [
-  { value: 'desc', label: 'تنازلي' },
-  { value: 'asc', label: 'تصاعدي' },
-]
 
 const PRIORITY_ORDER: Record<AlertPriority, number> = {
   urgent: 4,
@@ -755,22 +746,35 @@ export default function Alerts({ initialTab = 'all', initialFilter = 'all' }: Al
                   <SelectItem value="expired">منتهي</SelectItem>
                 </SelectContent>
               </Select>
-              <Select value={alertSortField} onValueChange={(value) => setAlertSortField(value as AlertSortField)}>
-                <SelectTrigger className="h-9 min-w-[130px] text-sm"><SelectValue placeholder="الترتيب" /></SelectTrigger>
-                <SelectContent>
-                  {ALERT_SORT_FIELDS.map((field) => (
-                    <SelectItem key={field.value} value={field.value}>{field.label}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <Select value={alertSortDir} onValueChange={(value) => setAlertSortDir(value as SortDirection)}>
-                <SelectTrigger className="h-9 min-w-[90px] text-sm"><SelectValue placeholder="↕" /></SelectTrigger>
-                <SelectContent>
-                  {ALERT_SORT_DIRECTIONS.map((direction) => (
-                    <SelectItem key={direction.value} value={direction.value}>{direction.label}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="secondary" className="h-9 w-9 px-0" title="الترتيب">
+                    <ArrowUpDown className="w-4 h-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" sideOffset={8} className="w-52">
+                  <DropdownMenuLabel>الترتيب</DropdownMenuLabel>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuRadioGroup
+                    value={`${alertSortField}_${alertSortDir}`}
+                    onValueChange={(value) => {
+                      const parts = value.split('_')
+                      const dir = parts.pop() as SortDirection
+                      setAlertSortField(parts.join('_') as AlertSortField)
+                      setAlertSortDir(dir)
+                    }}
+                  >
+                    <DropdownMenuRadioItem value="priority_desc">الأولوية ↓</DropdownMenuRadioItem>
+                    <DropdownMenuRadioItem value="priority_asc">الأولوية ↑</DropdownMenuRadioItem>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuRadioItem value="entity_name_desc">اسم الكيان ↓</DropdownMenuRadioItem>
+                    <DropdownMenuRadioItem value="entity_name_asc">اسم الكيان ↑</DropdownMenuRadioItem>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuRadioItem value="days_remaining_desc">الأيام المتبقية ↓</DropdownMenuRadioItem>
+                    <DropdownMenuRadioItem value="days_remaining_asc">الأيام المتبقية ↑</DropdownMenuRadioItem>
+                  </DropdownMenuRadioGroup>
+                </DropdownMenuContent>
+              </DropdownMenu>
             </div>
 
             {/* Action */}

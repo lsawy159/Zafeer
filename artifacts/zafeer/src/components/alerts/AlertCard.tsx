@@ -202,16 +202,18 @@ export function AlertCard({
             </span>
           )}
         </div>
-
-        {/* Action required */}
-        <p className="rounded-lg bg-amber-50 px-3 py-2 text-[11px] leading-relaxed text-amber-800 border border-amber-100">
-          <span className="font-semibold">الإجراء: </span>
-          {alert.action_required}
-        </p>
       </div>
 
       {/* Footer actions */}
-      <div className="flex items-center gap-2 border-t border-slate-100 px-4 py-2.5">
+      <div className="flex flex-wrap items-center gap-2 border-t border-slate-100 px-4 py-2.5">
+        <button
+          onClick={() => onShowCompanyCard(alert.company.id)}
+          disabled={isBusy}
+          className="flex items-center justify-center gap-1 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-[12px] font-medium text-slate-600 transition hover:bg-slate-100 disabled:opacity-50"
+        >
+          <Building2 className="h-3.5 w-3.5" />
+          المؤسسة
+        </button>
 
         {!isRead && (
           <button

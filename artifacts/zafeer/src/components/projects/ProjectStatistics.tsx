@@ -37,8 +37,7 @@ export default function ProjectStatistics() {
       const { data: employees, error: employeesError } = await supabase
         .from('employees')
         .select('id, project_id, nationality, profession, salary')
-        .is('is_deleted', null)
-        .or('is_deleted.eq.false')
+        .or('is_deleted.is.null,is_deleted.eq.false')
 
       if (employeesError) throw employeesError
 

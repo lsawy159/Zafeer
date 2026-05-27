@@ -4513,7 +4513,7 @@ tr:last-child td{border-bottom:none}
                   </select>
                 </div>
                 <div>
-                  <label className="mb-2 block text-sm font-medium text-foreground-secondary">ط§ظ„طھط±طھظٹط¨</label>
+                  <label className="mb-2 block text-sm font-medium text-foreground-secondary">الترتيب</label>
                   <div className="flex gap-2">
                     <select
                       value={payrollSearchSortField}
@@ -4524,14 +4524,14 @@ tr:last-child td{border-bottom:none}
                       }
                       className="w-full rounded-xl border border-border-300 bg-surface px-3 py-2 text-sm"
                     >
-                      <option value="employee_name">ط§ظ„ظ…ظˆط¸ظپ</option>
-                      <option value="residence">ط§ظ„ط¥ظ‚ط§ظ…ط©</option>
-                      <option value="project">ط§ظ„ظ…ط´ط±ظˆط¹</option>
-                      <option value="month">ط§ظ„ط´ظ‡ط±</option>
-                      <option value="status">ط­ط§ظ„ط© ط§ظ„ظ…ط³ظٹط±</option>
-                      <option value="deductions">ط¥ط¬ظ…ط§ظ„ظٹ ط§ط³طھظ‚ط·ط§ط¹</option>
-                      <option value="remaining">ط§ظ„ظ…طھط¨ظ‚ظٹ</option>
-                      <option value="net_amount">ط§ظ„طµط§ظپظٹ</option>
+                      <option value="employee_name">الموظف</option>
+                      <option value="residence">الإقامة</option>
+                      <option value="project">المشروع</option>
+                      <option value="month">الشهر</option>
+                      <option value="status">حالة المسير</option>
+                      <option value="deductions">إجمالي استقطاع</option>
+                      <option value="remaining">المتبقي</option>
+                      <option value="net_amount">الصافي</option>
                     </select>
                     <button
                       type="button"
@@ -4542,7 +4542,7 @@ tr:last-child td{border-bottom:none}
                       }
                       className="inline-flex items-center justify-center rounded-xl border border-border-300 bg-surface px-3 py-2 text-sm font-medium text-foreground-secondary"
                     >
-                      {payrollSearchSortDirection === 'asc' ? 'طھطµط§ط¹ط¯ظٹ' : 'طھظ†ط§ط²ظ„ظٹ'}
+                      {payrollSearchSortDirection === 'asc' ? 'تصاعدي' : 'تنازلي'}
                     </button>
                   </div>
                 </div>
