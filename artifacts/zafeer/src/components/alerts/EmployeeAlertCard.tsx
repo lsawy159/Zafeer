@@ -47,7 +47,11 @@ interface EmployeeAlertCardProps {
   onViewEmployee: (employeeId: string) => void
   onMarkAsRead: (alertId: string) => void
   onMarkAsUnread?: (alertId: string) => void
+  onSnooze?: (alertId: string) => void
+  onUnsnooze?: (alertId: string) => void
   isRead?: boolean
+  isSnoozed?: boolean
+  snoozedUntil?: string | null
 }
 
 const PRIORITY = {
@@ -106,13 +110,22 @@ export function EmployeeAlertCard({
   onViewEmployee,
   onMarkAsRead,
   onMarkAsUnread,
+  onSnooze,
+  onUnsnooze,
   isRead = false,
+  isSnoozed = false,
+  snoozedUntil = null,
 }: EmployeeAlertCardProps) {
-  const [actionLoading, setActionLoading] = useState<'view' | 'read' | 'unread' | null>(null)
+  const [actionLoading, setActionLoading] = useState<
+    'view' | 'read' | 'unread' | 'snooze' | 'unsnooze' | null
+  >(null)
   const isBusy = actionLoading !== null
   const p = PRIORITY[alert.priority]
 
-  const runAction = async (action: 'view' | 'read' | 'unread', cb: () => void | Promise<void>) => {
+  const runAction = async (
+    action: 'view' | 'read' | 'unread' | 'snooze' | 'unsnooze',
+    cb: () => void | Promise<void>
+  ) => {
     try {
       setActionLoading(action)
       await Promise.resolve(cb())
@@ -122,17 +135,15 @@ export function EmployeeAlertCard({
   }
 
   const daysChip = alert.days_remaining !== undefined ? getDaysChip(alert.days_remaining) : null
+  const snoozedUntilChip = snoozedUntil ? new Date(snoozedUntil).toLocaleDateString('ar-SA') : null
 
   return (
     <div
-      className={`group relative flex flex-col overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-sm transition-all duration-300 hover:-translate-y-0.5 hover:shadow-lg hover:shadow-slate-200/60 ${isRead ? 'opacity-55' : ''}`}
+      className={`group relative flex flex-col overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-sm transition-all duration-300 hover:-translate-y-0.5 hover:shadow-lg hover:shadow-slate-200/60 ${isRead ? 'opacity-55' : ''} ${isSnoozed ? 'ring-1 ring-amber-200' : ''}`}
     >
-      {/* Priority accent bar */}
       <div className={`h-1 w-full ${p.accent} shrink-0`} />
 
-      {/* Body */}
       <div className="flex flex-1 flex-col gap-3 p-4">
-        {/* Top row: icon + title + read dot */}
         <div className="flex items-start justify-between gap-2">
           <div className="flex items-start gap-2.5">
             <div
@@ -172,7 +183,6 @@ export function EmployeeAlertCard({
           )}
         </div>
 
-        {/* Employee info */}
         <div className="flex items-center gap-1.5 rounded-lg bg-slate-50 px-3 py-2">
           <User className="h-3.5 w-3.5 shrink-0 text-slate-400" />
           <div className="min-w-0">
@@ -186,13 +196,11 @@ export function EmployeeAlertCard({
           </div>
         </div>
 
-        {/* Company */}
         <p className="truncate text-[11px] text-slate-500">
           <span className="font-medium text-slate-600">{alert.company.name}</span>
           {alert.company.unified_number ? ` (${alert.company.unified_number})` : ''}
         </p>
 
-        {/* Expiry + Days chips */}
         <div className="flex flex-wrap items-center gap-2">
           {alert.expiry_date && (
             <HijriDateDisplay date={alert.expiry_date}>
@@ -210,12 +218,16 @@ export function EmployeeAlertCard({
               {daysChip.text}
             </span>
           )}
+          {isSnoozed && (
+            <span className="flex items-center gap-1 rounded-lg border border-amber-200 bg-amber-50 px-2 py-1 text-[11px] font-semibold text-amber-700">
+              <Clock className="h-3 w-3 shrink-0" />
+              {snoozedUntilChip ? `مؤجل حتى ${snoozedUntilChip}` : 'مؤجل'}
+            </span>
+          )}
         </div>
-
       </div>
 
-      {/* Footer actions */}
-      <div className="flex items-center gap-2 border-t border-slate-100 px-4 py-2.5">
+      <div className="flex flex-wrap items-center gap-2 border-t border-slate-100 px-4 py-2.5">
         <button
           onClick={() => void runAction('view', () => onViewEmployee(alert.employee.id))}
           disabled={isBusy}
@@ -228,6 +240,36 @@ export function EmployeeAlertCard({
           )}
           عرض الموظف
         </button>
+
+        {!isSnoozed && onSnooze && (
+          <button
+            onClick={() => void runAction('snooze', () => onSnooze(alert.id))}
+            disabled={isBusy}
+            className="flex items-center justify-center gap-1 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-[12px] font-medium text-amber-700 transition hover:bg-amber-100 disabled:opacity-50"
+          >
+            {actionLoading === 'snooze' ? (
+              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+            ) : (
+              <Clock className="h-3.5 w-3.5" />
+            )}
+            تأجيل
+          </button>
+        )}
+
+        {isSnoozed && onUnsnooze && (
+          <button
+            onClick={() => void runAction('unsnooze', () => onUnsnooze(alert.id))}
+            disabled={isBusy}
+            className="flex items-center justify-center gap-1 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-[12px] font-medium text-amber-700 transition hover:bg-amber-100 disabled:opacity-50"
+          >
+            {actionLoading === 'unsnooze' ? (
+              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+            ) : (
+              <Clock className="h-3.5 w-3.5" />
+            )}
+            إلغاء التأجيل
+          </button>
+        )}
 
         {!isRead && (
           <button

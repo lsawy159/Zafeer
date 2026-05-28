@@ -133,6 +133,42 @@ interface DeferredNotificationRow {
   days_remaining: number | null
 }
 
+interface SnoozedAlertRow {
+  alert_id: string
+  snoozed_until: string | null
+  is_deferred: boolean
+}
+
+function employeeAlertId(
+  prefix: 'contract' | 'residence' | 'health_insurance' | 'hired_worker_contract',
+  employeeId: string,
+  expiry: string | null | undefined
+) {
+  return `${prefix}_${employeeId}_${expiry ?? ''}`
+}
+
+function companyAlertId(
+  prefix: 'commercial' | 'power' | 'moqeem',
+  companyId: string,
+  expiry: string | null | undefined
+) {
+  return `${prefix}_${companyId}_${expiry ?? ''}`
+}
+
+function parseAlertId(alertId: string): { prefix: string; entityId: string; expiryDate: string } | null {
+  const lastSep = alertId.lastIndexOf('_')
+  if (lastSep <= 0) return null
+  const expiryDate = alertId.slice(lastSep + 1)
+  const entityAndPrefix = alertId.slice(0, lastSep)
+  const entitySep = entityAndPrefix.lastIndexOf('_')
+  if (entitySep <= 0) return null
+  return {
+    prefix: entityAndPrefix.slice(0, entitySep),
+    entityId: entityAndPrefix.slice(entitySep + 1),
+    expiryDate,
+  }
+}
+
 // ─── Employee / Company row builders ──────────────────────────────────────────
 
 const DEFAULT_THRESHOLDS: Record<string, number> = {
@@ -155,7 +191,11 @@ interface EmployeeRow {
   hired_worker_contract_expiry: string | null
 }
 
-function buildEmployeesRows(employees: EmployeeRow[], thresholds: Record<string, number>): Record<string, unknown>[] {
+function buildEmployeesRows(
+  employees: EmployeeRow[],
+  thresholds: Record<string, number>,
+  snoozedIds: Set<string>,
+): Record<string, unknown>[] {
   const rows: Record<string, unknown>[] = []
   for (const emp of employees) {
     const resDays = daysUntil(emp.residence_expiry)
@@ -167,22 +207,60 @@ function buildEmployeesRows(employees: EmployeeRow[], thresholds: Record<string,
     const conSev = getSeverityLevel(conDays, getThresholdsForType(thresholds, 'contract'))
     const hiSev = getSeverityLevel(hiDays, getThresholdsForType(thresholds, 'health_insurance'))
     const hwSev = getSeverityLevel(hwDays, getThresholdsForType(thresholds, 'hired_worker_contract'))
+    const activeSeverities = [
+      resSev && !snoozedIds.has(employeeAlertId('residence', emp.id, emp.residence_expiry))
+        ? resSev
+        : null,
+      conSev && !snoozedIds.has(employeeAlertId('contract', emp.id, emp.contract_expiry))
+        ? conSev
+        : null,
+      hiSev && !snoozedIds.has(employeeAlertId('health_insurance', emp.id, emp.health_insurance_expiry))
+        ? hiSev
+        : null,
+      hwSev && !snoozedIds.has(employeeAlertId('hired_worker_contract', emp.id, emp.hired_worker_contract_expiry))
+        ? hwSev
+        : null,
+    ]
 
-    if (!isEntityActive([resSev, conSev, hiSev, hwSev])) continue
+    if (!isEntityActive(activeSeverities)) continue
 
     rows.push({
       'رقم الإقامة': emp.residence_number ?? '',
       'اسم الموظف': emp.name,
       'اسم الشركة': emp.company_name,
-      'تاريخ انتهاء الإقامة': formatDateDDMMYYYY(emp.residence_expiry),
-      'الأيام المتبقية (الإقامة)': resDays !== null ? String(resDays) : '',
-      'تاريخ انتهاء العقد': formatDateDDMMYYYY(emp.contract_expiry),
-      'الأيام المتبقية (العقد)': conDays !== null ? String(conDays) : '',
-      'تاريخ انتهاء التأمين الطبي': formatDateDDMMYYYY(emp.health_insurance_expiry),
-      'الأيام المتبقية (التأمين)': hiDays !== null ? String(hiDays) : '',
-      'تاريخ انتهاء عقد الأجير': formatDateDDMMYYYY(emp.hired_worker_contract_expiry),
-      'الأيام المتبقية (عقد الأجير)': hwDays !== null ? String(hwDays) : '',
-      'مستوى الخطورة': getEntitySeverity([resSev, conSev, hiSev, hwSev]) ?? '',
+      'تاريخ انتهاء الإقامة': snoozedIds.has(employeeAlertId('residence', emp.id, emp.residence_expiry))
+        ? ''
+        : formatDateDDMMYYYY(emp.residence_expiry),
+      'الأيام المتبقية (الإقامة)': snoozedIds.has(employeeAlertId('residence', emp.id, emp.residence_expiry))
+        ? ''
+        : resDays !== null
+          ? String(resDays)
+          : '',
+      'تاريخ انتهاء العقد': snoozedIds.has(employeeAlertId('contract', emp.id, emp.contract_expiry))
+        ? ''
+        : formatDateDDMMYYYY(emp.contract_expiry),
+      'الأيام المتبقية (العقد)': snoozedIds.has(employeeAlertId('contract', emp.id, emp.contract_expiry))
+        ? ''
+        : conDays !== null
+          ? String(conDays)
+          : '',
+      'تاريخ انتهاء التأمين الطبي': snoozedIds.has(employeeAlertId('health_insurance', emp.id, emp.health_insurance_expiry))
+        ? ''
+        : formatDateDDMMYYYY(emp.health_insurance_expiry),
+      'الأيام المتبقية (التأمين)': snoozedIds.has(employeeAlertId('health_insurance', emp.id, emp.health_insurance_expiry))
+        ? ''
+        : hiDays !== null
+          ? String(hiDays)
+          : '',
+      'تاريخ انتهاء عقد الأجير': snoozedIds.has(employeeAlertId('hired_worker_contract', emp.id, emp.hired_worker_contract_expiry))
+        ? ''
+        : formatDateDDMMYYYY(emp.hired_worker_contract_expiry),
+      'الأيام المتبقية (عقد الأجير)': snoozedIds.has(employeeAlertId('hired_worker_contract', emp.id, emp.hired_worker_contract_expiry))
+        ? ''
+        : hwDays !== null
+          ? String(hwDays)
+          : '',
+      'مستوى الخطورة': getEntitySeverity(activeSeverities) ?? '',
     })
   }
   return rows
@@ -197,7 +275,11 @@ interface CompanyRow {
   ending_subscription_moqeem_date: string | null
 }
 
-function buildCompaniesRows(companies: CompanyRow[], thresholds: Record<string, number>): Record<string, unknown>[] {
+function buildCompaniesRows(
+  companies: CompanyRow[],
+  thresholds: Record<string, number>,
+  snoozedIds: Set<string>,
+): Record<string, unknown>[] {
   const rows: Record<string, unknown>[] = []
   for (const co of companies) {
     const crDays = daysUntil(co.commercial_registration_expiry)
@@ -207,19 +289,48 @@ function buildCompaniesRows(companies: CompanyRow[], thresholds: Record<string, 
     const crSev = getSeverityLevel(crDays, getThresholdsForType(thresholds, 'commercial_reg'))
     const pwSev = getSeverityLevel(pwDays, getThresholdsForType(thresholds, 'power_subscription'))
     const mqSev = getSeverityLevel(mqDays, getThresholdsForType(thresholds, 'moqeem_subscription'))
+    const activeSeverities = [
+      crSev && !snoozedIds.has(companyAlertId('commercial', co.id, co.commercial_registration_expiry))
+        ? crSev
+        : null,
+      pwSev && !snoozedIds.has(companyAlertId('power', co.id, co.ending_subscription_power_date))
+        ? pwSev
+        : null,
+      mqSev && !snoozedIds.has(companyAlertId('moqeem', co.id, co.ending_subscription_moqeem_date))
+        ? mqSev
+        : null,
+    ]
 
-    if (!isEntityActive([crSev, pwSev, mqSev])) continue
+    if (!isEntityActive(activeSeverities)) continue
 
     rows.push({
       'الرقم الموحد': co.unified_number ?? '',
       'اسم المؤسسة': co.name,
-      'تاريخ انتهاء السجل التجاري': formatDateDDMMYYYY(co.commercial_registration_expiry),
-      'الأيام المتبقية (السجل)': crDays !== null ? String(crDays) : '',
-      'تاريخ انتهاء اشتراك قوى': formatDateDDMMYYYY(co.ending_subscription_power_date),
-      'الأيام المتبقية (قوى)': pwDays !== null ? String(pwDays) : '',
-      'تاريخ انتهاء اشتراك مقيم': formatDateDDMMYYYY(co.ending_subscription_moqeem_date),
-      'الأيام المتبقية (مقيم)': mqDays !== null ? String(mqDays) : '',
-      'مستوى الخطورة': getEntitySeverity([crSev, pwSev, mqSev]) ?? '',
+      'تاريخ انتهاء السجل التجاري': snoozedIds.has(companyAlertId('commercial', co.id, co.commercial_registration_expiry))
+        ? ''
+        : formatDateDDMMYYYY(co.commercial_registration_expiry),
+      'الأيام المتبقية (السجل)': snoozedIds.has(companyAlertId('commercial', co.id, co.commercial_registration_expiry))
+        ? ''
+        : crDays !== null
+          ? String(crDays)
+          : '',
+      'تاريخ انتهاء اشتراك قوى': snoozedIds.has(companyAlertId('power', co.id, co.ending_subscription_power_date))
+        ? ''
+        : formatDateDDMMYYYY(co.ending_subscription_power_date),
+      'الأيام المتبقية (قوى)': snoozedIds.has(companyAlertId('power', co.id, co.ending_subscription_power_date))
+        ? ''
+        : pwDays !== null
+          ? String(pwDays)
+          : '',
+      'تاريخ انتهاء اشتراك مقيم': snoozedIds.has(companyAlertId('moqeem', co.id, co.ending_subscription_moqeem_date))
+        ? ''
+        : formatDateDDMMYYYY(co.ending_subscription_moqeem_date),
+      'الأيام المتبقية (مقيم)': snoozedIds.has(companyAlertId('moqeem', co.id, co.ending_subscription_moqeem_date))
+        ? ''
+        : mqDays !== null
+          ? String(mqDays)
+          : '',
+      'مستوى الخطورة': getEntitySeverity(activeSeverities) ?? '',
     })
   }
   return rows
@@ -241,6 +352,7 @@ function buildEmployeeCategorySheet(
   docType: 'residence' | 'contract' | 'health_insurance' | 'hired_worker_contract',
   dateKey: keyof EmployeeRow,
   dateLabel: string,
+  snoozedIds: Set<string>,
 ): Record<string, unknown>[] {
   const rows: Record<string, unknown>[] = []
   const docThresholds = getThresholdsForType(thresholds, docType)
@@ -249,7 +361,7 @@ function buildEmployeeCategorySheet(
     const dateValue = emp[dateKey] as string | null
     const days = daysUntil(dateValue)
     const sev = getSeverityLevel(days, docThresholds)
-    if (sev === null) continue
+    if (sev === null || snoozedIds.has(employeeAlertId(docType, emp.id, dateValue))) continue
 
     rows.push({
       'رقم الإقامة': emp.residence_number ?? '',
@@ -271,6 +383,7 @@ function buildCompanyCategorySheet(
   docType: 'commercial_reg' | 'power_subscription' | 'moqeem_subscription',
   dateKey: keyof CompanyRow,
   dateLabel: string,
+  snoozedIds: Set<string>,
 ): Record<string, unknown>[] {
   const rows: Record<string, unknown>[] = []
   const docThresholds = getThresholdsForType(thresholds, docType)
@@ -279,7 +392,7 @@ function buildCompanyCategorySheet(
     const dateValue = co[dateKey] as string | null
     const days = daysUntil(dateValue)
     const sev = getSeverityLevel(days, docThresholds)
-    if (sev === null) continue
+    if (sev === null || snoozedIds.has(companyAlertId(docType === 'commercial_reg' ? 'commercial' : docType === 'power_subscription' ? 'power' : 'moqeem', co.id, dateValue))) continue
 
     rows.push({
       'الرقم الموحد': co.unified_number ?? '',
@@ -475,66 +588,111 @@ Deno.serve(async (req: Request) => {
       health_insurance_expiry: e.health_insurance_expiry as string | null,
       hired_worker_contract_expiry: e.hired_worker_contract_expiry as string | null,
     }))
+    const employeeLookup = new Map<string, EmployeeRow>(empRows.map((row) => [row.id, row]))
+    const companyRows = (companiesData ?? []) as CompanyRow[]
+    const companyLookup = new Map<string, CompanyRow>(companyRows.map((row) => [row.id, row]))
 
-    const employeesCsvRows = buildEmployeesRows(empRows, thresholds)
-    const companiesCsvRows = buildCompaniesRows((companiesData ?? []) as CompanyRow[], thresholds)
-    const employeesResidenceRows = buildEmployeeCategorySheet(empRows, thresholds, 'residence', 'residence_expiry', 'تاريخ انتهاء الإقامة')
-    const employeesHealthRows = buildEmployeeCategorySheet(empRows, thresholds, 'health_insurance', 'health_insurance_expiry', 'تاريخ انتهاء التأمين الطبي')
-    const employeesContractRows = buildEmployeeCategorySheet(empRows, thresholds, 'contract', 'contract_expiry', 'تاريخ انتهاء العقد')
-    const employeesWorkerRows = buildEmployeeCategorySheet(empRows, thresholds, 'hired_worker_contract', 'hired_worker_contract_expiry', 'تاريخ انتهاء عقد الأجير')
-    const companiesCommercialRows = buildCompanyCategorySheet((companiesData ?? []) as CompanyRow[], thresholds, 'commercial_reg', 'commercial_registration_expiry', 'تاريخ انتهاء السجل التجاري')
-    const companiesPowerRows = buildCompanyCategorySheet((companiesData ?? []) as CompanyRow[], thresholds, 'power_subscription', 'ending_subscription_power_date', 'تاريخ انتهاء اشتراك قوى')
-    const companiesMoqeemRows = buildCompanyCategorySheet((companiesData ?? []) as CompanyRow[], thresholds, 'moqeem_subscription', 'ending_subscription_moqeem_date', 'تاريخ انتهاء اشتراك مقيم')
+    const { data: snoozedRows, error: snoozedError } = await admin
+      .from('snoozed_alerts')
+      .select('alert_id, snoozed_until, is_deferred')
 
-    // Fetch deferred notifications
-    let deferredRows: DeferredNotificationRow[] = []
-    try {
-      const { data: deferredData } = await admin
-        .from('notifications')
-        .select('id, type, entity_type, entity_id, snoozed_until, is_deferred, days_remaining, target_date')
-        .or('snoozed_until.not.is.null,is_deferred.eq.true')
-        .eq('is_archived', false)
-
-      if (deferredData && deferredData.length > 0) {
-        const empIds = (deferredData as Record<string, unknown>[])
-          .filter((d) => d.entity_type === 'employee').map((d) => d.entity_id as string)
-        const coIds = (deferredData as Record<string, unknown>[])
-          .filter((d) => d.entity_type === 'company').map((d) => d.entity_id as string)
-
-        const { data: dEmp } = empIds.length > 0
-          ? await admin.from('employees').select('id, name, residence_number').in('id', empIds)
-          : { data: [] }
-        const { data: dCo } = coIds.length > 0
-          ? await admin.from('companies').select('id, name, unified_number').in('id', coIds)
-          : { data: [] }
-
-        const empMap = new Map<string, { name: string; residence_number: number | null }>(
-          (dEmp ?? []).map((e: Record<string, unknown>) => [e.id as string, { name: e.name as string, residence_number: e.residence_number as number | null }])
-        )
-        const coMap = new Map<string, { name: string; unified_number: number | null }>(
-          (dCo ?? []).map((c: Record<string, unknown>) => [c.id as string, { name: c.name as string, unified_number: c.unified_number as number | null }])
-        )
-
-        deferredRows = (deferredData as Record<string, unknown>[]).map((d) => {
-          const isEmp = d.entity_type === 'employee'
-          const emp = isEmp ? empMap.get(d.entity_id as string) : null
-          const co = !isEmp ? coMap.get(d.entity_id as string) : null
-          return {
-            snoozed_until: d.snoozed_until as string | null,
-            is_deferred: Boolean(d.is_deferred),
-            notification_type: d.type as string,
-            entity_type: d.entity_type as string,
-            entity_id: d.entity_id as string,
-            entity_name: isEmp ? (emp?.name ?? '') : (co?.name ?? ''),
-            entity_identifier: isEmp ? String(emp?.residence_number ?? '') : String(co?.unified_number ?? ''),
-            expiry_date: d.target_date as string | null,
-            days_remaining: d.days_remaining as number | null,
-          }
-        })
-      }
-    } catch {
-      deferredRows = []
+    if (snoozedError) {
+      return jsonResponse({ success: false, error: 'Failed to fetch snoozed alerts: ' + snoozedError.message }, 500)
     }
+
+    const activeSnoozedRows = (snoozedRows ?? []).filter(
+      (row: SnoozedAlertRow) =>
+        row.is_deferred === true || (!!row.snoozed_until && new Date(row.snoozed_until) > new Date())
+    )
+    const snoozedIds = new Set(activeSnoozedRows.map((row: SnoozedAlertRow) => row.alert_id))
+
+    const employeesCsvRows = buildEmployeesRows(empRows, thresholds, snoozedIds)
+    const companiesCsvRows = buildCompaniesRows(companyRows, thresholds, snoozedIds)
+    const employeesResidenceRows = buildEmployeeCategorySheet(
+      empRows,
+      thresholds,
+      'residence',
+      'residence_expiry',
+      'تاريخ انتهاء الإقامة',
+      snoozedIds,
+    )
+    const employeesHealthRows = buildEmployeeCategorySheet(
+      empRows,
+      thresholds,
+      'health_insurance',
+      'health_insurance_expiry',
+      'تاريخ انتهاء التأمين الطبي',
+      snoozedIds,
+    )
+    const employeesContractRows = buildEmployeeCategorySheet(
+      empRows,
+      thresholds,
+      'contract',
+      'contract_expiry',
+      'تاريخ انتهاء العقد',
+      snoozedIds,
+    )
+    const employeesWorkerRows = buildEmployeeCategorySheet(
+      empRows,
+      thresholds,
+      'hired_worker_contract',
+      'hired_worker_contract_expiry',
+      'تاريخ انتهاء عقد الأجير',
+      snoozedIds,
+    )
+    const companiesCommercialRows = buildCompanyCategorySheet(
+      companyRows,
+      thresholds,
+      'commercial_reg',
+      'commercial_registration_expiry',
+      'تاريخ انتهاء السجل التجاري',
+      snoozedIds,
+    )
+    const companiesPowerRows = buildCompanyCategorySheet(
+      companyRows,
+      thresholds,
+      'power_subscription',
+      'ending_subscription_power_date',
+      'تاريخ انتهاء اشتراك قوى',
+      snoozedIds,
+    )
+    const companiesMoqeemRows = buildCompanyCategorySheet(
+      companyRows,
+      thresholds,
+      'moqeem_subscription',
+      'ending_subscription_moqeem_date',
+      'تاريخ انتهاء اشتراك مقيم',
+      snoozedIds,
+    )
+
+    const deferredRows: DeferredNotificationRow[] = activeSnoozedRows.map((row: SnoozedAlertRow) => {
+      const parsed = parseAlertId(row.alert_id)
+      const prefix = parsed?.prefix ?? ''
+      const entityId = parsed?.entityId ?? ''
+      const expiryDate = parsed?.expiryDate ?? null
+      const isEmp = prefix === 'contract' || prefix === 'residence' || prefix === 'health_insurance' || prefix === 'hired_worker_contract'
+      const emp = isEmp ? employeeLookup.get(entityId) ?? null : null
+      const co = !isEmp ? companyLookup.get(entityId) ?? null : null
+
+      return {
+        snoozed_until: row.snoozed_until,
+        is_deferred: row.is_deferred,
+        notification_type:
+          prefix === 'commercial'
+            ? 'commercial_registration_expiry'
+            : prefix === 'power'
+              ? 'power_subscription_expiry'
+              : prefix === 'moqeem'
+                ? 'moqeem_subscription_expiry'
+                : prefix,
+        entity_type: isEmp ? 'employee' : 'company',
+        entity_id: entityId,
+        entity_name: isEmp ? (emp?.name ?? '') : (co?.name ?? ''),
+        entity_identifier: isEmp ? String(emp?.residence_number ?? '') : String(co?.unified_number ?? ''),
+        expiry_date: expiryDate,
+        days_remaining: expiryDate ? daysUntil(expiryDate) : null,
+      }
+    })
 
     const deferredCsvRows = buildDeferredSheet(deferredRows)
 

@@ -15,7 +15,7 @@ import { supabase, type Notification } from '@/lib/supabase'
 import { toast } from 'sonner'
 import { useAuth } from '@/contexts/AuthContext'
 import { usePermissions } from '@/utils/permissions'
-import { SnoozeModal } from '@/components/notifications/SnoozeModal'
+import { DeferredNotificationModal } from '@/components/settings/DeferredNotificationModal'
 import ActivityLogsPage from '@/pages/ActivityLogs'
 import SessionsManager from '@/components/settings/SessionsManager'
 import { BackupTab } from '@/components/settings/tabs/BackupTab'
@@ -622,7 +622,7 @@ export default function GeneralSettings() {
         </ConfirmationDialog>
 
         {snoozeTarget && (
-          <SnoozeModal
+          <DeferredNotificationModal
             notification={snoozeTarget}
             open={!!snoozeTarget}
             onClose={() => setSnoozeTarget(null)}

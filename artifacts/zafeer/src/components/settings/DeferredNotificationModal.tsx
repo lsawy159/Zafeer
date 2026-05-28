@@ -1,18 +1,12 @@
 import { useState } from 'react'
+import { toast } from 'sonner'
+import { BellOff, Clock } from 'lucide-react'
 import { supabase, type Notification } from '@/lib/supabase'
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogFooter,
-} from '@/components/ui/Dialog'
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/Dialog'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
-import { toast } from 'sonner'
-import { Clock, BellOff } from 'lucide-react'
 
-interface SnoozeModalProps {
+interface DeferredNotificationModalProps {
   notification: Notification
   open: boolean
   onClose: () => void
@@ -21,7 +15,12 @@ interface SnoozeModalProps {
 
 type SnoozeMode = 'date' | 'defer'
 
-export function SnoozeModal({ notification, open, onClose, onSuccess }: SnoozeModalProps) {
+export function DeferredNotificationModal({
+  notification,
+  open,
+  onClose,
+  onSuccess,
+}: DeferredNotificationModalProps) {
   const [mode, setMode] = useState<SnoozeMode>('date')
   const [snoozeDate, setSnoozeDate] = useState('')
   const [saving, setSaving] = useState(false)
@@ -41,7 +40,7 @@ export function SnoozeModal({ notification, open, onClose, onSuccess }: SnoozeMo
       const updates =
         mode === 'defer'
           ? { is_deferred: true, snoozed_until: null }
-          : { snoozed_until: new Date(snoozeDate).toISOString(), is_deferred: false }
+          : { snoozed_until: new Date(`${snoozeDate}T23:59:59.999`).toISOString(), is_deferred: false }
 
       const { error } = await supabase
         .from('notifications')
@@ -52,24 +51,24 @@ export function SnoozeModal({ notification, open, onClose, onSuccess }: SnoozeMo
 
       toast.success(
         mode === 'defer'
-          ? 'تم تعطيل الإشعار حتى يُفعَّل يدوياً'
+          ? 'تم تعطيل الإشعار حتى يفعَّل يدوياً'
           : `تم التأجيل حتى ${snoozeDate}`
       )
       onSuccess()
       onClose()
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'فشل التأجيل')
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'فشل التأجيل')
     } finally {
       setSaving(false)
     }
   }
 
   return (
-    <Dialog open={open} onOpenChange={(open) => !open && onClose()}>
+    <Dialog open={open} onOpenChange={(nextOpen) => !nextOpen && onClose()}>
       <DialogContent className="max-w-md" dir="rtl">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 text-right">
-            <Clock className="w-5 h-5 text-primary" />
+            <Clock className="h-5 w-5 text-primary" />
             تأجيل الإشعار
           </DialogTitle>
         </DialogHeader>
@@ -94,7 +93,7 @@ export function SnoozeModal({ notification, open, onClose, onSuccess }: SnoozeMo
                     type="date"
                     value={snoozeDate}
                     min={minDateStr}
-                    onChange={(e) => setSnoozeDate(e.target.value)}
+                    onChange={(event) => setSnoozeDate(event.target.value)}
                     className="mt-2"
                   />
                 )}
@@ -112,11 +111,11 @@ export function SnoozeModal({ notification, open, onClose, onSuccess }: SnoozeMo
               />
               <div>
                 <p className="flex items-center gap-1.5 font-medium text-foreground">
-                  <BellOff className="w-4 h-4" />
-                  تعطيل حتى يُفعَّل يدوياً
+                  <BellOff className="h-4 w-4" />
+                  تعطيل حتى يفعَّل يدوياً
                 </p>
                 <p className="mt-0.5 text-xs text-foreground-tertiary">
-                  لن يظهر في القائمة النشطة ولن يُرسَل في الإيميل حتى تُعيد تفعيله
+                  لن يظهر في القائمة النشطة ولن يرسل في الإشعار حتى إعادة التفعيل
                 </p>
               </div>
             </label>
@@ -125,7 +124,7 @@ export function SnoozeModal({ notification, open, onClose, onSuccess }: SnoozeMo
 
         <DialogFooter className="flex-row-reverse gap-2">
           <Button onClick={handleSave} disabled={saving} size="sm">
-            {saving ? 'جاري...' : 'تأكيد التأجيل'}
+            {saving ? 'جارٍ...' : 'تأكيد التأجيل'}
           </Button>
           <Button variant="secondary" onClick={onClose} size="sm">
             إلغاء

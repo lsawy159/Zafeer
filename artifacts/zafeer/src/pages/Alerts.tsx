@@ -3,6 +3,7 @@ import { supabase, Employee, Company } from '@/lib/supabase'
 import { type ReactNode } from 'react'
 import { AlertCard, Alert } from '@/components/alerts/AlertCard'
 import { EmployeeAlertCard, EmployeeAlert } from '@/components/alerts/EmployeeAlertCard'
+import { AlertSnoozeModal } from '@/components/alerts/AlertSnoozeModal'
 import { generateCompanyAlertsSync, getAlertsStats, filterAlertsByPriority } from '@/utils/alerts'
 import {
   generateEmployeeAlerts,
@@ -34,6 +35,8 @@ import CompanyCard from '@/components/companies/CompanyCard'
 import CompanyModal from '@/components/companies/CompanyModal'
 import EmployeeCard from '@/components/employees/EmployeeCard'
 import { usePermissions } from '@/utils/permissions'
+import { useAlertsStats } from '@/hooks/useAlertsStats'
+import { useSnoozedAlerts } from '@/hooks/useSnoozedAlerts'
 import { PageHeader } from '@/components/ui/PageHeader'
 import { FilterBar } from '@/components/ui/FilterBar'
 import { SearchInput } from '@/components/ui/SearchInput'
@@ -63,7 +66,7 @@ import {
 } from '@/components/ui/Select'
 
 interface AlertsProps {
-  initialTab?: 'companies' | 'employees' | 'all'
+  initialTab?: 'companies' | 'employees' | 'all' | 'deferred'
   initialFilter?: 'all' | 'urgent' | 'high' | 'medium' | 'low'
 }
 
@@ -77,6 +80,7 @@ type AlertsCardFilter =
   | 'متوسط'
   | 'companies'
   | 'employees'
+  | 'مؤجلة'
   | null
 
 const PRIORITY_OPTIONS: Array<{ value: AlertPriority; label: string }> = [
@@ -183,6 +187,13 @@ function compareAlerts<T extends { priority: AlertPriority; days_remaining?: num
 
 export default function Alerts({ initialTab = 'all', initialFilter = 'all' }: AlertsProps) {
   const { canView } = usePermissions()
+  const { refreshStats } = useAlertsStats()
+  const {
+    snoozedAlertIds,
+    snoozedAlertsById,
+    unsnoozeAlert,
+    refreshSnoozedAlerts,
+  } = useSnoozedAlerts()
   // Reserved for future use: employees state
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [employees, setEmployees] = useState<Employee[]>([])
@@ -191,7 +202,9 @@ export default function Alerts({ initialTab = 'all', initialFilter = 'all' }: Al
   const [companyAlerts, setCompanyAlerts] = useState<Alert[]>([])
   const [employeeAlerts, setEmployeeAlerts] = useState<EmployeeAlert[]>([])
   const [readAlerts, setReadAlerts] = useState<Set<string>>(new Set())
-  const [activeTab, setActiveTab] = useState<'companies' | 'employees' | 'all'>(initialTab)
+  const [activeTab, setActiveTab] = useState<'companies' | 'employees' | 'all' | 'deferred'>(
+    initialTab
+  )
 
   // [NEW] تبويب لـ "جديد" و "مقروء"
   const [readFilterTab, setReadFilterTab] = useState<'new' | 'read'>('new')
@@ -213,6 +226,7 @@ export default function Alerts({ initialTab = 'all', initialFilter = 'all' }: Al
   const [selectedEmployee, setSelectedEmployee] = useState<
     (Employee & { company: Company }) | null
   >(null)
+  const [snoozeTarget, setSnoozeTarget] = useState<Alert | EmployeeAlert | null>(null)
   const [expiredInclusion, setExpiredInclusion] = useState<ExpiredInclusionSettings>(
     DEFAULT_EXPIRED_INCLUSION
   )
@@ -573,24 +587,44 @@ export default function Alerts({ initialTab = 'all', initialFilter = 'all' }: Al
     }
   }
 
+  const handleOpenSnooze = (alertId: string) => {
+    const companyAlert = companyAlerts.find((alert) => alert.id === alertId)
+    if (companyAlert) {
+      setSnoozeTarget(companyAlert)
+      return
+    }
+
+    const employeeAlert = employeeAlerts.find((alert) => alert.id === alertId)
+    if (employeeAlert) {
+      setSnoozeTarget(employeeAlert)
+    }
+  }
+
+  const handleUnsnooze = async (alertId: string) => {
+    try {
+      await unsnoozeAlert(alertId)
+      refreshStats()
+    } catch (error) {
+      console.error('خطأ في إلغاء التأجيل:', error)
+    }
+  }
+
   // إحصائيات التنبيهات (فقط غير المقروءة و urgent/high) - هذه خاصة بالصفحة الداخلية
   const includeExpiredAlerts = expiredInclusion.include_in_alerts
-  const visibleCompanyAlerts = includeExpiredAlerts
-    ? companyAlerts
-    : companyAlerts.filter(
-        (alert) =>
-          alert.days_remaining === undefined ||
-          alert.days_remaining === null ||
-          alert.days_remaining >= 0
-      )
-  const visibleEmployeeAlerts = includeExpiredAlerts
-    ? employeeAlerts
-    : employeeAlerts.filter(
-        (alert) =>
-          alert.days_remaining === undefined ||
-          alert.days_remaining === null ||
-          alert.days_remaining >= 0
-      )
+  const visibleCompanyAlerts = (includeExpiredAlerts ? companyAlerts : companyAlerts.filter(
+    (alert) =>
+      alert.days_remaining === undefined ||
+      alert.days_remaining === null ||
+      alert.days_remaining >= 0
+  )).filter((alert) => !snoozedAlertIds.has(alert.id))
+  const visibleEmployeeAlerts = (includeExpiredAlerts ? employeeAlerts : employeeAlerts.filter(
+    (alert) =>
+      alert.days_remaining === undefined ||
+      alert.days_remaining === null ||
+      alert.days_remaining >= 0
+  )).filter((alert) => !snoozedAlertIds.has(alert.id))
+  const deferredCompanyAlerts = companyAlerts.filter((alert) => snoozedAlertIds.has(alert.id))
+  const deferredEmployeeAlerts = employeeAlerts.filter((alert) => snoozedAlertIds.has(alert.id))
 
   const unreadCompanyAlerts = visibleCompanyAlerts.filter(
     (alert) =>
@@ -621,6 +655,7 @@ export default function Alerts({ initialTab = 'all', initialFilter = 'all' }: Al
   const companyAlertsStats = getAlertsStats(statsCompanyAlerts)
   const employeeAlertsStats = getEmployeeAlertsStats(statsEmployeeAlerts)
   const totalAlerts = companyAlertsStats.total + employeeAlertsStats.total
+  const totalDeferredAlerts = deferredCompanyAlerts.length + deferredEmployeeAlerts.length
   const totalExpiredAlerts = [...visibleCompanyAlerts, ...visibleEmployeeAlerts].filter(
     (alert) => (alert.days_remaining ?? 0) < 0
   ).length
@@ -768,22 +803,127 @@ export default function Alerts({ initialTab = 'all', initialFilter = 'all' }: Al
     alertSortDir,
   ])
 
+  const filteredDeferredCompanyAlerts = useMemo(() => {
+    let filtered = deferredCompanyAlerts.filter((alert) => {
+      if (cardFilter === 'employees') return false
+      if (cardFilter === 'منتهي') return (alert.days_remaining ?? 0) < 0
+      if (cardFilter === 'طارئ') {
+        return alert.priority === 'urgent' && (alert.days_remaining ?? 0) >= 0
+      }
+      if (cardFilter === 'عاجل') return alert.priority === 'high'
+      if (cardFilter === 'متوسط') return alert.priority === 'medium'
+      return alert.priority === 'urgent' || alert.priority === 'high'
+    })
+
+    if (alertStatusFilter !== 'all') {
+      filtered = filtered.filter((alert) =>
+        alertStatusFilter === 'expired'
+          ? (alert.days_remaining ?? 0) <= 0
+          : (alert.days_remaining ?? 0) > 0
+      )
+    }
+
+    if (activeFilter.length > 0) {
+      filtered = filterAlertsByPriority(filtered, activeFilter)
+    }
+
+    if (normalizedSearchTerm) {
+      filtered = filtered.filter(
+        (alert) =>
+          normalizeArabic(alert.company.name).toLowerCase().includes(normalizedSearchTerm) ||
+          normalizeArabic(alert.title).toLowerCase().includes(normalizedSearchTerm)
+      )
+    }
+
+    return [...filtered].sort((left, right) =>
+      compareAlerts(left, right, alertSortField, alertSortDir, (alert) => alert.company.name)
+    )
+  }, [
+    deferredCompanyAlerts,
+    alertStatusFilter,
+    cardFilter,
+    activeFilter,
+    normalizedSearchTerm,
+    alertSortField,
+    alertSortDir,
+  ])
+
+  const filteredDeferredEmployeeAlerts = useMemo(() => {
+    let filtered = deferredEmployeeAlerts.filter((alert) => {
+      if (cardFilter === 'companies') return false
+      if (cardFilter === 'منتهي') return (alert.days_remaining ?? 0) < 0
+      if (cardFilter === 'طارئ') {
+        return alert.priority === 'urgent' && (alert.days_remaining ?? 0) >= 0
+      }
+      if (cardFilter === 'عاجل') return alert.priority === 'high'
+      if (cardFilter === 'متوسط') return alert.priority === 'medium'
+      return alert.priority === 'urgent' || alert.priority === 'high'
+    })
+
+    if (alertStatusFilter !== 'all') {
+      filtered = filtered.filter((alert) =>
+        alertStatusFilter === 'expired'
+          ? (alert.days_remaining ?? 0) <= 0
+          : (alert.days_remaining ?? 0) > 0
+      )
+    }
+
+    if (activeFilter.length > 0) {
+      filtered = filterEmployeeAlertsByPriority(filtered, activeFilter)
+    }
+
+    if (normalizedSearchTerm) {
+      filtered = filtered.filter(
+        (alert) =>
+          normalizeArabic(alert.employee.name).toLowerCase().includes(normalizedSearchTerm) ||
+          normalizeArabic(alert.company.name).toLowerCase().includes(normalizedSearchTerm) ||
+          normalizeArabic(alert.title).toLowerCase().includes(normalizedSearchTerm)
+      )
+    }
+
+    return [...filtered].sort((left, right) =>
+      compareAlerts(left, right, alertSortField, alertSortDir, (alert) => alert.employee.name)
+    )
+  }, [
+    deferredEmployeeAlerts,
+    alertStatusFilter,
+    cardFilter,
+    activeFilter,
+    normalizedSearchTerm,
+    alertSortField,
+    alertSortDir,
+  ])
+
   const alertTableRows: AlertTableRow[] = useMemo(() => {
     const companyRows =
       activeTab === 'all' || activeTab === 'companies'
         ? filteredCompanyAlerts.map((alert) => ({ kind: 'company' as const, alert }))
+        : activeTab === 'deferred'
+          ? filteredDeferredCompanyAlerts.map((alert) => ({ kind: 'company' as const, alert }))
         : []
     const employeeRows =
       activeTab === 'all' || activeTab === 'employees'
         ? filteredEmployeeAlerts.map((alert) => ({ kind: 'employee' as const, alert }))
+        : activeTab === 'deferred'
+          ? filteredDeferredEmployeeAlerts.map((alert) => ({ kind: 'employee' as const, alert }))
         : []
 
     return [...companyRows, ...employeeRows]
-  }, [activeTab, filteredCompanyAlerts, filteredEmployeeAlerts])
+  }, [
+    activeTab,
+    filteredCompanyAlerts,
+    filteredEmployeeAlerts,
+    filteredDeferredCompanyAlerts,
+    filteredDeferredEmployeeAlerts,
+  ])
 
-  const readCompanyAlertsCount = companyAlerts.filter((alert) => readAlerts.has(alert.id)).length
-  const readEmployeeAlertsCount = employeeAlerts.filter((alert) => readAlerts.has(alert.id)).length
+  const readCompanyAlertsCount = visibleCompanyAlerts.filter((alert) => readAlerts.has(alert.id)).length
+  const readEmployeeAlertsCount = visibleEmployeeAlerts.filter((alert) => readAlerts.has(alert.id)).length
   const totalReadAlerts = readCompanyAlertsCount + readEmployeeAlertsCount
+  const companyCardsToRender =
+    activeTab === 'deferred' ? filteredDeferredCompanyAlerts : filteredCompanyAlerts
+  const employeeCardsToRender =
+    activeTab === 'deferred' ? filteredDeferredEmployeeAlerts : filteredEmployeeAlerts
   const alertSummaryCards = [
     {
       key: null as AlertsCardFilter,
@@ -841,6 +981,14 @@ export default function Alerts({ initialTab = 'all', initialFilter = 'all' }: Al
       accentClass: '',
       valueClass: 'text-foreground',
     },
+    {
+      key: 'مؤجلة' as AlertsCardFilter,
+      title: 'مؤجلة',
+      value: totalDeferredAlerts,
+      label: '',
+      accentClass: 'border-amber-500/20 bg-amber-500/5',
+      valueClass: 'text-amber-600 dark:text-amber-300',
+    },
   ]
 
   if (loading) {
@@ -864,7 +1012,7 @@ export default function Alerts({ initialTab = 'all', initialFilter = 'all' }: Al
         />
 
         {/* إحصائيات سريعة (تبقى كما هي، تعرض غير المقروء فقط لهذه الصفحة) */}
-        <div className="grid grid-cols-2 gap-3 md:grid-cols-4 xl:grid-cols-7 mb-8">
+        <div className="grid grid-cols-2 gap-2 md:grid-cols-4 xl:grid-cols-8 mb-8">
           {alertSummaryCards.map((card) => {
             const isActive = card.key === null ? cardFilter === null : cardFilter === card.key
             const handleClick = () => {
@@ -879,6 +1027,8 @@ export default function Alerts({ initialTab = 'all', initialFilter = 'all' }: Al
 
               if (card.key === 'companies' || card.key === 'employees') {
                 setActiveTab(nextFilter === null ? 'all' : card.key)
+              } else if (card.key === 'مؤجلة') {
+                setActiveTab(nextFilter === null ? 'all' : 'deferred')
               }
             }
 
@@ -886,17 +1036,17 @@ export default function Alerts({ initialTab = 'all', initialFilter = 'all' }: Al
               <div
                 key={String(card.key ?? 'all')}
                 onClick={handleClick}
-                className={`app-panel cursor-pointer px-3 py-2.5 text-center transition-shadow ${card.accentClass} ${
+                className={`app-panel cursor-pointer px-2 py-2 text-center transition-shadow ${card.accentClass} ${
                   isActive ? 'ring-2 ring-offset-1 ring-primary shadow-md' : 'hover:shadow-sm'
                 }`}
               >
-                <div className="text-[11px] font-medium leading-4 text-foreground-secondary md:text-xs">
+                <div className="text-[10px] font-medium leading-4 text-foreground-secondary md:text-[11px]">
                   {card.title}
                 </div>
-                <div className={`text-lg font-bold leading-none md:text-xl ${card.valueClass}`}>
+                <div className={`text-base font-bold leading-none md:text-lg ${card.valueClass}`}>
                   {card.value.toLocaleString('en-US')}
                 </div>
-                <div className="text-[11px] leading-4 text-foreground-secondary md:text-xs">
+                <div className="text-[10px] leading-4 text-foreground-secondary md:text-[11px]">
                   {card.label}
                 </div>
               </div>
@@ -912,6 +1062,7 @@ export default function Alerts({ initialTab = 'all', initialFilter = 'all' }: Al
               <button type="button" onClick={() => setActiveTab('all')} className={`v3-chip ${activeTab === 'all' ? 'v3-on' : ''}`}>الكل ({totalAlerts})</button>
               <button type="button" onClick={() => setActiveTab('companies')} className={`v3-chip ${activeTab === 'companies' ? 'v3-on' : ''}`}>مؤسسات ({companyAlertsStats.total})</button>
               <button type="button" onClick={() => setActiveTab('employees')} className={`v3-chip ${activeTab === 'employees' ? 'v3-on' : ''}`}>موظفين ({employeeAlertsStats.total})</button>
+              <button type="button" onClick={() => setActiveTab('deferred')} className={`v3-chip ${activeTab === 'deferred' ? 'v3-on' : ''}`}>مؤجلة ({totalDeferredAlerts})</button>
             </div>
 
             {/* Read/New chips */}
@@ -1075,6 +1226,7 @@ export default function Alerts({ initialTab = 'all', initialFilter = 'all' }: Al
                       row.kind === 'company' ? row.alert.company.name : row.alert.employee.name
                     const entityType = row.kind === 'company' ? 'مؤسسة' : 'موظف'
                     const isRead = readAlerts.has(row.alert.id)
+                    const snoozedRecord = snoozedAlertsById.get(row.alert.id)
                     const daysRemaining = row.alert.days_remaining
                     const expiryDate = row.alert.expiry_date
 
@@ -1120,7 +1272,16 @@ export default function Alerts({ initialTab = 'all', initialFilter = 'all' }: Al
                           )}
                         </td>
                         <td className="px-3 py-3">
-                          {isRead ? (
+                          {activeTab === 'deferred' ? (
+                            <span className="inline-flex items-center gap-1 text-xs font-medium text-amber-700">
+                              <span className="h-1.5 w-1.5 rounded-full bg-amber-500" />
+                              {snoozedRecord?.is_deferred
+                                ? 'مؤجل حتى تفعيل يدوي'
+                                : snoozedRecord?.snoozed_until
+                                  ? `مؤجل حتى ${new Date(snoozedRecord.snoozed_until).toLocaleDateString('ar-SA')}`
+                                  : 'مؤجل'}
+                            </span>
+                          ) : isRead ? (
                             <span className="text-xs text-neutral-400">مقروء</span>
                           ) : (
                             <span className="inline-flex items-center gap-1 text-xs font-medium text-primary">
@@ -1130,7 +1291,15 @@ export default function Alerts({ initialTab = 'all', initialFilter = 'all' }: Al
                           )}
                         </td>
                         <td className="px-3 py-3" onClick={(event) => event.stopPropagation()}>
-                          {isRead ? (
+                          {activeTab === 'deferred' ? (
+                            <button
+                              type="button"
+                              onClick={() => void handleUnsnooze(row.alert.id)}
+                              className="text-xs text-amber-700 underline-offset-2 hover:text-amber-800 hover:underline"
+                            >
+                              إلغاء التأجيل
+                            </button>
+                          ) : isRead ? (
                             <button
                               type="button"
                               onClick={() => handleMarkAsUnread(row.alert.id)}
@@ -1139,13 +1308,22 @@ export default function Alerts({ initialTab = 'all', initialFilter = 'all' }: Al
                               إلغاء القراءة
                             </button>
                           ) : (
-                            <button
-                              type="button"
-                              onClick={() => handleMarkAsRead(row.alert.id)}
-                              className="text-xs text-primary underline-offset-2 hover:underline"
-                            >
-                              تحديد كمقروء
-                            </button>
+                            <div className="flex items-center gap-3">
+                              <button
+                                type="button"
+                                onClick={() => handleMarkAsRead(row.alert.id)}
+                                className="text-xs text-primary underline-offset-2 hover:underline"
+                              >
+                                تحديد كمقروء
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handleOpenSnooze(row.alert.id)}
+                                className="text-xs text-amber-700 underline-offset-2 hover:text-amber-800 hover:underline"
+                              >
+                                تأجيل
+                              </button>
+                            </div>
                           )}
                         </td>
                       </tr>
@@ -1158,25 +1336,31 @@ export default function Alerts({ initialTab = 'all', initialFilter = 'all' }: Al
         ) : (
           <div className="space-y-8">
             {/* تنبيهات المؤسسات */}
-            {(activeTab === 'all' || activeTab === 'companies') &&
-              filteredCompanyAlerts.length > 0 && (
+            {(activeTab === 'all' || activeTab === 'companies' || activeTab === 'deferred') &&
+              companyCardsToRender.length > 0 && (
                 <div>
                   <div className="mb-6 flex items-center gap-3">
                     <Building2 className="h-6 w-6 text-primary" />
-                    <h2 className="text-xl font-bold text-neutral-900">تنبيهات المؤسسات</h2>
+                    <h2 className="text-xl font-bold text-neutral-900">
+                      {activeTab === 'deferred' ? 'التنبيهات المؤجلة للمؤسسات' : 'تنبيهات المؤسسات'}
+                    </h2>
                     <span className="rounded-full bg-primary/15 px-2 py-1 text-sm font-medium text-foreground">
-                      {filteredCompanyAlerts.length}
+                      {companyCardsToRender.length}
                     </span>
                   </div>
                   <div className={ALERT_GRID_CLASS}>
-                    {filteredCompanyAlerts.map((alert) => (
+                    {companyCardsToRender.map((alert) => (
                       <AlertCard
                         key={alert.id}
                         alert={alert}
                         onShowCompanyCard={handleShowCompanyCard}
                         onMarkAsRead={handleMarkAsRead}
                         onMarkAsUnread={handleMarkAsUnread}
+                        onSnooze={activeTab !== 'deferred' ? handleOpenSnooze : undefined}
+                        onUnsnooze={activeTab === 'deferred' ? handleUnsnooze : undefined}
                         isRead={readAlerts.has(alert.id)}
+                        isSnoozed={snoozedAlertIds.has(alert.id)}
+                        snoozedUntil={snoozedAlertsById.get(alert.id)?.snoozed_until ?? null}
                       />
                     ))}
                   </div>
@@ -1184,25 +1368,31 @@ export default function Alerts({ initialTab = 'all', initialFilter = 'all' }: Al
               )}
 
             {/* تنبيهات الموظفين */}
-            {(activeTab === 'all' || activeTab === 'employees') &&
-              filteredEmployeeAlerts.length > 0 && (
+            {(activeTab === 'all' || activeTab === 'employees' || activeTab === 'deferred') &&
+              employeeCardsToRender.length > 0 && (
                 <div>
                   <div className="mb-6 flex items-center gap-3">
                     <Users className="h-6 w-6 text-foreground-secondary" />
-                    <h2 className="text-xl font-bold text-neutral-900">تنبيهات الموظفين</h2>
+                    <h2 className="text-xl font-bold text-neutral-900">
+                      {activeTab === 'deferred' ? 'التنبيهات المؤجلة للموظفين' : 'تنبيهات الموظفين'}
+                    </h2>
                     <span className="rounded-full bg-surface-secondary px-2 py-1 text-sm font-medium text-foreground-secondary">
-                      {filteredEmployeeAlerts.length}
+                      {employeeCardsToRender.length}
                     </span>
                   </div>
                   <div className={ALERT_GRID_CLASS}>
-                    {filteredEmployeeAlerts.map((alert) => (
+                    {employeeCardsToRender.map((alert) => (
                       <EmployeeAlertCard
                         key={alert.id}
                         alert={alert}
                         onViewEmployee={handleViewEmployee}
                         onMarkAsRead={handleMarkAsRead}
                         onMarkAsUnread={handleMarkAsUnread}
+                        onSnooze={activeTab !== 'deferred' ? handleOpenSnooze : undefined}
+                        onUnsnooze={activeTab === 'deferred' ? handleUnsnooze : undefined}
                         isRead={readAlerts.has(alert.id)}
+                        isSnoozed={snoozedAlertIds.has(alert.id)}
+                        snoozedUntil={snoozedAlertsById.get(alert.id)?.snoozed_until ?? null}
                       />
                     ))}
                   </div>
@@ -1210,20 +1400,24 @@ export default function Alerts({ initialTab = 'all', initialFilter = 'all' }: Al
               )}
 
             {/* لا توجد نتائج */}
-            {filteredCompanyAlerts.length === 0 && filteredEmployeeAlerts.length === 0 && (
+            {companyCardsToRender.length === 0 && employeeCardsToRender.length === 0 && (
               <div className="rounded-xl border border-neutral-200 bg-surface p-12 text-center shadow-sm">
                 <Bell className="mx-auto mb-4 h-16 w-16 text-neutral-300" />
                 <h3 className="mb-2 text-lg font-medium text-neutral-900">
                   {searchTerm
                     ? 'لا توجد نتائج'
-                    : readFilterTab === 'new'
+                    : activeTab === 'deferred'
+                      ? 'لا توجد تنبيهات مؤجلة'
+                      : readFilterTab === 'new'
                       ? 'لا توجد تنبيهات جديدة'
                       : 'لا توجد تنبيهات مقروءة'}
                 </h3>
                 <p className="text-neutral-600">
                   {searchTerm
                     ? `لم يتم العثور على تنبيهات تحتوي على "${searchTerm}"`
-                    : readFilterTab === 'new'
+                    : activeTab === 'deferred'
+                      ? 'لا توجد تنبيهات في تبويب المؤجلة حالياً'
+                      : readFilterTab === 'new'
                       ? 'جميع مؤسساتك وموظفيك محدثون ولا يحتاجون إلى إجراءات فورية'
                       : 'لم تقم بالاطلاع على أي تنبيهات بعد'}
                 </p>
@@ -1288,6 +1482,20 @@ export default function Alerts({ initialTab = 'all', initialFilter = 'all' }: Al
           company={selectedCompany}
           onClose={handleCloseEditModal}
           onSuccess={handleEditModalSuccess}
+        />
+      )}
+
+      {snoozeTarget && (
+        <AlertSnoozeModal
+          alertId={snoozeTarget.id}
+          alertTitle={snoozeTarget.title}
+          open={Boolean(snoozeTarget)}
+          onClose={() => setSnoozeTarget(null)}
+          onSuccess={() => {
+            refreshStats()
+            refreshSnoozedAlerts()
+            setSnoozeTarget(null)
+          }}
         />
       )}
     </Layout>

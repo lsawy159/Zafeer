@@ -41,6 +41,18 @@ function isUrgentOrHigh(
   return diff < 0 || diff <= urgentDays || diff <= highDays
 }
 
+function companyAlertId(prefix: 'commercial' | 'power' | 'moqeem', companyId: string, expiry: string | null | undefined) {
+  return `${prefix}_${companyId}_${expiry ?? ''}`
+}
+
+function employeeAlertId(
+  prefix: 'contract' | 'residence' | 'health_insurance' | 'hired_worker_contract',
+  employeeId: string,
+  expiry: string | null | undefined
+) {
+  return `${prefix}_${employeeId}_${expiry ?? ''}`
+}
+
 async function fetchAlertsStatsQuery(): Promise<AlertsStats> {
   const empty: AlertsStats = {
     total: 0,
@@ -59,6 +71,23 @@ async function fetchAlertsStatsQuery(): Promise<AlertsStats> {
       data: { user },
     } = await supabase.auth.getUser()
     if (!user) return empty
+
+    const { data: snoozedRows, error: snoozedError } = await supabase
+      .from('snoozed_alerts')
+      .select('alert_id,snoozed_until,is_deferred')
+      .eq('user_id', user.id)
+
+    if (snoozedError) throw snoozedError
+
+    const now = new Date()
+    const snoozedIds = new Set(
+      (snoozedRows ?? [])
+        .filter(
+          (row) =>
+            row.is_deferred === true || (!!row.snoozed_until && new Date(row.snoozed_until) > now)
+        )
+        .map((row) => row.alert_id)
+    )
 
     const [companiesResult, employeesResult, companyThresholds, employeeThresholds, expiredSettings] =
       await Promise.all([
@@ -112,9 +141,14 @@ async function fetchAlertsStatsQuery(): Promise<AlertsStats> {
         includeExpired
       )
 
-      if (crAlert) commercialRegAlerts++
-      // count the company once even if multiple docs are urgent
-      if (crAlert || pwAlert || mqAlert) companyUrgent++
+      const crId = companyAlertId('commercial', company.id, company.commercial_registration_expiry)
+      const pwId = companyAlertId('power', company.id, company.ending_subscription_power_date)
+      const mqId = companyAlertId('moqeem', company.id, company.ending_subscription_moqeem_date)
+
+      if (crAlert && !snoozedIds.has(crId)) commercialRegAlerts++
+      if ((crAlert && !snoozedIds.has(crId)) || (pwAlert && !snoozedIds.has(pwId)) || (mqAlert && !snoozedIds.has(mqId))) {
+        companyUrgent++
+      }
     })
 
     let employeeUrgent = 0
@@ -156,10 +190,21 @@ async function fetchAlertsStatsQuery(): Promise<AlertsStats> {
         includeExpired
       )
 
-      if (ctAlert) contractAlerts++
-      if (rsAlert) residenceAlerts++
-      // count the employee once even if multiple docs are urgent
-      if (ctAlert || rsAlert || hiAlert || hwAlert) employeeUrgent++
+      const ctId = employeeAlertId('contract', emp.id, emp.contract_expiry)
+      const rsId = employeeAlertId('residence', emp.id, emp.residence_expiry)
+      const hiId = employeeAlertId('health_insurance', emp.id, emp.health_insurance_expiry)
+      const hwId = employeeAlertId('hired_worker_contract', emp.id, emp.hired_worker_contract_expiry)
+
+      if (ctAlert && !snoozedIds.has(ctId)) contractAlerts++
+      if (rsAlert && !snoozedIds.has(rsId)) residenceAlerts++
+      if (
+        (ctAlert && !snoozedIds.has(ctId)) ||
+        (rsAlert && !snoozedIds.has(rsId)) ||
+        (hiAlert && !snoozedIds.has(hiId)) ||
+        (hwAlert && !snoozedIds.has(hwId))
+      ) {
+        employeeUrgent++
+      }
     })
 
     const total = companyUrgent + employeeUrgent

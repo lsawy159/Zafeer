@@ -1,5 +1,5 @@
 import {
-  pgTable, uuid, text, integer, boolean, date, timestamp, bigint, jsonb,
+  pgTable, uuid, text, integer, boolean, date, timestamp, bigint, jsonb, unique,
 } from 'drizzle-orm/pg-core'
 import { createInsertSchema } from 'drizzle-zod'
 import { z } from 'zod/v4'
@@ -41,6 +41,21 @@ export const readAlertsTable = pgTable('read_alerts', {
 })
 
 export type ReadAlert = typeof readAlertsTable.$inferSelect
+
+// ─── snoozed_alerts ────────────────────────────────────────────────────────────
+
+export const snoozedAlertsTable = pgTable('snoozed_alerts', {
+  id: bigint('id', { mode: 'number' }).primaryKey().generatedByDefaultAsIdentity(),
+  user_id: uuid('user_id').notNull(),
+  alert_id: text('alert_id').notNull(),
+  snoozed_until: timestamp('snoozed_until', { withTimezone: true }),
+  is_deferred: boolean('is_deferred').notNull().default(false),
+  created_at: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+}, (t) => ({
+  snoozedAlertsUserAlertUnique: unique().on(t.user_id, t.alert_id),
+}))
+
+export type SnoozedAlert = typeof snoozedAlertsTable.$inferSelect
 
 // ─── daily_alert_logs ─────────────────────────────────────────────────────────
 

@@ -39,6 +39,7 @@ import {
   type EmployeeNotificationThresholds,
 } from '@/utils/employeeAlerts'
 import { useIsMobileView } from '@/hooks/useIsMobileView'
+import { useSnoozedAlerts } from '@/hooks/useSnoozedAlerts'
 
 import { PageHeader } from '@/components/ui/PageHeader'
 import { FilterBar } from '@/components/ui/FilterBar'
@@ -186,6 +187,8 @@ export default function Employees() {
     null
   )
 
+  const { snoozedAlertIds } = useSnoozedAlerts()
+
   // Derived lists from employees (no setState — auto-updated when React Query refreshes)
   const companiesWithIds = useMemo(() => {
     const map = new Map<string, { name: string; unified_number?: number }>()
@@ -301,7 +304,7 @@ export default function Employees() {
      hasActiveFilters,
      clearFilters: clearFilterState,
      applyUrlFilter,
-   } = useEmployeeFilters({ employees, colorThresholds })
+   } = useEmployeeFilters({ employees, colorThresholds, snoozedAlertIds })
 
   // تحميل إعدادات الألوان مع الاستماع لتحديثات الإعدادات
   useEffect(() => {
@@ -798,7 +801,13 @@ export default function Employees() {
   const employeeSummaryCards = useMemo(() => {
     const thresholds = colorThresholds ?? COLOR_THRESHOLD_FALLBACK
 
-    const getSeverity = (
+    const empAlertId = (
+      prefix: 'contract' | 'hired_worker_contract' | 'residence' | 'health_insurance',
+      empId: string,
+      expiry: string | null | undefined
+    ) => `${prefix}_${empId}_${expiry ?? ''}`
+
+    const getSeverityRaw = (
       daysRemaining: number | null,
       urgentDays: number,
       highDays: number,
@@ -816,44 +825,78 @@ export default function Employees() {
     let urgentAlerts = 0
     let highAlerts = 0
     let mediumAlerts = 0
+    let snoozedEmployees = 0
 
     for (const employee of employees) {
-      const severities = [
-        getSeverity(
-          getDaysRemaining(employee.contract_expiry),
-          thresholds.contract_urgent_days,
-          thresholds.contract_high_days,
-          thresholds.contract_medium_days
-        ),
-        getSeverity(
-          getDaysRemaining(employee.hired_worker_contract_expiry),
-          thresholds.hired_worker_contract_urgent_days,
-          thresholds.hired_worker_contract_high_days,
-          thresholds.hired_worker_contract_medium_days
-        ),
-        getSeverity(
-          getDaysRemaining(employee.residence_expiry),
-          thresholds.residence_urgent_days,
-          thresholds.residence_high_days,
-          thresholds.residence_medium_days
-        ),
-        getSeverity(
-          getDaysRemaining(employee.health_insurance_expiry),
-          thresholds.health_insurance_urgent_days,
-          thresholds.health_insurance_high_days,
-          thresholds.health_insurance_medium_days
-        ),
+      const fields: Array<{
+        expiry: string | null | undefined
+        prefix: 'contract' | 'hired_worker_contract' | 'residence' | 'health_insurance'
+        urgentDays: number
+        highDays: number
+        mediumDays: number
+      }> = [
+        {
+          expiry: employee.contract_expiry,
+          prefix: 'contract',
+          urgentDays: thresholds.contract_urgent_days,
+          highDays: thresholds.contract_high_days,
+          mediumDays: thresholds.contract_medium_days,
+        },
+        {
+          expiry: employee.hired_worker_contract_expiry,
+          prefix: 'hired_worker_contract',
+          urgentDays: thresholds.hired_worker_contract_urgent_days,
+          highDays: thresholds.hired_worker_contract_high_days,
+          mediumDays: thresholds.hired_worker_contract_medium_days,
+        },
+        {
+          expiry: employee.residence_expiry,
+          prefix: 'residence',
+          urgentDays: thresholds.residence_urgent_days,
+          highDays: thresholds.residence_high_days,
+          mediumDays: thresholds.residence_medium_days,
+        },
+        {
+          expiry: employee.health_insurance_expiry,
+          prefix: 'health_insurance',
+          urgentDays: thresholds.health_insurance_urgent_days,
+          highDays: thresholds.health_insurance_high_days,
+          mediumDays: thresholds.health_insurance_medium_days,
+        },
       ]
 
-      const highestSeverity = Math.max(...severities)
-      if (highestSeverity === 0) continue
+      let hasSnoozed = false
+      const activeSeverities: number[] = []
+
+      for (const field of fields) {
+        const rawSeverity = getSeverityRaw(
+          getDaysRemaining(field.expiry),
+          field.urgentDays,
+          field.highDays,
+          field.mediumDays
+        )
+        if (rawSeverity === 0) continue
+
+        const alertId = empAlertId(field.prefix, employee.id, field.expiry)
+        if (snoozedAlertIds.has(alertId)) {
+          hasSnoozed = true
+          // snoozed — don't count in active severity
+        } else {
+          activeSeverities.push(rawSeverity)
+        }
+      }
+
+      if (hasSnoozed) snoozedEmployees += 1
+
+      const highestActive = activeSeverities.length > 0 ? Math.max(...activeSeverities) : 0
+      if (highestActive === 0) continue
 
       totalAlerts += 1
-      if (highestSeverity === 4) {
+      if (highestActive === 4) {
         expiredAlerts += 1
-      } else if (highestSeverity === 3) {
+      } else if (highestActive === 3) {
         urgentAlerts += 1
-      } else if (highestSeverity === 2) {
+      } else if (highestActive === 2) {
         highAlerts += 1
       } else {
         mediumAlerts += 1
@@ -940,8 +983,16 @@ export default function Employees() {
         accentClass: 'border-yellow-500/20 bg-yellow-500/5',
         valueClass: 'text-yellow-600 dark:text-yellow-300',
       },
+      {
+        key: 'snoozed',
+        title: 'مؤجلة',
+        value: snoozedEmployees,
+        label: '',
+        accentClass: 'border-amber-500/20 bg-amber-500/5',
+        valueClass: 'text-amber-600 dark:text-amber-300',
+      },
     ]
-  }, [employees, colorThresholds])
+  }, [employees, colorThresholds, snoozedAlertIds])
 
   const employeeTableThresholds = colorThresholds ?? COLOR_THRESHOLD_FALLBACK
 
@@ -1144,7 +1195,7 @@ export default function Employees() {
               تنبيهات الموظفين
             </h3>
           </div>
-          <div className="grid grid-cols-2 gap-3 md:grid-cols-6">
+          <div className="grid grid-cols-2 gap-3 md:grid-cols-7">
             {employeeSummaryCards.map((card) => (
               <div
                 key={card.key}

@@ -130,16 +130,6 @@ export const NAV_ITEMS: NavItem[] = [
   },
   // Admin Group
   {
-    id: 'notifications',
-    labelAr: 'الإشعارات',
-    labelEn: 'Notifications',
-    icon: Bell,
-    to: '/notifications',
-    requiredPermission: 'manage_settings',
-    group: 'admin',
-    order: 2,
-  },
-  {
     id: 'settings',
     labelAr: 'الإعدادات',
     labelEn: 'Settings',
@@ -148,6 +138,16 @@ export const NAV_ITEMS: NavItem[] = [
     requiredPermission: 'manage_settings',
     group: 'admin',
     order: 1,
+  },
+  {
+    id: 'alerts-admin',
+    labelAr: 'التنبيهات',
+    labelEn: 'Alerts',
+    icon: Bell,
+    to: '/alerts',
+    requiredPermission: 'manage_settings',
+    group: 'admin',
+    order: 2,
   },
   {
     id: 'general-settings',
