@@ -185,6 +185,31 @@ interface NotificationRow {
   is_deferred?: boolean | null
 }
 
+interface SnoozedAlertRow {
+  alert_id: string
+  snoozed_until: string | null
+  is_deferred: boolean
+}
+
+const ALERT_ID_PREFIXES: Record<string, string> = {
+  commercial_registration_expiry: 'commercial',
+  power_subscription_expiry: 'power',
+  moqeem_subscription_expiry: 'moqeem',
+  contract_expiry: 'contract',
+  residence_expiry: 'residence',
+  health_insurance_expiry: 'health_insurance',
+  hired_worker_contract_expiry: 'hired_worker_contract',
+}
+
+function getNotificationAlertId(notification: NotificationRow): string | null {
+  const prefix = ALERT_ID_PREFIXES[notification.type]
+  if (!prefix || !notification.entity_id || !notification.target_date) {
+    return null
+  }
+
+  return `${prefix}_${notification.entity_id}_${notification.target_date}`
+}
+
 type DigestSeverityCounts = {
   total_entities: number
   employees_count: number
@@ -683,12 +708,24 @@ Deno.serve(async (req: Request) => {
     return jsonResponse({ success: false, error: 'Fetch notifications failed: ' + fetchError.message }, 500)
   }
 
-  // 5. Filter snoozed/deferred (forward-compat: columns may not exist yet)
   const now = new Date()
+  const { data: snoozedRows, error: snoozedError } = await admin
+    .from('snoozed_alerts')
+    .select('alert_id, snoozed_until, is_deferred')
+
+  if (snoozedError) {
+    return jsonResponse({ success: false, error: 'Fetch snoozed alerts failed: ' + snoozedError.message }, 500)
+  }
+
+  const activeSnoozedIds = new Set(
+    (snoozedRows ?? [])
+      .filter((row: SnoozedAlertRow) => row.is_deferred === true || (!!row.snoozed_until && new Date(row.snoozed_until) > now))
+      .map((row: SnoozedAlertRow) => row.alert_id)
+  )
+
   const activeAlerts = (allNotifications ?? []).filter((n: NotificationRow) => {
-    if (n.is_deferred === true) return false
-    if (n.snoozed_until && new Date(n.snoozed_until) > now) return false
-    return true
+    const alertId = getNotificationAlertId(n)
+    return alertId ? !activeSnoozedIds.has(alertId) : true
   })
 
   if (activeAlerts.length === 0) {

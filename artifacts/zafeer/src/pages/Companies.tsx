@@ -48,6 +48,7 @@ import {
   DEFAULT_STATUS_THRESHOLDS,
 } from '@/utils/autoCompanyStatus'
 import { CompaniesFiltersModal } from './companies/CompaniesFiltersModal'
+import { useSnoozedAlerts } from '@/hooks/useSnoozedAlerts'
 
 type SortField =
   | 'name'
@@ -65,7 +66,11 @@ type AvailableSlotsFilter = 'all' | '0' | '1' | '2' | '3' | '4+'
 type ExemptionsFilter = string
 type ViewMode = 'grid' | 'table'
 type CompanyCardStatus = 'ساري' | 'متوسط' | 'عاجل' | 'طارئ' | 'منتهي'
-type CardStatusFilter = 'all' | CompanyCardStatus | null
+type CardStatusFilter = 'all' | CompanyCardStatus | 'مؤجلة' | null
+
+function companyAlertId(prefix: 'commercial' | 'power' | 'moqeem', id: string, expiry: string | null | undefined): string {
+  return `${prefix}_${id}_${expiry ?? ''}`
+}
 
 function normalizeArrayFilter(value: unknown): string[] {
   if (Array.isArray(value)) {
@@ -189,6 +194,8 @@ export default function Companies() {
   const [exemptionsFilter, setExemptionsFilter] = useState<ExemptionsFilter>('all')
   const [showFiltersModal, setShowFiltersModal] = useState(false)
   const [companyThresholds, setCompanyThresholds] = useState(DEFAULT_STATUS_THRESHOLDS)
+
+  const { snoozedAlertIds } = useSnoozedAlerts()
 
   // قفل التمرير عند فتح أي مودال
   useModalScrollLock(showDeleteModal || showBulkDeleteModal || showFiltersModal)
@@ -409,31 +416,62 @@ export default function Companies() {
   }, [])
 
   const hasCompanyAlert = useCallback((company: Company): boolean => {
+    const crId = companyAlertId('commercial', company.id, company.commercial_registration_expiry)
+    const pwId = companyAlertId('power', company.id, company.ending_subscription_power_date)
+    const mqId = companyAlertId('moqeem', company.id, company.ending_subscription_moqeem_date)
+
     const crStatus = calculateCommercialRegistrationStatus(company.commercial_registration_expiry)
     const powerStatus = calculatePowerSubscriptionStatus(company.ending_subscription_power_date)
     const moqeemStatus = calculateMoqeemSubscriptionStatus(company.ending_subscription_moqeem_date)
 
-    return [crStatus, powerStatus, moqeemStatus].some((status) =>
-      ['منتهي', 'طارئ', 'عاجل', 'متوسط'].includes(status.status)
+    return (
+      (['منتهي', 'طارئ', 'عاجل', 'متوسط'].includes(crStatus.status) && !snoozedAlertIds.has(crId)) ||
+      (['منتهي', 'طارئ', 'عاجل', 'متوسط'].includes(powerStatus.status) && !snoozedAlertIds.has(pwId)) ||
+      (['منتهي', 'طارئ', 'عاجل', 'متوسط'].includes(moqeemStatus.status) && !snoozedAlertIds.has(mqId))
     )
-  }, [])
+  }, [snoozedAlertIds])
 
   const getCompanyUnifiedStatus = useCallback((company: Company): CompanyCardStatus => {
+    const crId = companyAlertId('commercial', company.id, company.commercial_registration_expiry)
+    const pwId = companyAlertId('power', company.id, company.ending_subscription_power_date)
+    const mqId = companyAlertId('moqeem', company.id, company.ending_subscription_moqeem_date)
+
     const crStatus = calculateCommercialRegistrationStatus(company.commercial_registration_expiry)
     const powerStatus = calculatePowerSubscriptionStatus(company.ending_subscription_power_date)
     const moqeemStatus = calculateMoqeemSubscriptionStatus(company.ending_subscription_moqeem_date)
-    const allStatuses = [crStatus, powerStatus, moqeemStatus]
 
-    if (allStatuses.some((status) => status.status === 'منتهي')) return 'منتهي'
-    if (allStatuses.some((status) => status.priority === 'urgent')) return 'طارئ'
-    if (allStatuses.some((status) => status.priority === 'high')) return 'عاجل'
-    if (allStatuses.some((status) => status.priority === 'medium')) return 'متوسط'
+    // Only include a status if its alertId is NOT snoozed
+    const activeStatuses = [
+      { ...crStatus, snoozed: snoozedAlertIds.has(crId) },
+      { ...powerStatus, snoozed: snoozedAlertIds.has(pwId) },
+      { ...moqeemStatus, snoozed: snoozedAlertIds.has(mqId) },
+    ].filter((s) => !s.snoozed)
+
+    if (activeStatuses.some((status) => status.status === 'منتهي')) return 'منتهي'
+    if (activeStatuses.some((status) => status.priority === 'urgent')) return 'طارئ'
+    if (activeStatuses.some((status) => status.priority === 'high')) return 'عاجل'
+    if (activeStatuses.some((status) => status.priority === 'medium')) return 'متوسط'
     return 'ساري'
-  }, [])
+  }, [snoozedAlertIds])
 
   const companyAlertsCount = useMemo(() => {
     return companies.filter((company) => hasCompanyAlert(company)).length
   }, [companies, hasCompanyAlert])
+
+  const snoozedCompaniesCount = useMemo(() => {
+    return companies.filter((company) => {
+      const alertStatuses = [
+        { status: calculateCommercialRegistrationStatus(company.commercial_registration_expiry), id: companyAlertId('commercial', company.id, company.commercial_registration_expiry) },
+        { status: calculatePowerSubscriptionStatus(company.ending_subscription_power_date), id: companyAlertId('power', company.id, company.ending_subscription_power_date) },
+        { status: calculateMoqeemSubscriptionStatus(company.ending_subscription_moqeem_date), id: companyAlertId('moqeem', company.id, company.ending_subscription_moqeem_date) },
+      ]
+      return alertStatuses.some(
+        ({ status, id }) =>
+          ['منتهي', 'طارئ', 'عاجل', 'متوسط'].includes(status.status) &&
+          snoozedAlertIds.has(id)
+      )
+    }).length
+  }, [companies, snoozedAlertIds])
 
   // [FIX] تم تحويلها إلى useMemo بدلاً من useState + useEffect
   const filteredCompanies = useMemo(() => {
@@ -508,7 +546,20 @@ export default function Companies() {
     }
 
     if (cardStatusFilter) {
-      if (cardStatusFilter === 'all') {
+      if (cardStatusFilter === 'مؤجلة') {
+        filtered = filtered.filter((company) => {
+          const alertStatuses = [
+            { status: calculateCommercialRegistrationStatus(company.commercial_registration_expiry), id: companyAlertId('commercial', company.id, company.commercial_registration_expiry) },
+            { status: calculatePowerSubscriptionStatus(company.ending_subscription_power_date), id: companyAlertId('power', company.id, company.ending_subscription_power_date) },
+            { status: calculateMoqeemSubscriptionStatus(company.ending_subscription_moqeem_date), id: companyAlertId('moqeem', company.id, company.ending_subscription_moqeem_date) },
+          ]
+          return alertStatuses.some(
+            ({ status, id }) =>
+              ['منتهي', 'طارئ', 'عاجل', 'متوسط'].includes(status.status) &&
+              snoozedAlertIds.has(id)
+          )
+        })
+      } else if (cardStatusFilter === 'all') {
         filtered = filtered.filter((company) => hasCompanyAlert(company))
       } else {
         filtered = filtered.filter((company) => getCompanyUnifiedStatus(company) === cardStatusFilter)
@@ -638,6 +689,7 @@ export default function Companies() {
     getDaysRemaining,
     hasCompanyAlert,
     getCompanyUnifiedStatus,
+    snoozedAlertIds,
   ])
 
   useEffect(() => {
@@ -1146,15 +1198,18 @@ export default function Companies() {
             </h3>
           </div>
           {(() => {
-            const stats = calculateCompanyStatusStats(
-              companies.map((c) => ({
-                id: c.id,
-                name: c.name,
-                commercial_registration_expiry: c.commercial_registration_expiry ?? null,
-                ending_subscription_power_date: c.ending_subscription_power_date ?? null,
-                ending_subscription_moqeem_date: c.ending_subscription_moqeem_date ?? null,
-              }))
-            )
+            // حساب الإحصائيات بوعي بالتأجيل عبر getCompanyUnifiedStatus (مرشّح للمؤجَّل)
+            let totalExpired = 0
+            let totalUrgent = 0
+            let totalHigh = 0
+            let totalMedium = 0
+            for (const c of companies) {
+              const unified = getCompanyUnifiedStatus(c)
+              if (unified === 'منتهي') totalExpired++
+              else if (unified === 'طارئ') totalUrgent++
+              else if (unified === 'عاجل') totalHigh++
+              else if (unified === 'متوسط') totalMedium++
+            }
             const companySummaryCards = [
               {
                 key: 'companies' as const,
@@ -1175,7 +1230,7 @@ export default function Companies() {
               {
                 key: 'منتهي' as const,
                 title: 'منتهي',
-                value: stats.totalExpired,
+                value: totalExpired,
                 label: 'أقل من 0 يوم',
                 accentClass: 'border-red-500/20 bg-red-500/5',
                 valueClass: 'text-red-600 dark:text-red-300',
@@ -1183,7 +1238,7 @@ export default function Companies() {
               {
                 key: 'طارئ' as const,
                 title: 'طارئ',
-                value: stats.totalUrgent,
+                value: totalUrgent,
                 label: `0 - ${companyThresholds.commercial_reg_urgent_days} يوم`,
                 accentClass: 'border-red-500/20 bg-red-500/5',
                 valueClass: 'text-red-600 dark:text-red-300',
@@ -1191,7 +1246,7 @@ export default function Companies() {
               {
                 key: 'عاجل' as const,
                 title: 'عاجل',
-                value: stats.totalHigh,
+                value: totalHigh,
                 label: `${companyThresholds.commercial_reg_urgent_days + 1} - ${companyThresholds.commercial_reg_high_days} يوم`,
                 accentClass: 'border-orange-500/20 bg-orange-500/5',
                 valueClass: 'text-orange-600 dark:text-orange-300',
@@ -1199,14 +1254,22 @@ export default function Companies() {
               {
                 key: 'متوسط' as const,
                 title: 'متوسط',
-                value: stats.totalMedium,
+                value: totalMedium,
                 label: `${companyThresholds.commercial_reg_high_days + 1} - ${companyThresholds.commercial_reg_medium_days} يوم`,
                 accentClass: 'border-yellow-500/20 bg-yellow-500/5',
                 valueClass: 'text-yellow-600 dark:text-yellow-300',
               },
+              {
+                key: 'مؤجلة' as const,
+                title: 'مؤجلة',
+                value: snoozedCompaniesCount,
+                label: '',
+                accentClass: 'border-amber-500/20 bg-amber-500/5',
+                valueClass: 'text-amber-600 dark:text-amber-300',
+              },
             ]
             return (
-              <div className="grid grid-cols-2 gap-3 md:grid-cols-6">
+              <div className="grid grid-cols-2 gap-3 md:grid-cols-7">
                 {companySummaryCards.map((card) => (
                   <div
                     key={card.key}

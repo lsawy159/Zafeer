@@ -19,9 +19,10 @@ type EmployeeWithCompany = Employee & { company: Company; project?: Project }
 interface UseEmployeeFiltersParams {
   employees: EmployeeWithCompany[]
   colorThresholds: EmployeeNotificationThresholds | null
+  snoozedAlertIds?: Set<string>
 }
 
-export type CardSeverityFilter = 'total' | 'expired' | 'urgent' | 'high' | 'medium' | null
+export type CardSeverityFilter = 'total' | 'expired' | 'urgent' | 'high' | 'medium' | 'snoozed' | null
 
 type DocumentFilterStatus = 'منتهي' | 'قريب من الانتهاء' | 'صالح'
 
@@ -38,7 +39,7 @@ function getDocumentFilterStatus(
   return 'قريب من الانتهاء'
 }
 
-export function useEmployeeFilters({ employees, colorThresholds }: UseEmployeeFiltersParams) {
+export function useEmployeeFilters({ employees, colorThresholds, snoozedAlertIds }: UseEmployeeFiltersParams) {
    const [searchTerm, setSearchTerm] = useState('')
    const [residenceNumberSearch, setResidenceNumberSearch] = useState('')
    const [companyFilter, setCompanyFilter] = useState<string[]>([])
@@ -61,11 +62,19 @@ export function useEmployeeFilters({ employees, colorThresholds }: UseEmployeeFi
 
   const thresholds = colorThresholds ?? COLOR_THRESHOLD_FALLBACK
 
+  const empAlertId = (
+    prefix: 'contract' | 'hired_worker_contract' | 'residence' | 'health_insurance',
+    empId: string,
+    expiry: string | null | undefined
+  ) => `${prefix}_${empId}_${expiry ?? ''}`
+
   const getHighestSeverity = (emp: EmployeeWithCompany): number => {
     const getSeverity = (
       expiryDate: string | null | undefined,
       fieldType: 'contract' | 'hired_worker_contract' | 'residence' | 'health_insurance'
     ) => {
+      const alertId = empAlertId(fieldType, emp.id, expiryDate)
+      if (snoozedAlertIds?.has(alertId)) return 0
       const status = getStatusForField(expiryDate, fieldType, thresholds)
 
       if (status === 'منتهي') return 4
@@ -81,6 +90,25 @@ export function useEmployeeFilters({ employees, colorThresholds }: UseEmployeeFi
       getSeverity(emp.residence_expiry, 'residence'),
       getSeverity(emp.health_insurance_expiry, 'health_insurance')
     )
+  }
+
+  const hasSnoozedEmployeeAlert = (emp: EmployeeWithCompany): boolean => {
+    if (!snoozedAlertIds) return false
+    const fields: Array<{
+      expiry: string | null | undefined
+      fieldType: 'contract' | 'hired_worker_contract' | 'residence' | 'health_insurance'
+    }> = [
+      { expiry: emp.contract_expiry, fieldType: 'contract' },
+      { expiry: emp.hired_worker_contract_expiry, fieldType: 'hired_worker_contract' },
+      { expiry: emp.residence_expiry, fieldType: 'residence' },
+      { expiry: emp.health_insurance_expiry, fieldType: 'health_insurance' },
+    ]
+    return fields.some(({ expiry, fieldType }) => {
+      const alertId = empAlertId(fieldType, emp.id, expiry)
+      if (!snoozedAlertIds.has(alertId)) return false
+      const status = getStatusForField(expiry, fieldType, thresholds)
+      return ['منتهي', 'طارئ', 'عاجل', 'متوسط'].includes(status)
+    })
   }
 
   const filteredEmployees = useMemo(
@@ -155,6 +183,8 @@ export function useEmployeeFilters({ employees, colorThresholds }: UseEmployeeFi
                 return highestSeverity === 2
               case 'medium':
                 return highestSeverity === 1
+              case 'snoozed':
+                return hasSnoozedEmployeeAlert(emp)
               default:
                 return true
             }
@@ -230,6 +260,7 @@ export function useEmployeeFilters({ employees, colorThresholds }: UseEmployeeFi
        showAlertsOnly,
        cardSeverityFilter,
        thresholds,
+       snoozedAlertIds,
      ]
   )
 
