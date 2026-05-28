@@ -9,6 +9,8 @@ import { generateCompanyAlertsSync } from '@/utils/alerts'
 import {
   enrichEmployeeAlertsWithCompanyData,
   generateEmployeeAlerts,
+  getEmployeeNotificationThresholdsPublic,
+  DEFAULT_EMPLOYEE_THRESHOLDS as DEFAULT_EMPLOYEE_NOTIFICATION_THRESHOLDS,
 } from '@/utils/employeeAlerts'
 import {
   Bell,
@@ -55,6 +57,7 @@ type PriorityFilter = 'urgent' | 'high' | 'medium' | 'low'
 type NotificationSortField = 'created_at' | 'priority' | 'entity_type'
 type SortDirection = 'asc' | 'desc'
 type ActiveTab = 'notifications' | 'csv-report' | 'deferred'
+type NotificationsCardFilter = 'منتهي' | 'طارئ' | 'عاجل' | 'متوسط' | null
 
 type ExpiryNotificationRow = {
   type: string
@@ -193,6 +196,8 @@ export default function Notifications() {
   const [searchTerm, setSearchTerm] = useState('')
   const [generating, setGenerating] = useState(false)
   const [activeTab, setActiveTab] = useState<ActiveTab>('notifications')
+  const [cardFilter, setCardFilter] = useState<NotificationsCardFilter>(null)
+  const [thresholds, setThresholds] = useState(DEFAULT_EMPLOYEE_NOTIFICATION_THRESHOLDS)
 
   // CSV Report state
   const [csvSending, setCsvSending] = useState(false)
@@ -307,6 +312,10 @@ export default function Notifications() {
 
   useEffect(() => {
     void getExpiredInclusionSettings().then(setExpiredInclusion)
+  }, [])
+
+  useEffect(() => {
+    void getEmployeeNotificationThresholdsPublic().then(setThresholds)
   }, [])
 
   const loadNotifications = async () => {
@@ -623,6 +632,19 @@ export default function Notifications() {
         if (!priorityFilter.includes(normalizedPriority as PriorityFilter)) return false
       }
 
+      if (cardFilter === 'منتهي') {
+        if (notification.days_remaining === null || notification.days_remaining === undefined) {
+          return false
+        }
+        if (notification.days_remaining >= 0) return false
+      } else if (cardFilter === 'طارئ') {
+        if (notification.priority !== 'critical' && notification.priority !== 'urgent') return false
+      } else if (cardFilter === 'عاجل') {
+        if (notification.priority !== 'high') return false
+      } else if (cardFilter === 'متوسط') {
+        if (notification.priority !== 'medium') return false
+      }
+
       if (normalizedSearchTerm) {
         const searchText = getNotificationSearchText(notification)
         return searchText.includes(normalizedSearchTerm)
@@ -638,6 +660,7 @@ export default function Notifications() {
     filterType,
     notificationSortDirection,
     notificationSortField,
+    cardFilter,
     priorityFilter,
     normalizedSearchTerm,
     visibleNotifications,
@@ -665,7 +688,6 @@ export default function Notifications() {
   )
   const stats = {
     total: countUniqueNotificationEntities(activeCountableNotifications),
-    unread: unreadCount,
     urgent: countUniqueNotificationEntities(
       activeCountableNotifications.filter(
         (notification) =>
@@ -678,6 +700,15 @@ export default function Notifications() {
         (notification) => notification.priority === 'high' && !notification.is_read
       )
     ),
+    expired: countUniqueNotificationEntities(
+      visibleNotifications.filter(
+        (notification) =>
+          !isDeferredNotification(notification) &&
+          isExpiryNotification(notification) &&
+          notification.days_remaining != null &&
+          notification.days_remaining < 0
+      )
+    ),
     medium: countUniqueNotificationEntities(
       notifications.filter(
         (notification) =>
@@ -688,6 +719,66 @@ export default function Notifications() {
       )
     ),
   }
+  const maxUrgent = Math.max(
+    thresholds.contract_urgent_days,
+    thresholds.hired_worker_contract_urgent_days,
+    thresholds.residence_urgent_days,
+    thresholds.health_insurance_urgent_days
+  )
+  const maxHigh = Math.max(
+    thresholds.contract_high_days,
+    thresholds.hired_worker_contract_high_days,
+    thresholds.residence_high_days,
+    thresholds.health_insurance_high_days
+  )
+  const maxMedium = Math.max(
+    thresholds.contract_medium_days,
+    thresholds.hired_worker_contract_medium_days,
+    thresholds.residence_medium_days,
+    thresholds.health_insurance_medium_days
+  )
+  const notificationSummaryCards = [
+    {
+      key: null as NotificationsCardFilter,
+      title: 'إجمالي التنبيهات',
+      value: stats.total,
+      label: '',
+      accentClass: '',
+      valueClass: 'text-foreground',
+    },
+    {
+      key: 'منتهي' as NotificationsCardFilter,
+      title: 'منتهي',
+      value: stats.expired,
+      label: 'أقل من 0 يوم',
+      accentClass: 'border-red-500/20 bg-red-500/5',
+      valueClass: 'text-red-600 dark:text-red-300',
+    },
+    {
+      key: 'طارئ' as NotificationsCardFilter,
+      title: 'طارئ',
+      value: stats.urgent,
+      label: `0 - ${maxUrgent} يوم`,
+      accentClass: 'border-red-500/20 bg-red-500/5',
+      valueClass: 'text-red-600 dark:text-red-300',
+    },
+    {
+      key: 'عاجل' as NotificationsCardFilter,
+      title: 'عاجل',
+      value: stats.high,
+      label: `${maxUrgent + 1} - ${maxHigh} يوم`,
+      accentClass: 'border-orange-500/20 bg-orange-500/5',
+      valueClass: 'text-orange-600 dark:text-orange-300',
+    },
+    {
+      key: 'متوسط' as NotificationsCardFilter,
+      title: 'متوسط',
+      value: stats.medium,
+      label: `${maxHigh + 1} - ${maxMedium} يوم`,
+      accentClass: 'border-yellow-500/20 bg-yellow-500/5',
+      valueClass: 'text-yellow-600 dark:text-yellow-300',
+    },
+  ]
 
   if (!user || !canView('adminSettings')) {
     return (
@@ -831,27 +922,29 @@ export default function Notifications() {
 
         {/* Notifications Tab Content */}
         {activeTab === 'notifications' && (<>
-        <div className="grid grid-cols-1 md:grid-cols-5 gap-4 mb-6">
-          <div className="app-panel p-4">
-            <div className="text-2xl font-bold text-neutral-900">{stats.total}</div>
-            <div className="text-sm text-neutral-600">إجمالي التنبيهات</div>
-          </div>
-          <div className="bg-blue-50 rounded-xl shadow-sm border border-blue-200 p-4">
-            <div className="text-2xl font-bold text-info-600">{stats.unread}</div>
-            <div className="text-sm text-info-700">غير مقروء</div>
-          </div>
-          <div className="bg-red-50 rounded-xl shadow-sm border border-red-200 p-4">
-            <div className="text-2xl font-bold text-red-600">{stats.urgent}</div>
-            <div className="text-sm text-red-700">طارئ</div>
-          </div>
-          <div className="bg-orange-50 rounded-xl shadow-sm border border-orange-200 p-4">
-            <div className="text-2xl font-bold text-warning-600">{stats.high}</div>
-            <div className="text-sm text-warning-700">عاجل</div>
-          </div>
-          <div className="bg-yellow-50 rounded-xl shadow-sm border border-yellow-200 p-4">
-            <div className="text-2xl font-bold text-yellow-600">{stats.medium}</div>
-            <div className="text-sm text-yellow-700">متوسط</div>
-          </div>
+        <div className="grid grid-cols-2 gap-3 md:grid-cols-5 mb-6">
+          {notificationSummaryCards.map((card) => {
+            const isActive = card.key === null ? cardFilter === null : cardFilter === card.key
+            return (
+              <div
+                key={String(card.key ?? 'all')}
+                onClick={() => setCardFilter((prev) => (prev === card.key ? null : card.key))}
+                className={`app-panel cursor-pointer px-3 py-2.5 text-center transition-shadow ${card.accentClass} ${
+                  isActive ? 'ring-2 ring-offset-1 ring-primary shadow-md' : 'hover:shadow-sm'
+                }`}
+              >
+                <div className="text-[11px] font-medium leading-4 text-foreground-secondary md:text-xs">
+                  {card.title}
+                </div>
+                <div className={`text-lg font-bold leading-none md:text-xl ${card.valueClass}`}>
+                  {card.value.toLocaleString('en-US')}
+                </div>
+                <div className="text-[11px] leading-4 text-foreground-secondary md:text-xs">
+                  {card.label}
+                </div>
+              </div>
+            )
+          })}
         </div>
 
         {/* Filters and Actions */}
