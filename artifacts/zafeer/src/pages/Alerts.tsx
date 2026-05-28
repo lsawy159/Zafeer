@@ -8,6 +8,8 @@ import {
   enrichEmployeeAlertsWithCompanyData,
   getEmployeeAlertsStats,
   filterEmployeeAlertsByPriority,
+  getEmployeeNotificationThresholdsPublic,
+  DEFAULT_EMPLOYEE_THRESHOLDS as DEFAULT_EMPLOYEE_NOTIFICATION_THRESHOLDS,
 } from '@/utils/employeeAlerts'
 import { normalizeArabic } from '@/utils/textUtils'
 import {
@@ -63,6 +65,14 @@ interface AlertsProps {
 type AlertPriority = Alert['priority']
 type AlertSortField = 'priority' | 'entity_name' | 'days_remaining'
 type SortDirection = 'asc' | 'desc'
+type AlertsCardFilter =
+  | 'منتهي'
+  | 'طارئ'
+  | 'عاجل'
+  | 'متوسط'
+  | 'companies'
+  | 'employees'
+  | null
 
 const PRIORITY_OPTIONS: Array<{ value: AlertPriority; label: string }> = [
   { value: 'urgent', label: 'طارئ' },
@@ -154,6 +164,8 @@ export default function Alerts({ initialTab = 'all', initialFilter = 'all' }: Al
   // [NEW] تبويب لـ "جديد" و "مقروء"
   const [readFilterTab, setReadFilterTab] = useState<'new' | 'read'>('new')
   const [alertStatusFilter, setAlertStatusFilter] = useState<'all' | 'active' | 'expired'>('all')
+  const [cardFilter, setCardFilter] = useState<AlertsCardFilter>(null)
+  const [thresholds, setThresholds] = useState(DEFAULT_EMPLOYEE_NOTIFICATION_THRESHOLDS)
 
   const [activeFilter, setActiveFilter] = useState<AlertPriority[]>(() =>
     getInitialPriorityFilter(initialFilter)
@@ -193,6 +205,10 @@ export default function Alerts({ initialTab = 'all', initialFilter = 'all' }: Al
 
   useEffect(() => {
     void getExpiredInclusionSettings().then(setExpiredInclusion)
+  }, [])
+
+  useEffect(() => {
+    void getEmployeeNotificationThresholdsPublic().then(setThresholds)
   }, [])
 
   // التحقق من صلاحية العرض - بعد جميع الـ hooks
@@ -572,9 +588,40 @@ export default function Alerts({ initialTab = 'all', initialFilter = 'all' }: Al
   const companyAlertsStats = getAlertsStats(statsCompanyAlerts)
   const employeeAlertsStats = getEmployeeAlertsStats(statsEmployeeAlerts)
   const totalAlerts = companyAlertsStats.total + employeeAlertsStats.total
-  const totalUrgentAlerts = companyAlertsStats.urgent + employeeAlertsStats.urgent
-  const totalHighAlerts = companyAlertsStats.high + employeeAlertsStats.high
-  const totalMediumAlerts = companyAlertsStats.medium + employeeAlertsStats.medium
+  const totalExpiredAlerts = [...visibleCompanyAlerts, ...visibleEmployeeAlerts].filter(
+    (alert) => (alert.days_remaining ?? 0) < 0
+  ).length
+  const totalUrgentAlerts =
+    visibleCompanyAlerts.filter(
+      (alert) => alert.priority === 'urgent' && (alert.days_remaining ?? 0) >= 0
+    ).length +
+    visibleEmployeeAlerts.filter(
+      (alert) => alert.priority === 'urgent' && (alert.days_remaining ?? 0) >= 0
+    ).length
+  const totalHighAlerts =
+    visibleCompanyAlerts.filter((alert) => alert.priority === 'high').length +
+    visibleEmployeeAlerts.filter((alert) => alert.priority === 'high').length
+  const totalMediumAlerts =
+    visibleCompanyAlerts.filter((alert) => alert.priority === 'medium').length +
+    visibleEmployeeAlerts.filter((alert) => alert.priority === 'medium').length
+  const maxUrgent = Math.max(
+    thresholds.contract_urgent_days,
+    thresholds.hired_worker_contract_urgent_days,
+    thresholds.residence_urgent_days,
+    thresholds.health_insurance_urgent_days
+  )
+  const maxHigh = Math.max(
+    thresholds.contract_high_days,
+    thresholds.hired_worker_contract_high_days,
+    thresholds.residence_high_days,
+    thresholds.health_insurance_high_days
+  )
+  const maxMedium = Math.max(
+    thresholds.contract_medium_days,
+    thresholds.hired_worker_contract_medium_days,
+    thresholds.residence_medium_days,
+    thresholds.health_insurance_medium_days
+  )
 
   // [MODIFIED] فلترة التنبيهات بناءً على التبويب "جديد" أو "مقروء"
 
@@ -582,9 +629,16 @@ export default function Alerts({ initialTab = 'all', initialFilter = 'all' }: Al
   const normalizedSearchTerm = normalizeArabic(searchTerm).trim().toLowerCase()
 
   const filteredCompanyAlerts = useMemo(() => {
-    let filtered = visibleCompanyAlerts.filter(
-      (alert) => alert.priority === 'urgent' || alert.priority === 'high'
-    )
+    let filtered = visibleCompanyAlerts.filter((alert) => {
+      if (cardFilter === 'employees') return false
+      if (cardFilter === 'منتهي') return (alert.days_remaining ?? 0) < 0
+      if (cardFilter === 'طارئ') {
+        return alert.priority === 'urgent' && (alert.days_remaining ?? 0) >= 0
+      }
+      if (cardFilter === 'عاجل') return alert.priority === 'high'
+      if (cardFilter === 'متوسط') return alert.priority === 'medium'
+      return alert.priority === 'urgent' || alert.priority === 'high'
+    })
 
     if (alertStatusFilter !== 'all') {
       filtered = filtered.filter((alert) =>
@@ -618,6 +672,7 @@ export default function Alerts({ initialTab = 'all', initialFilter = 'all' }: Al
   }, [
     visibleCompanyAlerts,
     alertStatusFilter,
+    cardFilter,
     activeFilter,
     normalizedSearchTerm,
     readFilterTab,
@@ -627,9 +682,16 @@ export default function Alerts({ initialTab = 'all', initialFilter = 'all' }: Al
   ])
 
   const filteredEmployeeAlerts = useMemo(() => {
-    let filtered = visibleEmployeeAlerts.filter(
-      (alert) => alert.priority === 'urgent' || alert.priority === 'high'
-    )
+    let filtered = visibleEmployeeAlerts.filter((alert) => {
+      if (cardFilter === 'companies') return false
+      if (cardFilter === 'منتهي') return (alert.days_remaining ?? 0) < 0
+      if (cardFilter === 'طارئ') {
+        return alert.priority === 'urgent' && (alert.days_remaining ?? 0) >= 0
+      }
+      if (cardFilter === 'عاجل') return alert.priority === 'high'
+      if (cardFilter === 'متوسط') return alert.priority === 'medium'
+      return alert.priority === 'urgent' || alert.priority === 'high'
+    })
 
     if (alertStatusFilter !== 'all') {
       filtered = filtered.filter((alert) =>
@@ -664,6 +726,7 @@ export default function Alerts({ initialTab = 'all', initialFilter = 'all' }: Al
   }, [
     visibleEmployeeAlerts,
     alertStatusFilter,
+    cardFilter,
     activeFilter,
     normalizedSearchTerm,
     readFilterTab,
@@ -675,6 +738,64 @@ export default function Alerts({ initialTab = 'all', initialFilter = 'all' }: Al
   const readCompanyAlertsCount = companyAlerts.filter((alert) => readAlerts.has(alert.id)).length
   const readEmployeeAlertsCount = employeeAlerts.filter((alert) => readAlerts.has(alert.id)).length
   const totalReadAlerts = readCompanyAlertsCount + readEmployeeAlertsCount
+  const alertSummaryCards = [
+    {
+      key: null as AlertsCardFilter,
+      title: 'إجمالي التنبيهات',
+      value: totalAlerts,
+      label: '',
+      accentClass: '',
+      valueClass: 'text-foreground',
+    },
+    {
+      key: 'منتهي' as AlertsCardFilter,
+      title: 'منتهي',
+      value: totalExpiredAlerts,
+      label: 'أقل من 0 يوم',
+      accentClass: 'border-red-500/20 bg-red-500/5',
+      valueClass: 'text-red-600 dark:text-red-300',
+    },
+    {
+      key: 'طارئ' as AlertsCardFilter,
+      title: 'طارئ',
+      value: totalUrgentAlerts,
+      label: `0 - ${maxUrgent} يوم`,
+      accentClass: 'border-red-500/20 bg-red-500/5',
+      valueClass: 'text-red-600 dark:text-red-300',
+    },
+    {
+      key: 'عاجل' as AlertsCardFilter,
+      title: 'عاجل',
+      value: totalHighAlerts,
+      label: `${maxUrgent + 1} - ${maxHigh} يوم`,
+      accentClass: 'border-orange-500/20 bg-orange-500/5',
+      valueClass: 'text-orange-600 dark:text-orange-300',
+    },
+    {
+      key: 'متوسط' as AlertsCardFilter,
+      title: 'متوسط',
+      value: totalMediumAlerts,
+      label: `${maxHigh + 1} - ${maxMedium} يوم`,
+      accentClass: 'border-yellow-500/20 bg-yellow-500/5',
+      valueClass: 'text-yellow-600 dark:text-yellow-300',
+    },
+    {
+      key: 'companies' as AlertsCardFilter,
+      title: 'تنبيهات المؤسسات',
+      value: companyAlertsStats.total,
+      label: '',
+      accentClass: '',
+      valueClass: 'text-foreground',
+    },
+    {
+      key: 'employees' as AlertsCardFilter,
+      title: 'تنبيهات الموظفين',
+      value: employeeAlertsStats.total,
+      label: '',
+      accentClass: '',
+      valueClass: 'text-foreground',
+    },
+  ]
 
   if (loading) {
     return (
@@ -697,78 +818,44 @@ export default function Alerts({ initialTab = 'all', initialFilter = 'all' }: Al
         />
 
         {/* إحصائيات سريعة (تبقى كما هي، تعرض غير المقروء فقط لهذه الصفحة) */}
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-6 mb-8">
-          <div className="app-panel p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-foreground-tertiary mb-1">إجمالي التنبيهات</p>
-                <p className="text-3xl font-bold text-foreground">{totalAlerts}</p>
-              </div>
-              <div className="app-icon-chip">
-                <Bell className="w-7 h-7" />
-              </div>
-            </div>
-          </div>
+        <div className="grid grid-cols-2 gap-3 md:grid-cols-4 xl:grid-cols-7 mb-8">
+          {alertSummaryCards.map((card) => {
+            const isActive = card.key === null ? cardFilter === null : cardFilter === card.key
+            const handleClick = () => {
+              if (card.key === null) {
+                setCardFilter(null)
+                setActiveTab('all')
+                return
+              }
 
-          <div className="rounded-2xl border border-red-200 bg-red-50 p-6 shadow-soft">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-red-700 mb-1">طارئ</p>
-                <p className="text-3xl font-bold text-red-600">{totalUrgentAlerts}</p>
-              </div>
-              <div className="rounded-xl bg-red-100 p-3 text-red-600">
-                <AlertTriangle className="w-7 h-7" />
-              </div>
-            </div>
-          </div>
+              const nextFilter = cardFilter === card.key ? null : card.key
+              setCardFilter(nextFilter)
 
-          <div className="rounded-2xl border border-orange-200 bg-orange-50 p-6 shadow-soft">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-orange-700 mb-1">عاجل</p>
-                <p className="text-3xl font-bold text-orange-600">{totalHighAlerts}</p>
-              </div>
-              <div className="rounded-xl bg-orange-100 p-3 text-orange-600">
-                <AlertTriangle className="w-7 h-7" />
-              </div>
-            </div>
-          </div>
+              if (card.key === 'companies' || card.key === 'employees') {
+                setActiveTab(nextFilter === null ? 'all' : card.key)
+              }
+            }
 
-          <div className="rounded-2xl border border-yellow-200 bg-yellow-50 p-6 shadow-soft">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-yellow-700 mb-1">متوسط</p>
-                <p className="text-3xl font-bold text-yellow-600">{totalMediumAlerts}</p>
+            return (
+              <div
+                key={String(card.key ?? 'all')}
+                onClick={handleClick}
+                className={`app-panel cursor-pointer px-3 py-2.5 text-center transition-shadow ${card.accentClass} ${
+                  isActive ? 'ring-2 ring-offset-1 ring-primary shadow-md' : 'hover:shadow-sm'
+                }`}
+              >
+                <div className="text-[11px] font-medium leading-4 text-foreground-secondary md:text-xs">
+                  {card.title}
+                </div>
+                <div className={`text-lg font-bold leading-none md:text-xl ${card.valueClass}`}>
+                  {card.value.toLocaleString('en-US')}
+                </div>
+                <div className="text-[11px] leading-4 text-foreground-secondary md:text-xs">
+                  {card.label}
+                </div>
               </div>
-              <div className="rounded-xl bg-yellow-100 p-3 text-yellow-600">
-                <Clock className="w-7 h-7" />
-              </div>
-            </div>
-          </div>
-
-          <div className="app-panel p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-foreground-tertiary mb-1">تنبيهات المؤسسات</p>
-                <p className="text-3xl font-bold text-foreground">{companyAlertsStats.total}</p>
-              </div>
-              <div className="app-icon-chip">
-                <Building2 className="w-7 h-7" />
-              </div>
-            </div>
-          </div>
-
-          <div className="app-panel p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-foreground-tertiary mb-1">تنبيهات الموظفين</p>
-                <p className="text-3xl font-bold text-foreground">{employeeAlertsStats.total}</p>
-              </div>
-              <div className="rounded-xl bg-surface-secondary p-3 text-foreground-secondary">
-                <Users className="w-7 h-7" />
-              </div>
-            </div>
-          </div>
+            )
+          })}
         </div>
 
         {/* فلاتر البحث والتنقل */}
