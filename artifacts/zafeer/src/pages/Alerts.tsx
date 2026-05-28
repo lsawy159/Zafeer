@@ -1,5 +1,6 @@
 ﻿import { useEffect, useMemo, useState } from 'react'
 import { supabase, Employee, Company } from '@/lib/supabase'
+import { type ReactNode } from 'react'
 import { AlertCard, Alert } from '@/components/alerts/AlertCard'
 import { EmployeeAlertCard, EmployeeAlert } from '@/components/alerts/EmployeeAlertCard'
 import { generateCompanyAlertsSync, getAlertsStats, filterAlertsByPriority } from '@/utils/alerts'
@@ -12,6 +13,8 @@ import {
   DEFAULT_EMPLOYEE_THRESHOLDS as DEFAULT_EMPLOYEE_NOTIFICATION_THRESHOLDS,
 } from '@/utils/employeeAlerts'
 import { normalizeArabic } from '@/utils/textUtils'
+import { formatDateShortWithHijri } from '@/utils/dateFormatter'
+import { HijriDateDisplay } from '@/components/ui/HijriDateDisplay'
 import {
   Bell,
   AlertTriangle,
@@ -22,6 +25,8 @@ import {
   Mail,
   ArrowUpDown,
   Clock,
+  List,
+  LayoutGrid,
 } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import Layout from '@/components/layout/Layout'
@@ -95,6 +100,33 @@ const PRIORITY_ORDER: Record<AlertPriority, number> = {
   low: 1,
 }
 
+const PRIORITY_BADGE: Record<AlertPriority, ReactNode> = {
+  urgent: (
+    <span className="inline-flex rounded-full bg-red-100 px-2 py-0.5 text-xs font-medium text-red-700">
+      طارئ
+    </span>
+  ),
+  high: (
+    <span className="inline-flex rounded-full bg-orange-100 px-2 py-0.5 text-xs font-medium text-orange-700">
+      عاجل
+    </span>
+  ),
+  medium: (
+    <span className="inline-flex rounded-full bg-yellow-100 px-2 py-0.5 text-xs font-medium text-yellow-700">
+      متوسط
+    </span>
+  ),
+  low: (
+    <span className="inline-flex rounded-full bg-blue-100 px-2 py-0.5 text-xs font-medium text-blue-700">
+      خفيف
+    </span>
+  ),
+}
+
+type AlertTableRow =
+  | { kind: 'company'; alert: Alert }
+  | { kind: 'employee'; alert: EmployeeAlert }
+
 function getInitialPriorityFilter(initialFilter: AlertsProps['initialFilter']) {
   return initialFilter && initialFilter !== 'all' ? [initialFilter] : []
 }
@@ -165,6 +197,7 @@ export default function Alerts({ initialTab = 'all', initialFilter = 'all' }: Al
   const [readFilterTab, setReadFilterTab] = useState<'new' | 'read'>('new')
   const [alertStatusFilter, setAlertStatusFilter] = useState<'all' | 'active' | 'expired'>('all')
   const [cardFilter, setCardFilter] = useState<AlertsCardFilter>(null)
+  const [viewMode, setViewMode] = useState<'table' | 'grid'>('table')
   const [thresholds, setThresholds] = useState(DEFAULT_EMPLOYEE_NOTIFICATION_THRESHOLDS)
 
   const [activeFilter, setActiveFilter] = useState<AlertPriority[]>(() =>
@@ -735,6 +768,19 @@ export default function Alerts({ initialTab = 'all', initialFilter = 'all' }: Al
     alertSortDir,
   ])
 
+  const alertTableRows: AlertTableRow[] = useMemo(() => {
+    const companyRows =
+      activeTab === 'all' || activeTab === 'companies'
+        ? filteredCompanyAlerts.map((alert) => ({ kind: 'company' as const, alert }))
+        : []
+    const employeeRows =
+      activeTab === 'all' || activeTab === 'employees'
+        ? filteredEmployeeAlerts.map((alert) => ({ kind: 'employee' as const, alert }))
+        : []
+
+    return [...companyRows, ...employeeRows]
+  }, [activeTab, filteredCompanyAlerts, filteredEmployeeAlerts])
+
   const readCompanyAlertsCount = companyAlerts.filter((alert) => readAlerts.has(alert.id)).length
   const readEmployeeAlertsCount = employeeAlerts.filter((alert) => readAlerts.has(alert.id)).length
   const totalReadAlerts = readCompanyAlertsCount + readEmployeeAlertsCount
@@ -947,6 +993,25 @@ export default function Alerts({ initialTab = 'all', initialFilter = 'all' }: Al
               </DropdownMenu>
             </div>
 
+            <div className="app-toggle-shell">
+              <button
+                type="button"
+                onClick={() => setViewMode('table')}
+                className={`app-toggle-button ${viewMode === 'table' ? 'app-toggle-button-active' : ''}`}
+                title="عرض جدول"
+              >
+                <List className="h-4 w-4" />
+              </button>
+              <button
+                type="button"
+                onClick={() => setViewMode('grid')}
+                className={`app-toggle-button ${viewMode === 'grid' ? 'app-toggle-button-active' : ''}`}
+                title="عرض بطاقات"
+              >
+                <LayoutGrid className="h-4 w-4" />
+              </button>
+            </div>
+
             {/* Action */}
             {readFilterTab === 'new' && totalAlerts > 0 && (
               <Button onClick={handleMarkAllAsRead} variant="default" className="h-9 px-3 text-sm whitespace-nowrap">
@@ -962,81 +1027,210 @@ export default function Alerts({ initialTab = 'all', initialFilter = 'all' }: Al
           </div>
         </div>
 
-        {/* عرض التنبيهات (مقسّمة الآن) */}
-        <div className="space-y-8">
-          {/* تنبيهات المؤسسات */}
-          {(activeTab === 'all' || activeTab === 'companies') &&
-            filteredCompanyAlerts.length > 0 && (
-              <div>
-                <div className="flex items-center gap-3 mb-6">
-                  <Building2 className="w-6 h-6 text-primary" />
-                  <h2 className="text-xl font-bold text-neutral-900">تنبيهات المؤسسات</h2>
-                  <span className="rounded-full bg-primary/15 px-2 py-1 text-sm font-medium text-foreground">
-                    {filteredCompanyAlerts.length}
-                  </span>
+        {/* عرض التنبيهات */}
+        {viewMode === 'table' ? (
+          <div className="app-panel overflow-x-auto">
+            <table className="w-full min-w-[980px] text-sm">
+              <thead className="sticky top-0 z-[1] bg-neutral-50 shadow-sm">
+                <tr className="border-b border-neutral-200 text-right">
+                  <th className="px-3 py-3 font-semibold text-neutral-700">م</th>
+                  <th className="px-3 py-3 font-semibold text-neutral-700">نوع الكيان</th>
+                  <th className="px-3 py-3 font-semibold text-neutral-700">اسم الكيان</th>
+                  <th className="px-3 py-3 font-semibold text-neutral-700">نوع التنبيه</th>
+                  <th className="px-3 py-3 font-semibold text-neutral-700">الأولوية</th>
+                  <th className="px-3 py-3 font-semibold text-neutral-700">الأيام المتبقية</th>
+                  <th className="px-3 py-3 font-semibold text-neutral-700">تاريخ الانتهاء</th>
+                  <th className="px-3 py-3 font-semibold text-neutral-700">الحالة</th>
+                  <th className="px-3 py-3 font-semibold text-neutral-700">الإجراءات</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-neutral-100">
+                {alertTableRows.length === 0 ? (
+                  <tr>
+                    <td colSpan={9} className="px-4 py-12 text-center">
+                      <div className="flex flex-col items-center gap-3 text-neutral-500">
+                        <Bell className="h-10 w-10 text-neutral-300" />
+                        <div>
+                          <div className="text-base font-medium text-neutral-900">
+                            {searchTerm
+                              ? 'لا توجد نتائج'
+                              : readFilterTab === 'new'
+                                ? 'لا توجد تنبيهات جديدة'
+                                : 'لا توجد تنبيهات مقروءة'}
+                          </div>
+                          <div className="mt-1 text-sm text-neutral-500">
+                            {searchTerm
+                              ? `لم يتم العثور على تنبيهات تحتوي على "${searchTerm}"`
+                              : readFilterTab === 'new'
+                                ? 'جميع مؤسساتك وموظفيك محدثون ولا يحتاجون إلى إجراءات فورية'
+                                : 'لم تقم بالاطلاع على أي تنبيهات بعد'}
+                          </div>
+                        </div>
+                      </div>
+                    </td>
+                  </tr>
+                ) : (
+                  alertTableRows.map((row, index) => {
+                    const entityName =
+                      row.kind === 'company' ? row.alert.company.name : row.alert.employee.name
+                    const entityType = row.kind === 'company' ? 'مؤسسة' : 'موظف'
+                    const isRead = readAlerts.has(row.alert.id)
+                    const daysRemaining = row.alert.days_remaining
+                    const expiryDate = row.alert.expiry_date
+
+                    return (
+                      <tr
+                        key={row.alert.id}
+                        className="cursor-pointer transition-colors hover:bg-neutral-50"
+                        onClick={() =>
+                          row.kind === 'company'
+                            ? handleShowCompanyCard(row.alert.company.id)
+                            : void handleViewEmployee(row.alert.employee.id)
+                        }
+                      >
+                        <td className="px-3 py-3 text-xs text-neutral-500">{index + 1}</td>
+                        <td className="px-3 py-3">
+                          <span className="inline-flex rounded-full bg-neutral-100 px-2 py-0.5 text-xs text-neutral-600">
+                            {entityType}
+                          </span>
+                        </td>
+                        <td className="px-3 py-3 font-medium text-neutral-900">{entityName}</td>
+                        <td className="px-3 py-3 text-neutral-700">{row.alert.title}</td>
+                        <td className="px-3 py-3">{PRIORITY_BADGE[row.alert.priority]}</td>
+                        <td className="px-3 py-3">
+                          {daysRemaining == null ? (
+                            <span className="text-neutral-400">—</span>
+                          ) : (
+                            <span
+                              className={
+                                daysRemaining < 0 ? 'font-medium text-red-600' : 'text-neutral-700'
+                              }
+                            >
+                              {daysRemaining}
+                            </span>
+                          )}
+                        </td>
+                        <td className="px-3 py-3 text-xs text-neutral-600">
+                          {expiryDate ? (
+                            <HijriDateDisplay date={expiryDate}>
+                              {formatDateShortWithHijri(expiryDate)}
+                            </HijriDateDisplay>
+                          ) : (
+                            '—'
+                          )}
+                        </td>
+                        <td className="px-3 py-3">
+                          {isRead ? (
+                            <span className="text-xs text-neutral-400">مقروء</span>
+                          ) : (
+                            <span className="inline-flex items-center gap-1 text-xs font-medium text-primary">
+                              <span className="h-1.5 w-1.5 rounded-full bg-primary" />
+                              جديد
+                            </span>
+                          )}
+                        </td>
+                        <td className="px-3 py-3" onClick={(event) => event.stopPropagation()}>
+                          {isRead ? (
+                            <button
+                              type="button"
+                              onClick={() => handleMarkAsUnread(row.alert.id)}
+                              className="text-xs text-neutral-500 underline-offset-2 hover:text-neutral-700 hover:underline"
+                            >
+                              إلغاء القراءة
+                            </button>
+                          ) : (
+                            <button
+                              type="button"
+                              onClick={() => handleMarkAsRead(row.alert.id)}
+                              className="text-xs text-primary underline-offset-2 hover:underline"
+                            >
+                              تحديد كمقروء
+                            </button>
+                          )}
+                        </td>
+                      </tr>
+                    )
+                  })
+                )}
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          <div className="space-y-8">
+            {/* تنبيهات المؤسسات */}
+            {(activeTab === 'all' || activeTab === 'companies') &&
+              filteredCompanyAlerts.length > 0 && (
+                <div>
+                  <div className="mb-6 flex items-center gap-3">
+                    <Building2 className="h-6 w-6 text-primary" />
+                    <h2 className="text-xl font-bold text-neutral-900">تنبيهات المؤسسات</h2>
+                    <span className="rounded-full bg-primary/15 px-2 py-1 text-sm font-medium text-foreground">
+                      {filteredCompanyAlerts.length}
+                    </span>
+                  </div>
+                  <div className={ALERT_GRID_CLASS}>
+                    {filteredCompanyAlerts.map((alert) => (
+                      <AlertCard
+                        key={alert.id}
+                        alert={alert}
+                        onShowCompanyCard={handleShowCompanyCard}
+                        onMarkAsRead={handleMarkAsRead}
+                        onMarkAsUnread={handleMarkAsUnread}
+                        isRead={readAlerts.has(alert.id)}
+                      />
+                    ))}
+                  </div>
                 </div>
-                <div className={ALERT_GRID_CLASS}>
-                  {filteredCompanyAlerts.map((alert) => (
-                    <AlertCard
-                      key={alert.id}
-                      alert={alert}
-                      onShowCompanyCard={handleShowCompanyCard}
-                      onMarkAsRead={handleMarkAsRead}
-                      onMarkAsUnread={handleMarkAsUnread}
-                      isRead={readAlerts.has(alert.id)} // [MODIFIED] تمرير حالة القراءة للبطاقة
-                    />
-                  ))}
+              )}
+
+            {/* تنبيهات الموظفين */}
+            {(activeTab === 'all' || activeTab === 'employees') &&
+              filteredEmployeeAlerts.length > 0 && (
+                <div>
+                  <div className="mb-6 flex items-center gap-3">
+                    <Users className="h-6 w-6 text-foreground-secondary" />
+                    <h2 className="text-xl font-bold text-neutral-900">تنبيهات الموظفين</h2>
+                    <span className="rounded-full bg-surface-secondary px-2 py-1 text-sm font-medium text-foreground-secondary">
+                      {filteredEmployeeAlerts.length}
+                    </span>
+                  </div>
+                  <div className={ALERT_GRID_CLASS}>
+                    {filteredEmployeeAlerts.map((alert) => (
+                      <EmployeeAlertCard
+                        key={alert.id}
+                        alert={alert}
+                        onViewEmployee={handleViewEmployee}
+                        onMarkAsRead={handleMarkAsRead}
+                        onMarkAsUnread={handleMarkAsUnread}
+                        isRead={readAlerts.has(alert.id)}
+                      />
+                    ))}
+                  </div>
                 </div>
+              )}
+
+            {/* لا توجد نتائج */}
+            {filteredCompanyAlerts.length === 0 && filteredEmployeeAlerts.length === 0 && (
+              <div className="rounded-xl border border-neutral-200 bg-surface p-12 text-center shadow-sm">
+                <Bell className="mx-auto mb-4 h-16 w-16 text-neutral-300" />
+                <h3 className="mb-2 text-lg font-medium text-neutral-900">
+                  {searchTerm
+                    ? 'لا توجد نتائج'
+                    : readFilterTab === 'new'
+                      ? 'لا توجد تنبيهات جديدة'
+                      : 'لا توجد تنبيهات مقروءة'}
+                </h3>
+                <p className="text-neutral-600">
+                  {searchTerm
+                    ? `لم يتم العثور على تنبيهات تحتوي على "${searchTerm}"`
+                    : readFilterTab === 'new'
+                      ? 'جميع مؤسساتك وموظفيك محدثون ولا يحتاجون إلى إجراءات فورية'
+                      : 'لم تقم بالاطلاع على أي تنبيهات بعد'}
+                </p>
               </div>
             )}
-
-          {/* تنبيهات الموظفين */}
-          {(activeTab === 'all' || activeTab === 'employees') &&
-            filteredEmployeeAlerts.length > 0 && (
-              <div>
-                <div className="flex items-center gap-3 mb-6">
-                  <Users className="w-6 h-6 text-foreground-secondary" />
-                  <h2 className="text-xl font-bold text-neutral-900">تنبيهات الموظفين</h2>
-                  <span className="rounded-full bg-surface-secondary px-2 py-1 text-sm font-medium text-foreground-secondary">
-                    {filteredEmployeeAlerts.length}
-                  </span>
-                </div>
-                <div className={ALERT_GRID_CLASS}>
-                  {filteredEmployeeAlerts.map((alert) => (
-                    <EmployeeAlertCard
-                      key={alert.id}
-                      alert={alert}
-                      onViewEmployee={handleViewEmployee}
-                      onMarkAsRead={handleMarkAsRead}
-                      onMarkAsUnread={handleMarkAsUnread}
-                      isRead={readAlerts.has(alert.id)} // [MODIFIED] تمرير حالة القراءة للبطاقة
-                    />
-                  ))}
-                </div>
-              </div>
-            )}
-
-          {/* لا توجد نتائج */}
-          {filteredCompanyAlerts.length === 0 && filteredEmployeeAlerts.length === 0 && (
-            <div className="bg-surface rounded-xl shadow-sm border border-neutral-200 p-12 text-center">
-              <Bell className="w-16 h-16 mx-auto mb-4 text-neutral-300" />
-              <h3 className="text-lg font-medium text-neutral-900 mb-2">
-                {searchTerm
-                  ? 'لا توجد نتائج'
-                  : readFilterTab === 'new'
-                    ? 'لا توجد تنبيهات جديدة'
-                    : 'لا توجد تنبيهات مقروءة'}
-              </h3>
-              <p className="text-neutral-600">
-                {searchTerm
-                  ? `لم يتم العثور على تنبيهات تحتوي على "${searchTerm}"`
-                  : readFilterTab === 'new'
-                    ? 'جميع مؤسساتك وموظفيك محدثون ولا يحتاجون إلى إجراءات فورية'
-                    : 'لم تقم بالاطلاع على أي تنبيهات بعد'}
-              </p>
-            </div>
-          )}
-        </div>
+          </div>
+        )}
       </div>
 
       {/* كارت المؤسسة المنبثق (لا تغيير) */}
