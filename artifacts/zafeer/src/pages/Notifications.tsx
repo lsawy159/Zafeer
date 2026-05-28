@@ -639,6 +639,7 @@ export default function Notifications() {
         if (notification.days_remaining >= 0) return false
       } else if (cardFilter === 'طارئ') {
         if (notification.priority !== 'critical' && notification.priority !== 'urgent') return false
+        if (notification.days_remaining !== null && notification.days_remaining !== undefined && notification.days_remaining < 0) return false
       } else if (cardFilter === 'عاجل') {
         if (notification.priority !== 'high') return false
       } else if (cardFilter === 'متوسط') {
