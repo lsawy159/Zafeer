@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo } from 'react'
+import { useState, useEffect, useCallback, useMemo, type ReactNode } from 'react'
 import { supabase, Notification, Company, Employee } from '@/lib/supabase'
 import { SnoozeModal } from '@/components/notifications/SnoozeModal'
 import CompanyDetailModal from '@/components/companies/CompanyDetailModal'
@@ -28,6 +28,8 @@ import {
   Send,
   AlertCircle,
   BellOff,
+  List,
+  LayoutGrid,
 } from 'lucide-react'
 import { formatDistanceToNow } from 'date-fns'
 import { ar } from 'date-fns/locale'
@@ -103,6 +105,34 @@ const PRIORITY_ORDER: Record<Notification['priority'], number> = {
   high: 3,
   medium: 2,
   low: 1,
+}
+
+const NOTIFICATION_PRIORITY_BADGE: Record<Notification['priority'], ReactNode> = {
+  critical: (
+    <span className="inline-flex rounded-full bg-red-100 px-2 py-0.5 text-xs font-medium text-red-700">
+      طارئ
+    </span>
+  ),
+  urgent: (
+    <span className="inline-flex rounded-full bg-red-100 px-2 py-0.5 text-xs font-medium text-red-700">
+      طارئ
+    </span>
+  ),
+  high: (
+    <span className="inline-flex rounded-full bg-orange-100 px-2 py-0.5 text-xs font-medium text-orange-700">
+      عاجل
+    </span>
+  ),
+  medium: (
+    <span className="inline-flex rounded-full bg-yellow-100 px-2 py-0.5 text-xs font-medium text-yellow-700">
+      متوسط
+    </span>
+  ),
+  low: (
+    <span className="inline-flex rounded-full bg-blue-100 px-2 py-0.5 text-xs font-medium text-blue-700">
+      منخفض
+    </span>
+  ),
 }
 
 function getNotificationKey(row: Pick<ExpiryNotificationRow, 'entity_type' | 'entity_id' | 'type'>) {
@@ -197,6 +227,7 @@ export default function Notifications() {
   const [generating, setGenerating] = useState(false)
   const [activeTab, setActiveTab] = useState<ActiveTab>('notifications')
   const [cardFilter, setCardFilter] = useState<NotificationsCardFilter>(null)
+  const [viewMode, setViewMode] = useState<'table' | 'grid'>('table')
   const [thresholds, setThresholds] = useState(DEFAULT_EMPLOYEE_NOTIFICATION_THRESHOLDS)
 
   // CSV Report state
@@ -1031,26 +1062,47 @@ export default function Notifications() {
             </div>
           </div>
 
-          {/* Action Buttons */}
-          <div className="flex gap-3 mt-4">
-            {unreadCount > 0 && (
-              <Button onClick={handleMarkAllAsRead} variant="default" size="sm">
-                <Check className="w-4 h-4" />
-                تحديد الكل كمقروء
-              </Button>
-            )}
-            {readCount > 0 && (
-              <Button onClick={handleMarkAllAsUnread} variant="secondary" size="sm">
-                <Mail className="w-4 h-4" />
-                تحديد الكل كغير مقروء
-              </Button>
-            )}
-            {notifications.length > 0 && (
-              <Button onClick={handleDeleteAll} variant="destructive" size="sm">
-                <Trash2 className="w-4 h-4" />
-                حذف الكل
-              </Button>
-            )}
+          <div className="mt-4 flex items-center justify-between gap-3">
+            <div className="app-toggle-shell">
+              <button
+                type="button"
+                onClick={() => setViewMode('table')}
+                className={`app-toggle-button ${viewMode === 'table' ? 'app-toggle-button-active' : ''}`}
+                title="عرض جدول"
+              >
+                <List className="h-4 w-4" />
+              </button>
+              <button
+                type="button"
+                onClick={() => setViewMode('grid')}
+                className={`app-toggle-button ${viewMode === 'grid' ? 'app-toggle-button-active' : ''}`}
+                title="عرض بطاقات"
+              >
+                <LayoutGrid className="h-4 w-4" />
+              </button>
+            </div>
+
+            {/* Action Buttons */}
+            <div className="flex flex-wrap gap-3">
+              {unreadCount > 0 && (
+                <Button onClick={handleMarkAllAsRead} variant="default" size="sm">
+                  <Check className="w-4 h-4" />
+                  تحديد الكل كمقروء
+                </Button>
+              )}
+              {readCount > 0 && (
+                <Button onClick={handleMarkAllAsUnread} variant="secondary" size="sm">
+                  <Mail className="w-4 h-4" />
+                  تحديد الكل كغير مقروء
+                </Button>
+              )}
+              {notifications.length > 0 && (
+                <Button onClick={handleDeleteAll} variant="destructive" size="sm">
+                  <Trash2 className="w-4 h-4" />
+                  حذف الكل
+                </Button>
+              )}
+            </div>
           </div>
         </div>
 
@@ -1070,6 +1122,135 @@ export default function Notifications() {
                 ? 'لم يتم توليد أي تنبيهات بعد. اضغط على "توليد تنبيهات جديدة" أعلاه.'
                 : 'لا توجد نتائج تطابق الفلاتر المحددة'}
             </p>
+          </div>
+        ) : viewMode === 'table' ? (
+          <div className="app-panel overflow-x-auto">
+            <table className="w-full min-w-[900px] text-sm">
+              <thead className="sticky top-0 z-[1] bg-neutral-50 shadow-sm">
+                <tr className="border-b border-neutral-200 text-right">
+                  <th className="px-3 py-3 font-semibold text-neutral-700">م</th>
+                  <th className="px-3 py-3 font-semibold text-neutral-700">العنوان</th>
+                  <th className="px-3 py-3 font-semibold text-neutral-700">الأولوية</th>
+                  <th className="px-3 py-3 font-semibold text-neutral-700">الأيام المتبقية</th>
+                  <th className="px-3 py-3 font-semibold text-neutral-700">تاريخ الانتهاء</th>
+                  <th className="px-3 py-3 font-semibold text-neutral-700">حالة القراءة</th>
+                  <th className="px-3 py-3 font-semibold text-neutral-700">الإجراءات</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-neutral-100">
+                {filteredNotifications.map((notification, idx) => (
+                  <tr
+                    key={notification.id}
+                    className={`transition-colors hover:bg-neutral-50 ${
+                      !notification.is_read ? 'bg-blue-50/30' : ''
+                    }`}
+                  >
+                    <td className="px-3 py-3 text-xs text-neutral-500">{idx + 1}</td>
+                    <td className="px-3 py-3">
+                      <div className="flex items-start gap-2">
+                        {!notification.is_read && (
+                          <span className="mt-1.5 h-1.5 w-1.5 flex-shrink-0 rounded-full bg-blue-600" />
+                        )}
+                        <div className="min-w-0">
+                          <div
+                            className={`font-medium ${
+                              !notification.is_read ? 'text-neutral-900' : 'text-neutral-700'
+                            }`}
+                          >
+                            {notification.title}
+                          </div>
+                          {notification.message && (
+                            <div className="mt-1 line-clamp-2 text-xs text-neutral-500">
+                              {notification.message}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </td>
+                    <td className="px-3 py-3">
+                      {NOTIFICATION_PRIORITY_BADGE[notification.priority] ?? notification.priority}
+                    </td>
+                    <td className="px-3 py-3">
+                      {notification.days_remaining == null ? (
+                        <span className="text-neutral-400">—</span>
+                      ) : (
+                        <span
+                          className={
+                            notification.days_remaining < 0
+                              ? 'font-medium text-red-600'
+                              : 'text-neutral-700'
+                          }
+                        >
+                          {notification.days_remaining}
+                        </span>
+                      )}
+                    </td>
+                    <td className="px-3 py-3 text-xs text-neutral-600">
+                      {notification.target_date ? (
+                        <HijriDateDisplay date={notification.target_date}>
+                          {formatDateShortWithHijri(notification.target_date)}
+                        </HijriDateDisplay>
+                      ) : (
+                        '—'
+                      )}
+                    </td>
+                    <td className="px-3 py-3">
+                      {notification.is_read ? (
+                        <span className="text-xs text-neutral-400">مقروء</span>
+                      ) : (
+                        <span className="text-xs font-medium text-primary">غير مقروء</span>
+                      )}
+                    </td>
+                    <td className="px-3 py-3">
+                      <div className="flex flex-wrap items-center gap-3">
+                        {!notification.is_read ? (
+                          <button
+                            type="button"
+                            onClick={() => handleMarkAsRead(notification.id)}
+                            className="text-xs text-primary underline-offset-2 hover:underline whitespace-nowrap"
+                          >
+                            تحديد كمقروء
+                          </button>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => handleMarkAsUnread(notification.id)}
+                            className="text-xs text-neutral-500 underline-offset-2 hover:underline whitespace-nowrap"
+                          >
+                            إلغاء القراءة
+                          </button>
+                        )}
+                        {notification.entity_type === 'company' && notification.entity_id && (
+                          <button
+                            type="button"
+                            onClick={() => handleViewCompany(String(notification.entity_id))}
+                            className="text-xs text-neutral-500 underline-offset-2 hover:underline whitespace-nowrap"
+                          >
+                            عرض المؤسسة
+                          </button>
+                        )}
+                        {isAdmin && (
+                          <button
+                            type="button"
+                            onClick={() => setSnoozeTarget(notification)}
+                            className="text-xs text-neutral-500 underline-offset-2 hover:underline whitespace-nowrap"
+                          >
+                            تأجيل
+                          </button>
+                        )}
+                        <button
+                          type="button"
+                          onClick={() => handleDelete(notification)}
+                          className="text-xs text-red-500 underline-offset-2 hover:underline whitespace-nowrap"
+                        >
+                          حذف
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
