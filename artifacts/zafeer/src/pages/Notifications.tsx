@@ -693,7 +693,8 @@ export default function Notifications() {
       activeCountableNotifications.filter(
         (notification) =>
           (notification.priority === 'critical' || notification.priority === 'urgent') &&
-          !notification.is_read
+          !notification.is_read &&
+          (notification.days_remaining == null || notification.days_remaining >= 0)
       )
     ),
     high: countUniqueNotificationEntities(
