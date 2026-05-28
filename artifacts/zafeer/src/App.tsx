@@ -1,5 +1,5 @@
 import { ReactNode, Suspense, lazy } from 'react'
-import { BrowserRouter, Routes, Route, Navigate, Outlet } from 'react-router-dom'
+import { BrowserRouter, Routes, Route, Navigate, Outlet, useSearchParams, useParams } from 'react-router-dom'
 import NotFound from './pages/not-found'
 import { QueryClientProvider } from '@tanstack/react-query'
 import { AuthProvider, useAuth } from './contexts/AuthContext'
@@ -51,6 +51,7 @@ function ProtectedRouteLayout() {
 }
 
 // Lazy load all pages for code splitting
+const FinancePage = lazy(() => import('./pages/FinancePage'))
 const Login = lazy(() => import('./pages/Login'))
 const Dashboard = lazy(() => import('./pages/Dashboard'))
 const Employees = lazy(() => import('./pages/Employees'))
@@ -111,6 +112,16 @@ function PublicRoute({ children }: { children: ReactNode }) {
       {session ? <Navigate to="/dashboard" replace /> : <>{children}</>}
     </AuthLoading>
   )
+}
+
+// R4 — redirect موحَّد: يجمع params الموجودة مع params الجديدة
+function FinanceRedirect({ overrides }: { overrides: Record<string, string> }) {
+  const [existing] = useSearchParams()
+  const { id } = useParams<{ id?: string }>()
+  const next = new URLSearchParams(existing)
+  Object.entries(overrides).forEach(([k, v]) => next.set(k, v))
+  if (id) next.set('id', id)
+  return <Navigate to={`/finance?${next.toString()}`} replace />
 }
 
 function AppRoutes() {
@@ -206,14 +217,6 @@ function AppRoutes() {
             }
           />
           <Route
-            path="/payroll-deductions"
-            element={
-              <RouteGuard>
-                <PayrollDeductions />
-              </RouteGuard>
-            }
-          />
-          <Route
             path="/activity-logs"
             element={<Navigate to="/admin-settings?tab=activity-logs" replace />}
           />
@@ -225,30 +228,22 @@ function AppRoutes() {
               </RouteGuard>
             }
           />
+          {/* Finance unified page */}
           <Route
-            path="/extracts"
+            path="/finance"
             element={
               <RouteGuard>
-                <Extracts />
+                <FinancePage />
               </RouteGuard>
             }
           />
-          <Route
-            path="/extracts/new"
-            element={
-              <RouteGuard>
-                <CreateExtractWizard />
-              </RouteGuard>
-            }
-          />
-          <Route
-            path="/extracts/:id"
-            element={
-              <RouteGuard>
-                <ExtractDetail />
-              </RouteGuard>
-            }
-          />
+
+          {/* Redirects: مسارات قديمة → /finance */}
+          <Route path="/extracts" element={<FinanceRedirect overrides={{ tab: 'extracts' }} />} />
+          <Route path="/extracts/new" element={<FinanceRedirect overrides={{ tab: 'extracts', action: 'new' }} />} />
+          <Route path="/extracts/:id" element={<FinanceRedirect overrides={{ tab: 'extracts' }} />} />
+          <Route path="/payroll-deductions" element={<FinanceRedirect overrides={{ tab: 'payroll' }} />} />
+
           {/* Legacy redirects */}
           <Route path="/email-management" element={<Navigate to="/admin-settings?tab=backup" replace />} />
           <Route

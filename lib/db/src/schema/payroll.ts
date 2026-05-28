@@ -6,6 +6,7 @@ import { z } from 'zod/v4'
 import { employeesTable } from './employees'
 import { usersTable } from './users'
 import { obligationLinesTable } from './obligations'
+import { projectsTable } from './projects'
 import {
   payrollScopeTypeEnum,
   payrollInputModeEnum,
@@ -57,6 +58,7 @@ export const payrollEntriesTable = pgTable('payroll_entries', {
   installment_deducted_amount: numeric('installment_deducted_amount').notNull().default('0.00'),
   gross_amount: numeric('gross_amount').notNull().default('0.00'),
   net_amount: numeric('net_amount').notNull().default('0.00'),
+  project_id: uuid('project_id').references(() => projectsTable.id),
   entry_status: payrollEntryStatusEnum('entry_status').notNull().default('draft'),
   bank_account_snapshot: text('bank_account_snapshot'),
   notes: text('notes'),
@@ -68,6 +70,24 @@ export const insertPayrollEntrySchema = createInsertSchema(payrollEntriesTable)
 export const selectPayrollEntrySchema = createSelectSchema(payrollEntriesTable)
 export type InsertPayrollEntry = z.infer<typeof insertPayrollEntrySchema>
 export type PayrollEntry = typeof payrollEntriesTable.$inferSelect
+
+// ─── payroll_entry_project_allocations ───────────────────────────────────────
+
+export const payrollEntryProjectAllocationsTable = pgTable('payroll_entry_project_allocations', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  payroll_entry_id: uuid('payroll_entry_id').notNull().references(() => payrollEntriesTable.id, { onDelete: 'cascade' }),
+  project_id: uuid('project_id').notNull().references(() => projectsTable.id),
+  days_allocated: numeric('days_allocated', { precision: 6, scale: 2 }).notNull(),
+  allocated_cost: numeric('allocated_cost', { precision: 12, scale: 2 }).notNull(),
+  notes: text('notes'),
+  created_at: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  updated_at: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+})
+
+export const insertPayrollEntryProjectAllocationSchema = createInsertSchema(payrollEntryProjectAllocationsTable)
+export const selectPayrollEntryProjectAllocationSchema = createSelectSchema(payrollEntryProjectAllocationsTable)
+export type InsertPayrollEntryProjectAllocation = z.infer<typeof insertPayrollEntryProjectAllocationSchema>
+export type PayrollEntryProjectAllocation = typeof payrollEntryProjectAllocationsTable.$inferSelect
 
 // ─── payroll_entry_components ─────────────────────────────────────────────────
 

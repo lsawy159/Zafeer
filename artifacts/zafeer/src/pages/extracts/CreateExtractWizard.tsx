@@ -18,7 +18,13 @@ const STEP_LABELS = [
   'المراجعة النهائية',
 ]
 
-export default function CreateExtractWizard() {
+interface Props {
+  onCancel?: () => void
+  onCreated?: (id: string) => void
+  embedded?: boolean
+}
+
+export default function CreateExtractWizard({ onCancel, embedded = false }: Props) {
   const navigate = useNavigate()
   const { data: projects = [] } = useProjects()
 
@@ -29,6 +35,18 @@ export default function CreateExtractWizard() {
   const [matchedRows, setMatchedRows] = useState<MatchedEmployee[]>([])
 
   const selectedProject = projects.find((p) => p.id === projectId)
+
+  const handleBack = () => {
+    if (onCancel) {
+      onCancel()
+    } else {
+      navigate('/extracts')
+    }
+  }
+
+  const handleGoToRates = () => {
+    navigate('/projects')
+  }
 
   const handleSelectProject = (id: string) => {
     setProjectId(id)
@@ -52,15 +70,11 @@ export default function CreateExtractWizard() {
     if (target < step) setStep(target)
   }
 
-  return (
-    <Layout>
+  const content = (
     <div className="max-w-2xl mx-auto py-6 px-4" dir="rtl">
       {/* Header */}
       <div className="flex items-center gap-3 mb-6">
-        <button
-          onClick={() => navigate('/extracts')}
-          className="text-slate-500 hover:text-slate-700 transition"
-        >
+        <button onClick={handleBack} className="text-slate-500 hover:text-slate-700 transition">
           <ChevronRight className="h-5 w-5" />
         </button>
         <h1 className="text-xl font-bold text-slate-900">مستخلص جديد</h1>
@@ -102,15 +116,10 @@ export default function CreateExtractWizard() {
 
       {/* Step content */}
       <div className="bg-white rounded-xl border border-slate-200 p-5 shadow-sm">
-        <h2 className="text-base font-semibold text-slate-800 mb-4">
-          {STEP_LABELS[step - 1]}
-        </h2>
+        <h2 className="text-base font-semibold text-slate-800 mb-4">{STEP_LABELS[step - 1]}</h2>
 
         {step === 1 && (
-          <StepSelectProject
-            selectedProjectId={projectId}
-            onSelect={handleSelectProject}
-          />
+          <StepSelectProject selectedProjectId={projectId} onSelect={handleSelectProject} />
         )}
 
         {step === 2 && projectId && (
@@ -126,7 +135,7 @@ export default function CreateExtractWizard() {
           <StepReviewEmployees
             projectId={projectId}
             onProceed={handleReviewProceed}
-            onGoToRates={() => navigate('/projects')}
+            onGoToRates={handleGoToRates}
           />
         )}
 
@@ -149,6 +158,9 @@ export default function CreateExtractWizard() {
         )}
       </div>
     </div>
-    </Layout>
   )
+
+  if (embedded) return content
+
+  return <Layout>{content}</Layout>
 }
