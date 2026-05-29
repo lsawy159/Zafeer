@@ -99,6 +99,7 @@ import CreatePayrollRunModal from '../payroll/CreatePayrollRunModal'
 import ObligationDetailModal from '../payroll/ObligationDetailModal'
 import PayrollSlipModal from '../payroll/PayrollSlipModal'
 import FinancialMetricStrip from './FinancialMetricStrip'
+import { DeletedEmployeeObligationsSection } from './DeletedEmployeeObligationsSection'
 import {
   compactButtonBaseClass,
   outlineCompactButtonClass,
@@ -5396,6 +5397,7 @@ tr:last-child td{border-bottom:none}
                 </>
               )}
             </div>
+            <DeletedEmployeeObligationsSection />
           </div>
         )}
 

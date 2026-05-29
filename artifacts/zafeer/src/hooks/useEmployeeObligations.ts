@@ -614,3 +614,47 @@ export function useBulkCreatePenaltyPlans() {
     },
   })
 }
+
+export interface DeletedEmployeeObligationRow {
+  id: string
+  employee_id: string
+  obligation_type: string
+  title: string
+  total_amount: number
+  currency_code: string
+  status: string
+  start_month: string
+  installment_count: number
+  employee: { id: string; name: string; residence_number: string | null } | undefined
+}
+
+export function useDeletedEmployeeObligations() {
+  return useQuery({
+    queryKey: ['deleted-employee-obligations'],
+    queryFn: async (): Promise<DeletedEmployeeObligationRow[]> => {
+      const { data: deletedEmps, error: empError } = await supabase
+        .from('employees')
+        .select('id, name, residence_number')
+        .eq('is_deleted', true)
+
+      if (empError) throw empError
+
+      const empIds = (deletedEmps ?? []).map((e) => e.id)
+      if (empIds.length === 0) return []
+
+      const { data: headers, error: headersError } = await supabase
+        .from('employee_obligation_headers')
+        .select('id, employee_id, obligation_type, title, total_amount, currency_code, status, start_month, installment_count')
+        .in('employee_id', empIds)
+        .in('status', ['active', 'draft'])
+
+      if (headersError) throw headersError
+
+      return (headers ?? []).map((h) => ({
+        ...h,
+        employee: (deletedEmps ?? []).find((e) => e.id === h.employee_id),
+      }))
+    },
+    staleTime: 30 * 1000,
+  })
+}
