@@ -78,6 +78,13 @@ export const PERMISSION_SECTIONS = {
     description: 'إنشاء وتصدير فواتير التكاليف الشهرية للمشاريع الخارجية.',
     actions: ['view', 'create', 'edit', 'delete', 'export'] as const,
   },
+  revenue: {
+    label: 'الإيرادات والربحية',
+    description: 'عرض تقارير الإيرادات والهامش للمشاريع. يجمع بيانات المستخلصات والرواتب.',
+    actions: ['view', 'manage'] as const,
+    // view: يتيح عرض تبويب الإيرادات وجدول P&L والأرقام الإجمالية للوضع النقدي
+    // manage: يتيح إضافةً لـ view — فتح قائمة الالتزامات المسددة وتنفيذ حذفها النهائي
+  },
   adminSettings: {
     label: 'إعدادات النظام',
     description: 'إعدادات النظام الإدارية العامة.',

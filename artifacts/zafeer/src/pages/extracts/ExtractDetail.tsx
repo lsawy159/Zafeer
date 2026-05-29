@@ -130,8 +130,14 @@ function EditableAttendanceCell({ line, totalDaysInMonth, invoiceId }: EditableC
   )
 }
 
-export default function ExtractDetail() {
-  const { id } = useParams<{ id: string }>()
+interface Props {
+  extractId?: string
+  onBack?: () => void
+}
+
+export default function ExtractDetail({ extractId: extractIdProp, onBack }: Props = {}) {
+  const params = useParams<{ id: string }>()
+  const id = extractIdProp ?? params.id
   const navigate = useNavigate()
   const permissions = usePermissions()
   // helper alias — avoids repeated destructure inside conditional
@@ -157,7 +163,7 @@ export default function ExtractDetail() {
       <Layout>
         <div className="py-16 text-center text-slate-500">
           <p>لم يُعثر على المستخلص</p>
-          <button onClick={() => navigate('/extracts')} className="mt-2 text-primary text-sm hover:underline">
+          <button onClick={() => onBack ? onBack() : navigate('/extracts')} className="mt-2 text-primary text-sm hover:underline">
             العودة للقائمة
           </button>
         </div>
@@ -262,7 +268,7 @@ export default function ExtractDetail() {
       <div className="flex items-start justify-between">
         <div className="flex items-center gap-3">
           <button
-            onClick={() => navigate('/extracts')}
+            onClick={() => onBack ? onBack() : navigate('/extracts')}
             className="text-slate-500 hover:text-slate-700 transition mt-1"
           >
             <ChevronRight className="h-5 w-5" />
