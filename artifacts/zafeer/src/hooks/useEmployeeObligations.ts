@@ -642,15 +642,20 @@ export function useDeletedEmployeeObligations() {
       const empIds = (deletedEmps ?? []).map((e) => e.id)
       if (empIds.length === 0) return []
 
-      const { data: headers, error: headersError } = await supabase
-        .from('employee_obligation_headers')
-        .select('id, employee_id, obligation_type, title, total_amount, currency_code, status, start_month, installment_count')
-        .in('employee_id', empIds)
-        .in('status', ['active', 'draft'])
+      const BATCH_SIZE = 50
+      const allHeaders: Omit<DeletedEmployeeObligationRow, 'employee'>[] = []
+      for (let i = 0; i < empIds.length; i += BATCH_SIZE) {
+        const batch = empIds.slice(i, i + BATCH_SIZE)
+        const { data: batchData, error: batchError } = await supabase
+          .from('employee_obligation_headers')
+          .select('id, employee_id, obligation_type, title, total_amount, currency_code, status, start_month, installment_count')
+          .in('employee_id', batch)
+          .in('status', ['active', 'draft'])
+        if (batchError) throw batchError
+        allHeaders.push(...(batchData ?? []))
+      }
 
-      if (headersError) throw headersError
-
-      return (headers ?? []).map((h) => ({
+      return allHeaders.map((h) => ({
         ...h,
         employee: (deletedEmps ?? []).find((e) => e.id === h.employee_id),
       }))
