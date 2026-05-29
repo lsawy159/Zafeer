@@ -27,7 +27,8 @@ import {
   User,
   Eye,
 } from 'lucide-react'
-import CascadeDeleteModal, { type ObligationHeaderInfo } from '@/components/employees/CascadeDeleteModal'
+import { type ObligationHeaderInfo } from '@/components/employees/CascadeDeleteModal'
+import { EmployeeDeleteSummaryModal } from './employees/EmployeeDeleteSummaryModal'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/Tooltip'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { toast } from 'sonner'
@@ -47,7 +48,6 @@ import { SearchInput } from '@/components/ui/SearchInput'
 import { Button } from '@/components/ui/Button'
 import { EmployeesFiltersModal } from './employees/EmployeesFiltersModal'
 import { EmployeeGridCard } from './employees/EmployeeGridCard'
-import { EmployeeDeleteConfirmModal } from './employees/EmployeeDeleteConfirmModal'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -172,6 +172,66 @@ async function deleteObligationHeaders(headerIds: string[]): Promise<void> {
   }
 }
 
+export interface DeletePreviewData {
+  obligationHeaders: ObligationHeaderInfo[]
+  payrollEntryCount: number
+  extractLineCount: number
+}
+
+export type ObligationDeleteChoice = 'delete' | 'keep'
+
+export interface BulkDeletePreviewData {
+  obligationHeaders: ObligationHeaderInfo[]
+  totalPayrollEntries: number
+  totalExtractLines: number
+}
+
+async function fetchDeletePreview(employeeId: string): Promise<DeletePreviewData> {
+  const [headers, payrollResult, extractResult] = await Promise.all([
+    fetchObligationHeaders([employeeId]),
+    supabase
+      .from('payroll_entries')
+      .select('id', { count: 'exact', head: true })
+      .eq('employee_id', employeeId),
+    supabase
+      .from('extract_invoice_lines')
+      .select('id', { count: 'exact', head: true })
+      .eq('employee_id', employeeId),
+  ])
+
+  if (payrollResult.error) throw payrollResult.error
+  if (extractResult.error) throw extractResult.error
+
+  return {
+    obligationHeaders: headers,
+    payrollEntryCount: payrollResult.count ?? 0,
+    extractLineCount: extractResult.count ?? 0,
+  }
+}
+
+async function fetchBulkDeletePreview(employeeIds: string[]): Promise<BulkDeletePreviewData> {
+  const [headers, payrollResult, extractResult] = await Promise.all([
+    fetchObligationHeaders(employeeIds),
+    supabase
+      .from('payroll_entries')
+      .select('id', { count: 'exact', head: true })
+      .in('employee_id', employeeIds),
+    supabase
+      .from('extract_invoice_lines')
+      .select('id', { count: 'exact', head: true })
+      .in('employee_id', employeeIds),
+  ])
+
+  if (payrollResult.error) throw payrollResult.error
+  if (extractResult.error) throw extractResult.error
+
+  return {
+    obligationHeaders: headers,
+    totalPayrollEntries: payrollResult.count ?? 0,
+    totalExtractLines: extractResult.count ?? 0,
+  }
+}
+
 export default function Employees() {
   const { canView, canCreate, canEdit, canDelete } = usePermissions()
   const location = useLocation()
@@ -235,17 +295,17 @@ export default function Employees() {
   // حالة التعديل السريع - تم إزالتها
 
   // Delete modal states
-  const [showDeleteModal, setShowDeleteModal] = useState(false)
+  const [showDeleteSummaryModal, setShowDeleteSummaryModal] = useState(false)
   const [employeeToDelete, setEmployeeToDelete] = useState<
     (Employee & { company: Company }) | null
   >(null)
+  const [deletePreview, setDeletePreview] = useState<DeletePreviewData | null>(null)
+  const [deletePreviewLoading, setDeletePreviewLoading] = useState(false)
+  const [deleteConfirmLoading, setDeleteConfirmLoading] = useState(false)
 
-  // Cascade delete modal states
-  const [showCascadeDeleteModal, setShowCascadeDeleteModal] = useState(false)
-  const [cascadeObligations, setCascadeObligations] = useState<ObligationHeaderInfo[]>([])
-  const [cascadeEmployeeIds, setCascadeEmployeeIds] = useState<string[]>([])
-  const [cascadeIsBulk, setCascadeIsBulk] = useState(false)
-  const [cascadeDeleting, setCascadeDeleting] = useState(false)
+  // Bulk delete preview state
+  const [bulkDeletePreview, setBulkDeletePreview] = useState<BulkDeletePreviewData | null>(null)
+  const [bulkPreviewLoading, setBulkPreviewLoading] = useState(false)
 
   // Bulk selection states
   const [selectedEmployees, setSelectedEmployees] = useState<Set<string>>(new Set())
@@ -264,8 +324,7 @@ export default function Employees() {
 
   // قفل التمرير عند فتح أي مودال
   useModalScrollLock(
-    showDeleteModal ||
-    showCascadeDeleteModal ||
+    showDeleteSummaryModal ||
     showBulkDeleteModal ||
     showBulkResidenceModal ||
     showBulkInsuranceModal ||
@@ -455,47 +514,49 @@ export default function Employees() {
 
   const handleDeleteEmployee = useCallback(async (employee: Employee & { company: Company }) => {
     setEmployeeToDelete(employee)
+    setDeletePreview(null)
+    setDeletePreviewLoading(true)
+    setShowDeleteSummaryModal(true)
 
-    // فحص الالتزامات المرتبطة بالموظف
-    let headers: ObligationHeaderInfo[] = []
     try {
-      headers = await fetchObligationHeaders([employee.id])
+      const preview = await fetchDeletePreview(employee.id)
+      setDeletePreview(preview)
     } catch (fetchError) {
-      logger.error('Error fetching obligations:', fetchError)
+      logger.error('Error fetching delete preview:', fetchError)
       toast.error('تعذر فحص السجلات المرتبطة بالموظف')
-      return
-    }
-
-    if (headers.length > 0) {
-      setCascadeObligations(headers)
-      setCascadeEmployeeIds([employee.id])
-      setCascadeIsBulk(false)
-      setShowCascadeDeleteModal(true)
-    } else {
-      setShowDeleteModal(true)
+      setShowDeleteSummaryModal(false)
+      setEmployeeToDelete(null)
+    } finally {
+      setDeletePreviewLoading(false)
     }
   }, [])
 
-  const confirmDeleteEmployee = async () => {
+  const confirmDeleteEmployee = async (choice: ObligationDeleteChoice) => {
     if (!employeeToDelete) return
-
+    setDeleteConfirmLoading(true)
     try {
+      if (choice === 'delete' && deletePreview?.obligationHeaders.length) {
+        await deleteObligationHeaders(deletePreview.obligationHeaders.map((h) => h.id))
+      }
       await softDeleteEmployees([employeeToDelete.id])
-
-      // Log activity
       await logActivity(employeeToDelete.id, 'حذف موظف', {
         employee_name: employeeToDelete.name,
         company: employeeToDelete.company?.name,
+        obligation_choice: choice,
+        obligations_deleted: choice === 'delete' ? (deletePreview?.obligationHeaders.length ?? 0) : 0,
+        payroll_kept: deletePreview?.payrollEntryCount ?? 0,
+        extracts_kept: deletePreview?.extractLineCount ?? 0,
       })
-
       toast.success(`تم حذف الموظف "${employeeToDelete.name}" بنجاح`)
 
-      // Refresh employees list
-      await loadEmployees()
-      setShowDeleteModal(false)
+      await queryClient.invalidateQueries({ queryKey: EMPLOYEES_PAGE_QUERY_KEY })
+      await queryClient.invalidateQueries({ queryKey: ['all-obligations-summary'] })
+      await queryClient.invalidateQueries({ queryKey: ['deleted-employee-obligations'] })
+
+      setShowDeleteSummaryModal(false)
+      setDeletePreview(null)
       setEmployeeToDelete(null)
 
-      // Close card if open
       if (isCardOpen && selectedEmployee?.id === employeeToDelete.id) {
         setIsCardOpen(false)
         setSelectedEmployee(null)
@@ -509,56 +570,8 @@ export default function Employees() {
       } else {
         toast.error(errorMessage)
       }
-    }
-  }
-
-  const confirmCascadeDelete = async () => {
-    setCascadeDeleting(true)
-    try {
-      const headerIds = cascadeObligations.map((h) => h.id)
-
-      // الحل الصحيح للـ trigger المُعلَّق (DEFERRABLE INITIALLY DEFERRED):
-      // عند حذف الرأس، قاعدة البيانات تحذف البنود تلقائياً بـ CASCADE في نفس الـ transaction.
-      // الـ trigger يتحقق في نهاية الـ transaction لكن الرأس حُذف فعلاً فيعود بـ IF NOT FOUND THEN RETURN.
-      if (headerIds.length > 0) {
-        await deleteObligationHeaders(headerIds)
-      }
-
-      // 2. حذف الموظفين
-      const deletedEmployees = await softDeleteEmployees(cascadeEmployeeIds)
-
-      // تسجيل النشاط
-      if (!cascadeIsBulk && employeeToDelete) {
-        await logActivity(employeeToDelete.id, 'حذف موظف مع الالتزامات', {
-          employee_name: employeeToDelete.name,
-          company: employeeToDelete.company?.name,
-          obligations_deleted: headerIds.length,
-        })
-      }
-
-      const successMsg = cascadeIsBulk
-        ? `تم حذف ${deletedEmployees} موظف مع ${headerIds.length} التزام مرتبط بنجاح`
-        : `تم حذف الموظف "${employeeToDelete?.name}" مع ${headerIds.length} التزام مرتبط بنجاح`
-      toast.success(successMsg)
-
-      await loadEmployees()
-      setShowCascadeDeleteModal(false)
-      setCascadeObligations([])
-      setCascadeEmployeeIds([])
-      setEmployeeToDelete(null)
-
-      if (cascadeIsBulk) {
-        clearSelection()
-        setShowBulkDeleteModal(false)
-      } else if (isCardOpen && selectedEmployee?.id === cascadeEmployeeIds[0]) {
-        setIsCardOpen(false)
-        setSelectedEmployee(null)
-      }
-    } catch (error) {
-      logger.error('Error in cascade delete:', error)
-      toast.error('حدث خطأ أثناء الحذف. يرجى المحاولة مرة أخرى.')
     } finally {
-      setCascadeDeleting(false)
+      setDeleteConfirmLoading(false)
     }
   }
 
@@ -587,48 +600,45 @@ export default function Employees() {
     setSelectedEmployees(new Set())
   }
 
-  // Bulk delete function with batch processing
-  const handleBulkDelete = async () => {
+  const handleBulkDeleteClick = async () => {
     if (selectedEmployees.size === 0) {
       toast.error('لم يتم تحديد أي موظف للحذف')
       return
     }
-
     const employeeIds = Array.from(selectedEmployees)
+    setBulkDeletePreview(null)
+    setBulkPreviewLoading(true)
+    setShowBulkDeleteModal(true)
 
-    // فحص الالتزامات المرتبطة بجميع الموظفين المحددين
-    let obligationHeaders: ObligationHeaderInfo[] = []
     try {
-      obligationHeaders = await fetchObligationHeaders(employeeIds)
-    } catch (obligFetchError) {
-      logger.error('Error fetching obligations for bulk delete:', obligFetchError)
+      const preview = await fetchBulkDeletePreview(employeeIds)
+      setBulkDeletePreview(preview)
+    } catch (fetchError) {
+      logger.error('Error fetching bulk delete preview:', fetchError)
       toast.error('تعذر فحص السجلات المرتبطة بالموظفين المحددين')
-      return
+      setShowBulkDeleteModal(false)
+    } finally {
+      setBulkPreviewLoading(false)
     }
+  }
 
-    if (obligationHeaders.length > 0) {
-      // يوجد التزامات — عرض مودال الحذف المتسلسل
-      setCascadeObligations(obligationHeaders)
-      setCascadeEmployeeIds(employeeIds)
-      setCascadeIsBulk(true)
-      setShowCascadeDeleteModal(true)
-      return
-    }
-
-    // لا توجد التزامات — المضي بالحذف المباشر دفعةً دفعة
+  const handleBulkDelete = async (choice: ObligationDeleteChoice) => {
+    if (selectedEmployees.size === 0) return
+    const employeeIds = Array.from(selectedEmployees)
     setDeletingEmployees(true)
 
     try {
-      const selectedEmployeesData = employees.filter((emp) => employeeIds.includes(emp.id))
+      if (choice === 'delete' && bulkDeletePreview?.obligationHeaders.length) {
+        await deleteObligationHeaders(bulkDeletePreview.obligationHeaders.map((h) => h.id))
+      }
 
+      const selectedEmployeesData = employees.filter((emp) => employeeIds.includes(emp.id))
       let totalDeleted = 0
       const failedBatches: string[] = []
       const employeeBatches = chunkArray(employeeIds, DELETE_BATCH_SIZE)
 
       for (let i = 0; i < employeeBatches.length; i += 1) {
         const batch = employeeBatches[i]
-        const currentBatch = i + 1
-
         try {
           const deletedInBatch = await softDeleteEmployees(batch)
           totalDeleted += deletedInBatch
@@ -640,6 +650,7 @@ export default function Employees() {
                 await logActivity(employee.id, 'حذف موظف (جماعي)', {
                   employee_name: employee.name,
                   company: employee.company?.name,
+                  obligation_choice: choice,
                 })
               } catch {
                 logger.warn('Failed to log activity for employee:', employee.id)
@@ -647,7 +658,7 @@ export default function Employees() {
             }
           }
         } catch (batchError) {
-          logger.error(`Error deleting batch ${currentBatch}/${employeeBatches.length}:`, batchError)
+          logger.error(`Error deleting batch ${i + 1}/${employeeBatches.length}:`, batchError)
           failedBatches.push(...batch)
         }
       }
@@ -658,9 +669,12 @@ export default function Employees() {
         toast.success(`تم حذف ${totalDeleted} موظف بنجاح`)
       }
 
-      await loadEmployees()
+      await queryClient.invalidateQueries({ queryKey: EMPLOYEES_PAGE_QUERY_KEY })
+      await queryClient.invalidateQueries({ queryKey: ['all-obligations-summary'] })
+      await queryClient.invalidateQueries({ queryKey: ['deleted-employee-obligations'] })
       clearSelection()
       setShowBulkDeleteModal(false)
+      setBulkDeletePreview(null)
     } catch (error) {
       logger.error('Error bulk deleting employees:', error)
       const errorMessage = error instanceof Error ? error.message : 'فشل في حذف الموظفين'
@@ -1050,7 +1064,7 @@ export default function Employees() {
     if (
       isCardOpen ||
       isAddModalOpen ||
-      showDeleteModal ||
+      showDeleteSummaryModal ||
       showBulkDeleteModal ||
       showFiltersModal
     ) {
@@ -1127,7 +1141,7 @@ export default function Employees() {
     sortedAndFilteredEmployees,
     isCardOpen,
     isAddModalOpen,
-    showDeleteModal,
+    showDeleteSummaryModal,
     showBulkDeleteModal,
     showFiltersModal,
   ])
@@ -1418,7 +1432,7 @@ export default function Employees() {
                   تعديل تاريخ العقد
                 </Button>
                 <Button
-                  onClick={() => setShowBulkDeleteModal(true)}
+                  onClick={() => void handleBulkDeleteClick()}
                   variant="destructive"
                   size="sm"
                   title="حذف الموظفين المحددين"
@@ -1494,7 +1508,7 @@ export default function Employees() {
                   </Button>
                   {canDelete('employees') && (
                     <Button
-                      onClick={() => setShowBulkDeleteModal(true)}
+                      onClick={() => void handleBulkDeleteClick()}
                       variant="destructive"
                       size="sm"
                     >
@@ -1694,52 +1708,39 @@ export default function Employees() {
         onSuccess={handleUpdateEmployee}
       />
 
-      {/* مودال تأكيد حذف الموظف */}
-      {showDeleteModal && (
-        <EmployeeDeleteConfirmModal
-          employeeName={employeeToDelete?.name}
+      {/* مودال حذف الموظف الموحَّد */}
+      {showDeleteSummaryModal && employeeToDelete && (
+        <EmployeeDeleteSummaryModal
+          open={showDeleteSummaryModal}
+          isBulk={false}
+          employees={[{ id: employeeToDelete.id, name: employeeToDelete.name, company: employeeToDelete.company?.name }]}
+          preview={deletePreview}
+          loadingPreview={deletePreviewLoading}
+          loading={deleteConfirmLoading}
           onConfirm={confirmDeleteEmployee}
           onCancel={() => {
-            setShowDeleteModal(false)
+            setShowDeleteSummaryModal(false)
+            setDeletePreview(null)
             setEmployeeToDelete(null)
           }}
         />
       )}
 
-      {/* مودال حذف جماعي */}
+      {/* مودال الحذف الجماعي */}
       {showBulkDeleteModal && (
         <BulkDeleteModal
           selectedCount={selectedEmployees.size}
           selectedEmployees={employees.filter((emp) => selectedEmployees.has(emp.id))}
+          preview={bulkDeletePreview}
+          loadingPreview={bulkPreviewLoading}
           onConfirm={handleBulkDelete}
-          onCancel={() => setShowBulkDeleteModal(false)}
+          onCancel={() => {
+            setShowBulkDeleteModal(false)
+            setBulkDeletePreview(null)
+          }}
           isDeleting={deletingEmployees}
         />
       )}
-
-      {/* مودال الحذف المتسلسل (موظف لديه التزامات مرتبطة) */}
-      <CascadeDeleteModal
-        open={showCascadeDeleteModal}
-        isBulk={cascadeIsBulk}
-        employees={
-          cascadeIsBulk
-            ? employees
-                .filter((emp) => cascadeEmployeeIds.includes(emp.id))
-                .map((emp) => ({ id: emp.id, name: emp.name, company: emp.company?.name }))
-            : employeeToDelete
-              ? [{ id: employeeToDelete.id, name: employeeToDelete.name, company: employeeToDelete.company?.name }]
-              : []
-        }
-        obligations={cascadeObligations}
-        loading={cascadeDeleting}
-        onConfirm={confirmCascadeDelete}
-        onCancel={() => {
-          setShowCascadeDeleteModal(false)
-          setCascadeObligations([])
-          setCascadeEmployeeIds([])
-          if (!cascadeIsBulk) setEmployeeToDelete(null)
-        }}
-      />
 
       {/* مودال تعديل تاريخ الإقامة */}
       {showBulkResidenceModal && (

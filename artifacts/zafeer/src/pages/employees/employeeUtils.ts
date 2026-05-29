@@ -1,5 +1,29 @@
 import { differenceInDays } from 'date-fns'
 import { type EmployeeNotificationThresholds } from '@/utils/employeeAlerts'
+import { supabase } from '@/lib/supabase'
+
+export type { ObligationHeaderInfo } from '@/components/employees/CascadeDeleteModal'
+
+function chunkArray<T>(items: T[], size: number): T[][] {
+  const chunks: T[][] = []
+  for (let i = 0; i < items.length; i += size) {
+    chunks.push(items.slice(i, i + size))
+  }
+  return chunks
+}
+
+const DELETE_BATCH_SIZE = 50
+
+export async function deleteObligationHeaders(headerIds: string[]): Promise<void> {
+  for (const batch of chunkArray(headerIds, DELETE_BATCH_SIZE)) {
+    const { error } = await supabase
+      .from('employee_obligation_headers')
+      .delete()
+      .in('id', batch)
+
+    if (error) throw error
+  }
+}
 
 export const COLOR_THRESHOLD_FALLBACK: EmployeeNotificationThresholds = {
   residence_urgent_days: 7,

@@ -130,7 +130,7 @@ export async function generateEmployeeAlerts(
           commercial_registration_number: company.commercial_registration_expiry,
           unified_number: company.unified_number,
         }
-      : { id: '', name: 'بدون مؤسسة', commercial_registration_number: null, unified_number: null }
+      : { id: '', name: 'بدون مؤسسة', commercial_registration_number: undefined, unified_number: undefined }
 
     const contractAlert = await checkContractExpiry(employee)
     if (contractAlert) {
