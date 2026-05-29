@@ -305,6 +305,7 @@ export default function Alerts({ initialTab = 'all', initialFilter = 'all' }: Al
         .select(
           'id,company_id,name,profession,nationality,birth_date,phone,passport_number,residence_number,joining_date,contract_expiry,residence_expiry,project_name,bank_account,residence_image_url,salary,health_insurance_expiry,additional_fields,created_at,updated_at,notes,hired_worker_contract_expiry,project_id,is_deleted,deleted_at'
         )
+        .eq('is_deleted', false)
 
       if (employeesError) throw employeesError
 
