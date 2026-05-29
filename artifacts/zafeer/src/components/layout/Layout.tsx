@@ -424,7 +424,7 @@ export default function Layout({ children }: { children: ReactNode }) {
 
           {/* Main Content */}
           <main
-            className={`flex-1 pb-20 pt-16 lg:pb-0 lg:pt-16 transition-all duration-300 ${isCollapsed ? 'lg:ml-0' : ''}`}
+            className={`min-w-0 max-w-full flex-1 overflow-x-hidden pb-20 pt-16 lg:pb-0 lg:pt-16 transition-all duration-300 ${isCollapsed ? 'lg:ml-0' : ''}`}
           >
             {children}
           </main>

@@ -10,7 +10,6 @@ import {
   Bell,
   Wallet,
   RefreshCcw,
-  FileText,
 } from 'lucide-react'
 import { useAlertsStats } from '@/hooks/useAlertsStats'
 import { usePermissions } from '@/utils/permissions'
@@ -18,6 +17,10 @@ import { usePermissions } from '@/utils/permissions'
 export function useNavItems() {
   const { alertsStats } = useAlertsStats()
   const { hasPermission } = usePermissions()
+  const canAccessFinance =
+    hasPermission('extracts', 'view') ||
+    hasPermission('payroll', 'view') ||
+    hasPermission('revenue', 'view')
 
   const navItems = useMemo(
     () => [
@@ -73,17 +76,10 @@ export function useNavItems() {
             : null,
       },
       {
-        path: '/payroll-deductions',
+        path: '/finance',
         icon: Wallet,
-        label: 'الرواتب والاستقطاعات',
-        permission: { section: 'payroll' as const, action: 'view' },
-        badge: null,
-      },
-      {
-        path: '/extracts',
-        icon: FileText,
-        label: 'المستخلصات',
-        permission: { section: 'extracts' as const, action: 'view' },
+        label: 'المالية',
+        permission: null,
         badge: null,
       },
       {
@@ -108,17 +104,27 @@ export function useNavItems() {
         badge: null,
       },
     ],
-    [alertsStats]
+    [alertsStats, canAccessFinance]
+  )
+
+  const visibleNavItems = useMemo(
+    () =>
+      navItems.filter((item) => {
+        if (item.path === '/finance') {
+          return canAccessFinance
+        }
+
+        return (
+          !item.permission ||
+          hasPermission(item.permission.section, item.permission.action as string)
+        )
+      }),
+    [navItems, hasPermission, canAccessFinance]
   )
 
   const quickSearchItems = useMemo(
     () =>
-      navItems
-        .filter(
-          (item) =>
-            !item.permission ||
-            hasPermission(item.permission.section, item.permission.action as string)
-        )
+      visibleNavItems
         .map((item) => ({
           path: item.path,
           label: item.label,
@@ -131,11 +137,13 @@ export function useNavItems() {
             item.path.includes('companies') ? 'مؤسسة' : '',
             item.path.includes('alerts') ? 'تنبيه' : '',
             item.path.includes('transfer') ? 'نقل' : '',
-            item.path.includes('payroll') ? 'راتب' : '',
+            item.path.includes('finance') ? 'مالية' : '',
+            item.path.includes('finance') ? 'راتب' : '',
+            item.path.includes('finance') ? 'مستخلص' : '',
           ].filter(Boolean),
         })),
-    [navItems, hasPermission]
+    [visibleNavItems]
   )
 
-  return { navItems, quickSearchItems, alertsStats }
+  return { navItems: visibleNavItems, quickSearchItems, alertsStats }
 }

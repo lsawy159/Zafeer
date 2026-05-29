@@ -3,6 +3,7 @@ import { ChevronDown, ChevronLeft, AlertTriangle } from 'lucide-react'
 import { useRevenuePnl, useUnlinkedPayrollCount, type RevenuePnlRow } from '@/hooks/useRevenuePnl'
 import { useProjects } from '@/hooks/useProjects'
 import CashPositionPanel from './CashPositionPanel'
+import FinancialMetricStrip from './FinancialMetricStrip'
 
 function formatMonth(dateStr: string): string {
   try {
@@ -85,6 +86,28 @@ export default function RevenueTab() {
     labor_cost: rows.reduce((s, r) => s + r.labor_cost, 0),
     margin: rows.reduce((s, r) => s + r.margin, 0),
   }), [rows])
+  const totalMarginPct = totals.revenue > 0 ? (totals.margin / totals.revenue) * 100 : null
+  const metrics = useMemo(() => [
+    {
+      label: 'إجمالي الإيراد',
+      value: `${fmt(totals.revenue)} ر.س`,
+      tone: totals.revenue > 0 ? 'success' as const : 'neutral' as const,
+    },
+    {
+      label: 'تكلفة العمالة',
+      value: `${fmt(totals.labor_cost)} ر.س`,
+    },
+    {
+      label: 'الهامش',
+      value: `${fmt(totals.margin)} ر.س`,
+      tone: totals.margin < 0 ? 'danger' as const : totals.margin > 0 ? 'success' as const : 'neutral' as const,
+    },
+    {
+      label: 'نسبة الهامش',
+      value: totalMarginPct === null ? '—' : `${totalMarginPct.toFixed(1)}%`,
+      tone: totalMarginPct === null ? 'neutral' as const : totalMarginPct < 0 ? 'danger' as const : 'warning' as const,
+    },
+  ], [totalMarginPct, totals.labor_cost, totals.margin, totals.revenue])
 
   return (
     <div className="space-y-4" dir="rtl">
@@ -125,6 +148,8 @@ export default function RevenueTab() {
           </div>
         )}
       </div>
+
+      {!isLoading && <FinancialMetricStrip metrics={metrics} />}
 
       {/* P&L Table */}
       <div className="rounded-2xl border border-border-200 bg-surface p-4">

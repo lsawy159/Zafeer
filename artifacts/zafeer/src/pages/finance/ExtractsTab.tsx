@@ -42,7 +42,7 @@ export default function ExtractsTab() {
   // قائمة المستخلصات — navigate('/extracts/new') → redirect → /finance?tab=extracts&action=new
   return (
     <Suspense fallback={<Loading />}>
-      <Extracts />
+      <Extracts embedded />
     </Suspense>
   )
 }

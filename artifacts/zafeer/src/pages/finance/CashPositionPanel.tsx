@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
 import { usePermissions } from '@/utils/permissions'
@@ -23,22 +23,26 @@ function useCashPositionData() {
   return useQuery({
     queryKey: ['cash-position'],
     queryFn: async () => {
-      const [{ data: headers, error: headersError }, { data: lines, error: linesError }] =
-        await Promise.all([
-          supabase
-            .from('employee_obligation_headers')
-            .select('id, total_amount, status')
-            .in('status', ['active', 'partially_paid']),
-          supabase
-            .from('employee_obligation_lines')
-            .select('amount_paid, header:employee_obligation_headers!inner(status)')
-            .filter('employee_obligation_headers.status', 'in', '("active","partially_paid")'),
-        ])
+      const [
+        { data: headers, error: headersError },
+        { data: lines, error: linesError },
+      ] = await Promise.all([
+        supabase
+          .from('employee_obligation_headers')
+          .select('id, total_amount, status')
+          .in('status', ['active', 'partially_paid']),
+        supabase
+          .from('employee_obligation_lines')
+          .select('amount_paid, header:employee_obligation_headers!inner(status)')
+          .filter('employee_obligation_headers.status', 'in', '("active","partially_paid")'),
+      ])
 
       if (headersError) throw headersError
-      if (linesError) throw linesError
 
       const total_prepaid = (headers ?? []).reduce((s, h) => s + Number(h.total_amount || 0), 0)
+
+      if (linesError) throw linesError
+
       const total_collected = (lines ?? []).reduce((s, l) => s + Number(l.amount_paid || 0), 0)
 
       return {
@@ -94,9 +98,9 @@ function PaidObligationsPopout({ onClose }: { onClose: () => void }) {
   const deleteObligation = useDeletePaidObligation()
   const [confirmId, setConfirmId] = useState<string | null>(null)
 
-  useState(() => {
+  useEffect(() => {
     void refetch()
-  })
+  }, [])
 
   const handleDelete = async (id: string) => {
     await deleteObligation.mutateAsync(id)

@@ -74,20 +74,15 @@ describe('Layout payroll navigation visibility', () => {
     })
   })
 
-  it('shows payroll navigation when payroll view permission exists', () => {
+  it('shows finance navigation when payroll view permission exists', () => {
     mockHasPermission.mockImplementation((section: string, action: string) => {
       if (action !== 'view') {
         return false
       }
 
-      return [
-        'dashboard',
-        'employees',
-        'companies',
-        'projects',
-        'alerts',
-        'payroll',
-      ].includes(section)
+      return ['dashboard', 'employees', 'companies', 'projects', 'alerts', 'payroll'].includes(
+        section
+      )
     })
 
     render(
@@ -100,8 +95,32 @@ describe('Layout payroll navigation visibility', () => {
       </QueryClientProvider>
     )
 
-    expect(screen.getAllByText('الرواتب والاستقطاعات').length).toBeGreaterThan(0)
+    expect(screen.getAllByText('المالية').length).toBeGreaterThan(0)
     expect(screen.queryByText('التقارير')).not.toBeInTheDocument()
+  })
+
+  it('shows finance navigation when any finance permission exists', () => {
+    mockHasPermission.mockImplementation((section: string, action: string) => {
+      if (action !== 'view') {
+        return false
+      }
+
+      return ['dashboard', 'employees', 'companies', 'projects', 'alerts', 'extracts'].includes(
+        section
+      )
+    })
+
+    render(
+      <QueryClientProvider client={createTestQueryClient()}>
+        <MemoryRouter initialEntries={['/dashboard']}>
+          <Layout>
+            <div>content</div>
+          </Layout>
+        </MemoryRouter>
+      </QueryClientProvider>
+    )
+
+    expect(screen.getAllByText('المالية').length).toBeGreaterThan(0)
   })
 
   it('hides payroll navigation when only reports view permission exists', () => {
@@ -110,14 +129,9 @@ describe('Layout payroll navigation visibility', () => {
         return false
       }
 
-      return [
-        'dashboard',
-        'employees',
-        'companies',
-        'projects',
-        'alerts',
-        'reports',
-      ].includes(section)
+      return ['dashboard', 'employees', 'companies', 'projects', 'alerts', 'reports'].includes(
+        section
+      )
     })
 
     render(
@@ -132,5 +146,6 @@ describe('Layout payroll navigation visibility', () => {
 
     expect(screen.getAllByText('التقارير').length).toBeGreaterThan(0)
     expect(screen.queryByText('الرواتب والاستقطاعات')).not.toBeInTheDocument()
+    expect(screen.queryByText('المالية')).not.toBeInTheDocument()
   })
 })
