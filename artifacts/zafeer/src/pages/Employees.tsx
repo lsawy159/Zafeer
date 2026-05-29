@@ -210,26 +210,11 @@ async function fetchDeletePreview(employeeId: string): Promise<DeletePreviewData
 }
 
 async function fetchBulkDeletePreview(employeeIds: string[]): Promise<BulkDeletePreviewData> {
-  const [headers, payrollResult, extractResult] = await Promise.all([
-    fetchObligationHeaders(employeeIds),
-    supabase
-      .from('payroll_entries')
-      .select('id', { count: 'exact', head: true })
-      .in('employee_id', employeeIds),
-    supabase
-      .from('extract_invoice_lines')
-      .select('id', { count: 'exact', head: true })
-      .in('employee_id', employeeIds),
-  ])
-
-  if (payrollResult.error) throw payrollResult.error
-  if (extractResult.error) throw extractResult.error
-
-  return {
-    obligationHeaders: headers,
-    totalPayrollEntries: payrollResult.count ?? 0,
-    totalExtractLines: extractResult.count ?? 0,
-  }
+  const { data, error } = await supabase.rpc('bulk_delete_employee_preview', {
+    p_employee_ids: employeeIds,
+  })
+  if (error) throw error
+  return data as BulkDeletePreviewData
 }
 
 export default function Employees() {
