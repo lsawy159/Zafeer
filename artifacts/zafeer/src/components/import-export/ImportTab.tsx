@@ -742,6 +742,7 @@ export default function ImportTab({
         const { data: existingEmployees } = await supabase
           .from('employees')
           .select('residence_number')
+          .eq('is_deleted', false)
         const existingResidenceNumbers = new Set<string>()
         existingEmployees?.forEach((emp) => {
           if (emp.residence_number) {
