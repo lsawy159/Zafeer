@@ -119,3 +119,6 @@ artifacts/zafeer/.impeccable/
 
 # ===== Local drafts (never upload to GitHub) =====
 /draftsss/
+
+# ===== Project reports & analysis (local-only — لا يُرفع) =====
+/reports/
