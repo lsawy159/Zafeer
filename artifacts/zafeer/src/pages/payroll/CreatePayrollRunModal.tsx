@@ -72,7 +72,7 @@ export default function CreatePayrollRunModal({
       <div
         role="dialog"
         aria-modal="true"
-        className="w-full max-w-7xl max-h-[92vh] overflow-y-auto rounded-2xl border border-border-200 bg-surface shadow-2xl"
+        className="w-full max-w-[1600px] max-h-[92vh] overflow-y-auto rounded-2xl border border-border-200 bg-surface shadow-2xl"
         onClick={(event) => event.stopPropagation()}
       >
         <div className="sticky top-0 z-10 flex items-center justify-between gap-3 border-b border-border-200 bg-surface px-5 py-4">
@@ -237,7 +237,7 @@ export default function CreatePayrollRunModal({
               </div>
             ) : (
               <div className="overflow-x-auto">
-                <table className="w-full min-w-[1380px] text-sm">
+                <table className="w-full min-w-[1550px] text-sm">
                   <thead className="bg-surface-secondary-50">
                     <tr>
                       <th className="px-3 py-3 text-right">اختيار</th>
@@ -246,7 +246,8 @@ export default function CreatePayrollRunModal({
                       <th className="px-3 py-3 text-right">الراتب</th>
                       <th className="px-3 py-3 text-right">الأجر اليومي</th>
                       <th className="px-3 py-3 text-right">الحضور</th>
-                      <th className="px-3 py-3 text-right">الإجازات</th>
+                      <th className="px-3 py-3 text-right">الإجازات المدفوعة</th>
+                      <th className="px-3 py-3 text-right">الإضافي/البدلات</th>
                       <th className="px-3 py-3 text-right">نقل/تجديد</th>
                       <th className="px-3 py-3 text-right">جزاءات</th>
                       <th className="px-3 py-3 text-right">سلفة</th>
@@ -345,6 +346,22 @@ export default function CreatePayrollRunModal({
                                 )
                               }
                               className="w-20 rounded-lg border border-border-300 bg-surface px-2 py-1.5"
+                            />
+                          </td>
+                          <td className="px-3 py-3">
+                            <input
+                              type="number"
+                              min="0"
+                              step="0.01"
+                              value={row.overtime_amount}
+                              onChange={(e) =>
+                                onUpdateRow(
+                                  row.employee_id,
+                                  'overtime_amount',
+                                  Number(e.target.value) || 0
+                                )
+                              }
+                              className="w-24 rounded-lg border border-border-300 bg-surface px-2 py-1.5"
                             />
                           </td>
                           <td className="px-3 py-3">
