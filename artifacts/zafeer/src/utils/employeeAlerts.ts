@@ -122,54 +122,37 @@ export async function generateEmployeeAlerts(
   const companyMap = new Map(companies.map((c) => [c.id, c]))
 
   for (const employee of employees) {
-    // Get company data
-    const company = companyMap.get(employee.company_id)
+    const company = employee.company_id ? companyMap.get(employee.company_id) : undefined
+    const companyInfo = company
+      ? {
+          id: company.id,
+          name: company.name,
+          commercial_registration_number: company.commercial_registration_expiry,
+          unified_number: company.unified_number,
+        }
+      : { id: '', name: 'بدون مؤسسة', commercial_registration_number: null, unified_number: null }
 
-    // Add contract expiry alerts
     const contractAlert = await checkContractExpiry(employee)
-    if (contractAlert && company) {
-      contractAlert.company = {
-        id: company.id,
-        name: company.name,
-        commercial_registration_number: company.commercial_registration_expiry,
-        unified_number: company.unified_number,
-      }
+    if (contractAlert) {
+      contractAlert.company = companyInfo
       alerts.push(contractAlert)
     }
 
-    // Add residence expiry alerts
     const residenceAlert = await checkResidenceExpiry(employee)
-    if (residenceAlert && company) {
-      residenceAlert.company = {
-        id: company.id,
-        name: company.name,
-        commercial_registration_number: company.commercial_registration_expiry,
-        unified_number: company.unified_number,
-      }
+    if (residenceAlert) {
+      residenceAlert.company = companyInfo
       alerts.push(residenceAlert)
     }
 
-    // Add health insurance expiry alerts
     const healthInsuranceAlert = await checkHealthInsuranceExpiry(employee)
-    if (healthInsuranceAlert && company) {
-      healthInsuranceAlert.company = {
-        id: company.id,
-        name: company.name,
-        commercial_registration_number: company.commercial_registration_expiry,
-        unified_number: company.unified_number,
-      }
+    if (healthInsuranceAlert) {
+      healthInsuranceAlert.company = companyInfo
       alerts.push(healthInsuranceAlert)
     }
 
-    // Add hired worker contract expiry alerts
     const hiredWorkerContractAlert = await checkHiredWorkerContractExpiry(employee)
-    if (hiredWorkerContractAlert && company) {
-      hiredWorkerContractAlert.company = {
-        id: company.id,
-        name: company.name,
-        commercial_registration_number: company.commercial_registration_expiry,
-        unified_number: company.unified_number,
-      }
+    if (hiredWorkerContractAlert) {
+      hiredWorkerContractAlert.company = companyInfo
       alerts.push(hiredWorkerContractAlert)
     }
   }

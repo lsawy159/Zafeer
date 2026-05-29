@@ -832,6 +832,8 @@ export default function Companies() {
       const postgrestError = error as PostgrestError | null
       if (postgrestError?.code === '23503') {
         toast.error('تعذر حذف بعض المؤسسات بسبب وجود سجلات مرتبطة بها.')
+      } else if (postgrestError?.code === '23502') {
+        toast.error('فشل فصل الموظفين عن المؤسسة. تحقق من صلاحيات قاعدة البيانات.')
       } else {
         toast.error('فشل حذف الشركات. يرجى المحاولة مرة أخرى.')
       }

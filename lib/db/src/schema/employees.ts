@@ -8,7 +8,7 @@ import { projectsTable } from './projects'
 
 export const employeesTable = pgTable('employees', {
   id: uuid('id').primaryKey().defaultRandom(),
-  company_id: uuid('company_id').notNull().references(() => companiesTable.id),
+  company_id: uuid('company_id').references(() => companiesTable.id),
   project_id: uuid('project_id').references(() => projectsTable.id),
   name: text('name').notNull(),
   profession: text('profession'),

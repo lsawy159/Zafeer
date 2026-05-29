@@ -334,7 +334,7 @@ async function monitorEmployeeExpiryDates(): Promise<ExpiryAlert[]> {
               commercial_registration_number?: string
             })
           : null
-      const companyName = companyData?.name ?? 'ط؛ظٹط± ظ…ط­ط¯ط¯'
+      const companyName = companyData?.name ?? 'بدون مؤسسة'
 
       for (const config of EMPLOYEE_DOCUMENT_CONFIGS) {
         const expiryDate = employee[config.fieldName]
