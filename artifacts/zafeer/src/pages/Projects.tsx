@@ -6,7 +6,7 @@ import ProjectModal from '@/components/projects/ProjectModal'
 import ProjectCard from '@/components/projects/ProjectCard'
 import ProjectDetailModal from '@/components/projects/ProjectDetailModal'
 import ProjectStatistics from '@/components/projects/ProjectStatistics'
-import { FolderKanban, Plus, Shield, ArrowUpDown } from 'lucide-react'
+import { FolderKanban, Plus, Shield, ArrowUpDown, Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { usePermissions } from '@/utils/permissions'
 import { useCardColumns } from '@/hooks/useUiPreferences'
@@ -25,7 +25,6 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/DropdownMenu'
-import { useDeleteAdminProject, ConflictResponse } from '@workspace/api-client-react'
 
 type SortField = 'name' | 'created_at' | 'status' | 'employee_count' | 'total_salaries'
 type SortDirection = 'asc' | 'desc'
@@ -79,8 +78,13 @@ export default function Projects() {
   const [showEditModal, setShowEditModal] = useState(false)
   const [showDeleteModal, setShowDeleteModal] = useState(false)
   const [showDetailModal, setShowDetailModal] = useState(false)
+  const [showBulkDeleteModal, setShowBulkDeleteModal] = useState(false)
   const [selectedProject, setSelectedProject] = useState<Project | null>(null)
   const [extractCount, setExtractCount] = useState(0)
+
+  // Bulk selection
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
+  const [bulkLoading, setBulkLoading] = useState(false)
 
   // Filter states
   const [searchTerm, setSearchTerm] = useState('')
@@ -244,45 +248,93 @@ export default function Projects() {
     setShowDetailModal(true)
   }
 
-  const deleteProjectMutation = useDeleteAdminProject()
-
   const handleDeleteConfirm = async () => {
     if (!selectedProject) return
 
     try {
       setLoading(true)
-      const response = await deleteProjectMutation.mutateAsync({ id: selectedProject.id })
+      const { data, error } = await supabase.functions.invoke('admin-projects', {
+        body: { id: selectedProject.id },
+        headers: { 'x-action': 'delete' },
+      })
 
-      if (response && typeof response === 'object' && 'success' in response && response.success === true) {
-        toast.success('تم حذف المشروع بنجاح')
-        loadProjects()
-        setShowDeleteModal(false)
-        setSelectedProject(null)
-      } else {
-        toast.error('فشل حذف المشروع - رد خادم غير متوقع')
-        console.error('Unexpected response format:', response)
+      if (error) {
+        const msg = (data as { error?: string } | null)?.error ?? error.message
+        if (msg.includes('موظفين نشطين') || msg.includes('active employees')) {
+          toast.error('لا يمكن حذف المشروع لأنه يحتوي على موظفين نشطين')
+        } else if (msg.includes('صلاحية') || msg.includes('403') || msg.includes('401')) {
+          toast.error('ليس لديك صلاحية لحذف المشروع')
+        } else {
+          toast.error(`خطأ: ${msg}`)
+        }
+        return
       }
+
+      toast.success('تم حذف المشروع بنجاح')
+      setShowDeleteModal(false)
+      setSelectedProject(null)
+      loadProjects()
     } catch (error) {
       console.error('Error deleting project:', error)
-
-      if (error instanceof Error) {
-        const errorMsg = error.message
-        const status = 'status' in error && typeof error.status === 'number' ? error.status : undefined
-
-        if (errorMsg.includes('active employees')) {
-          toast.error('لا يمكن حذف المشروع لأنه يحتوي على موظفين نشطين')
-        } else if (status === 401 || status === 403 || errorMsg.includes('401') || errorMsg.includes('403')) {
-          toast.error('ليس لديك صلاحية لحذف المشروع')
-        } else if (status === 404 || errorMsg.includes('404')) {
-          toast.error('المشروع غير موجود')
-        } else {
-          toast.error(`خطأ: ${errorMsg}`)
-        }
-      } else {
-        toast.error('حدث خطأ أثناء حذف المشروع')
-      }
+      toast.error('حدث خطأ أثناء حذف المشروع')
     } finally {
       setLoading(false)
+    }
+  }
+
+  const handleBulkDeleteConfirm = async () => {
+    const ids = Array.from(selectedIds)
+    if (ids.length === 0) return
+
+    try {
+      setBulkLoading(true)
+      const { data, error } = await supabase.functions.invoke('admin-projects', {
+        body: { ids },
+        headers: { 'x-action': 'bulk-delete' },
+      })
+
+      if (error) {
+        const msg = (data as { error?: string } | null)?.error ?? error.message
+        toast.error(`خطأ: ${msg}`)
+        return
+      }
+
+      const result = data as { deletedCount: number; failedCount: number; results: { id: string; success: boolean; error?: string }[] }
+      if (result.failedCount > 0) {
+        const failedNames = result.results
+          .filter((r) => !r.success)
+          .map((r) => projects.find((p) => p.id === r.id)?.name ?? r.id)
+          .join('، ')
+        toast.warning(`تم حذف ${result.deletedCount} مشروع. فشل حذف ${result.failedCount} (${failedNames})`)
+      } else {
+        toast.success(`تم حذف ${result.deletedCount} مشروع بنجاح`)
+      }
+
+      setSelectedIds(new Set())
+      setShowBulkDeleteModal(false)
+      loadProjects()
+    } catch (error) {
+      console.error('Error bulk deleting projects:', error)
+      toast.error('حدث خطأ أثناء الحذف المتعدد')
+    } finally {
+      setBulkLoading(false)
+    }
+  }
+
+  const toggleProjectSelection = (id: string) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+  }
+
+  const toggleSelectAll = () => {
+    if (selectedIds.size === filteredProjects.length) {
+      setSelectedIds(new Set())
+    } else {
+      setSelectedIds(new Set(filteredProjects.map((p) => p.id)))
     }
   }
 
@@ -291,6 +343,7 @@ export default function Projects() {
     setShowEditModal(false)
     setShowDeleteModal(false)
     setShowDetailModal(false)
+    setShowBulkDeleteModal(false)
     setSelectedProject(null)
   }
 
@@ -357,6 +410,30 @@ export default function Projects() {
           {/* Tab Content */}
           {activeTab === 'list' ? (
             <div className="space-y-4">
+              {/* Bulk delete bar */}
+              {selectedIds.size > 0 && (
+                <div className="flex items-center gap-3 p-3 bg-red-50 border border-red-200 rounded-lg">
+                  <span className="text-sm font-medium text-red-800">
+                    {selectedIds.size} مشروع محدد
+                  </span>
+                  <Button
+                    variant="destructive"
+                    className="h-8 px-3 text-sm"
+                    onClick={() => setShowBulkDeleteModal(true)}
+                  >
+                    <Trash2 className="w-3.5 h-3.5 ml-1" />
+                    حذف المحدد
+                  </Button>
+                  <Button
+                    variant="secondary"
+                    className="h-8 px-3 text-sm"
+                    onClick={() => setSelectedIds(new Set())}
+                  >
+                    إلغاء التحديد
+                  </Button>
+                </div>
+              )}
+
               {/* Filters */}
               <FilterBar>
                 <SearchInput
@@ -395,6 +472,17 @@ export default function Projects() {
                     ))}
                   </DropdownMenuContent>
                 </DropdownMenu>
+
+                {filteredProjects.length > 0 && (
+                  <Button
+                    variant="secondary"
+                    className="h-9 px-3 text-sm"
+                    onClick={toggleSelectAll}
+                    title="تحديد الكل"
+                  >
+                    {selectedIds.size === filteredProjects.length ? 'إلغاء الكل' : 'تحديد الكل'}
+                  </Button>
+                )}
 
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
@@ -448,13 +536,21 @@ export default function Projects() {
               ) : (
                 <div className={projectGridClass}>
                   {filteredProjects.map((project) => (
-                    <ProjectCard
-                      key={project.id}
-                      project={project}
-                      onEdit={handleEditProject}
-                      onDelete={handleDeleteProject}
-                      onView={handleViewProject}
-                    />
+                    <div key={project.id} className="relative">
+                      <input
+                        type="checkbox"
+                        checked={selectedIds.has(project.id)}
+                        onChange={() => toggleProjectSelection(project.id)}
+                        className="absolute top-3 right-3 z-10 w-4 h-4 rounded border-neutral-300 accent-red-600 cursor-pointer"
+                        title="تحديد للحذف"
+                      />
+                      <ProjectCard
+                        project={project}
+                        onEdit={handleEditProject}
+                        onDelete={handleDeleteProject}
+                        onView={handleViewProject}
+                      />
+                    </div>
                   ))}
                 </div>
               )}
@@ -493,6 +589,37 @@ export default function Projects() {
               onDelete={handleDeleteProject}
               onEmployeeChange={loadProjects}
             />
+          )}
+
+          {/* Bulk Delete Modal */}
+          {showBulkDeleteModal && (
+            <div
+              className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 p-4"
+              onClick={handleModalClose}
+            >
+              <div className="bg-surface rounded-lg shadow-xl max-w-md w-full p-6" onClick={(e) => e.stopPropagation()}>
+                <h3 className="text-lg font-bold text-neutral-900 mb-4">تأكيد الحذف المتعدد</h3>
+                <div className="space-y-4 mb-6">
+                  <p className="text-neutral-700">
+                    هل أنت متأكد من حذف <span className="font-semibold">{selectedIds.size}</span> مشروع؟
+                  </p>
+                  <div className="bg-amber-50 border border-amber-200 rounded-lg p-3">
+                    <p className="text-xs text-amber-900">
+                      ⚠️ المشاريع التي تحتوي على موظفين نشطين لن يتم حذفها
+                    </p>
+                  </div>
+                  <p className="text-sm text-red-600 font-medium">⚠️ لا يمكن التراجع عن هذا الإجراء</p>
+                </div>
+                <div className="flex items-center justify-end gap-3">
+                  <Button onClick={handleModalClose} variant="secondary" disabled={bulkLoading}>
+                    إلغاء
+                  </Button>
+                  <Button onClick={handleBulkDeleteConfirm} variant="destructive" disabled={bulkLoading}>
+                    {bulkLoading ? 'جارٍ الحذف...' : `حذف ${selectedIds.size} مشروع`}
+                  </Button>
+                </div>
+              </div>
+            </div>
           )}
 
           {/* Delete Confirmation Modal */}
