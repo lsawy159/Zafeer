@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { AlertCircle, FileText, Lock, Trash2 } from 'lucide-react'
 import { Employee, Company } from '@/lib/supabase'
 import { Button } from '@/components/ui/Button'
-import { type BulkDeletePreviewData, type ObligationDeleteChoice } from '../Employees'
+import { type BulkDeletePreviewData, type ObligationDeleteChoice } from './useEmployeesPage'
 
 function getObligationTypeLabel(type: string): string {
   switch (type) {
