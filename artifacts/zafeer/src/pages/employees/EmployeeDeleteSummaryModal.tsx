@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { AlertTriangle, FileText, Lock, Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { type ObligationHeaderInfo } from '@/components/employees/CascadeDeleteModal'
-import { type DeletePreviewData, type ObligationDeleteChoice, type BulkDeletePreviewData } from '../Employees'
+import { type DeletePreviewData, type ObligationDeleteChoice, type BulkDeletePreviewData } from './useEmployeesPage'
 
 interface EmployeeInfo {
   id: string
