@@ -30,11 +30,11 @@ function useCashPositionData() {
         supabase
           .from('employee_obligation_headers')
           .select('id, total_amount, status')
-          .in('status', ['active', 'partially_paid']),
+          .in('status', ['active']),
         supabase
           .from('employee_obligation_lines')
           .select('amount_paid, header:employee_obligation_headers!inner(status)')
-          .filter('employee_obligation_headers.status', 'in', '("active","partially_paid")'),
+          .filter('employee_obligation_headers.status', 'in', '("active")'),
       ])
 
       if (headersError) throw headersError

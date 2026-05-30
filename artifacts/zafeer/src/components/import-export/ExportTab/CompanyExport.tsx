@@ -97,7 +97,6 @@ export function CompanyExport({ companies, dataLoading }: CompanyExportProps) {
 
       return true
     })
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [companies, companyFilters, companySearchQuery])
 
   const toggleCompanySelection = (id: string) => {

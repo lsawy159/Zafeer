@@ -16,7 +16,6 @@ import { toast } from 'sonner'
 import { saveAs } from 'file-saver'
 import { loadXlsx } from '@/utils/lazyXlsx'
 import { formatDateShortWithHijri } from '@/utils/dateFormatter'
-import { normalizeArabic } from '@/utils/textUtils'
 import { getEmployeeBusinessFields } from '@/utils/employeeBusinessFields'
 import {
   EMPTY_PAYROLL_OBLIGATION_BREAKDOWN,
@@ -155,16 +154,6 @@ export function EmployeeExport({ employees, companies, dataLoading }: EmployeeEx
     const q = projectFilterQuery.toLowerCase()
     return unique.filter((name) => name.toLowerCase().includes(q)).sort()
   }, [employees, projectFilterQuery])
-
-  const toggleEmployeeSelection = (id: string) => {
-    const newSet = new Set(selectedEmployees)
-    if (newSet.has(id)) {
-      newSet.delete(id)
-    } else {
-      newSet.add(id)
-    }
-    setSelectedEmployees(newSet)
-  }
 
   const toggleAllEmployees = () => {
     if (selectedEmployees.size === filteredEmployees.length) {
@@ -507,10 +496,6 @@ export function EmployeeExport({ employees, companies, dataLoading }: EmployeeEx
       setLoading(false)
     }
   }
-
-  // unused — kept for reference
-  void normalizeArabic
-  void toggleEmployeeSelection
 
   return (
     <div className="relative">
