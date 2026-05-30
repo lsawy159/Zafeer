@@ -310,6 +310,26 @@ export function useCompaniesPage() {
     }).length
   }, [companies, snoozedAlertIds])
 
+  const summaryCards = useMemo(() => {
+    let totalExpired = 0, totalUrgent = 0, totalHigh = 0, totalMedium = 0
+    for (const c of companies) {
+      const unified = getCompanyUnifiedStatus(c)
+      if (unified === 'منتهي') totalExpired++
+      else if (unified === 'طارئ') totalUrgent++
+      else if (unified === 'عاجل') totalHigh++
+      else if (unified === 'متوسط') totalMedium++
+    }
+    return [
+      { key: 'companies' as const, title: 'إجمالي المؤسسات', value: companies.length, label: '', accentClass: '', valueClass: 'text-foreground dark:text-white' },
+      { key: 'all' as const, title: 'إجمالي التنبيهات', value: companyAlertsCount, label: 'المؤسسات التي لديها تنبيه واحد على الأقل', accentClass: 'border-rose-500/20 bg-rose-500/5', valueClass: 'text-rose-600 dark:text-rose-300' },
+      { key: 'منتهي' as const, title: 'منتهي', value: totalExpired, label: 'أقل من 0 يوم', accentClass: 'border-red-500/20 bg-red-500/5', valueClass: 'text-red-600 dark:text-red-300' },
+      { key: 'طارئ' as const, title: 'طارئ', value: totalUrgent, label: `0 - ${companyThresholds.commercial_reg_urgent_days} يوم`, accentClass: 'border-red-500/20 bg-red-500/5', valueClass: 'text-red-600 dark:text-red-300' },
+      { key: 'عاجل' as const, title: 'عاجل', value: totalHigh, label: `${companyThresholds.commercial_reg_urgent_days + 1} - ${companyThresholds.commercial_reg_high_days} يوم`, accentClass: 'border-orange-500/20 bg-orange-500/5', valueClass: 'text-orange-600 dark:text-orange-300' },
+      { key: 'متوسط' as const, title: 'متوسط', value: totalMedium, label: `${companyThresholds.commercial_reg_high_days + 1} - ${companyThresholds.commercial_reg_medium_days} يوم`, accentClass: 'border-yellow-500/20 bg-yellow-500/5', valueClass: 'text-yellow-600 dark:text-yellow-300' },
+      { key: 'مؤجلة' as const, title: 'مؤجلة', value: snoozedCompaniesCount, label: '', accentClass: 'border-amber-500/20 bg-amber-500/5', valueClass: 'text-amber-600 dark:text-amber-300' },
+    ]
+  }, [companies, companyAlertsCount, snoozedCompaniesCount, companyThresholds, getCompanyUnifiedStatus])
+
   const filteredCompanies = useMemo(() => {
     let filtered = [...companies]
 
@@ -611,7 +631,7 @@ export function useCompaniesPage() {
     // Selection
     handleSelectCompany, handleSelectAllCompanies,
     // Computed
-    filteredCompanies, companyAlertsCount, snoozedCompaniesCount,
+    filteredCompanies, companyAlertsCount, snoozedCompaniesCount, summaryCards,
     getCompanyUnifiedStatus, hasCompanyAlert,
     // Handlers
     handleAddCompany, handleEditCompany, handleDeleteCompany,

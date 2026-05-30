@@ -35,26 +35,6 @@ export default function Companies() {
     return p.sortDirection === 'asc' ? <ArrowUp className="w-4 h-4" /> : <ArrowDown className="w-4 h-4" />
   }
 
-  // Statistics
-  let totalExpired = 0, totalUrgent = 0, totalHigh = 0, totalMedium = 0
-  for (const c of p.companies) {
-    const unified = p.getCompanyUnifiedStatus(c)
-    if (unified === 'منتهي') totalExpired++
-    else if (unified === 'طارئ') totalUrgent++
-    else if (unified === 'عاجل') totalHigh++
-    else if (unified === 'متوسط') totalMedium++
-  }
-
-  const summaryCards = [
-    { key: 'companies' as const, title: 'إجمالي المؤسسات', value: p.companies.length, label: '', accentClass: '', valueClass: 'text-foreground dark:text-white' },
-    { key: 'all' as const, title: 'إجمالي التنبيهات', value: p.companyAlertsCount, label: 'المؤسسات التي لديها تنبيه واحد على الأقل', accentClass: 'border-rose-500/20 bg-rose-500/5', valueClass: 'text-rose-600 dark:text-rose-300' },
-    { key: 'منتهي' as const, title: 'منتهي', value: totalExpired, label: 'أقل من 0 يوم', accentClass: 'border-red-500/20 bg-red-500/5', valueClass: 'text-red-600 dark:text-red-300' },
-    { key: 'طارئ' as const, title: 'طارئ', value: totalUrgent, label: `0 - ${p.companyThresholds.commercial_reg_urgent_days} يوم`, accentClass: 'border-red-500/20 bg-red-500/5', valueClass: 'text-red-600 dark:text-red-300' },
-    { key: 'عاجل' as const, title: 'عاجل', value: totalHigh, label: `${p.companyThresholds.commercial_reg_urgent_days + 1} - ${p.companyThresholds.commercial_reg_high_days} يوم`, accentClass: 'border-orange-500/20 bg-orange-500/5', valueClass: 'text-orange-600 dark:text-orange-300' },
-    { key: 'متوسط' as const, title: 'متوسط', value: totalMedium, label: `${p.companyThresholds.commercial_reg_high_days + 1} - ${p.companyThresholds.commercial_reg_medium_days} يوم`, accentClass: 'border-yellow-500/20 bg-yellow-500/5', valueClass: 'text-yellow-600 dark:text-yellow-300' },
-    { key: 'مؤجلة' as const, title: 'مؤجلة', value: p.snoozedCompaniesCount, label: '', accentClass: 'border-amber-500/20 bg-amber-500/5', valueClass: 'text-amber-600 dark:text-amber-300' },
-  ]
-
   return (
     <Layout>
       <div className="app-page app-tech-grid">
@@ -80,7 +60,7 @@ export default function Companies() {
             </h3>
           </div>
           <div className="grid grid-cols-2 gap-3 md:grid-cols-7">
-            {summaryCards.map((card) => (
+            {p.summaryCards.map((card) => (
               <div
                 key={card.key}
                 onClick={() => p.setCardStatusFilter(card.key === 'companies' ? null : (p.cardStatusFilter === card.key ? null : card.key as CardStatusFilter))}
