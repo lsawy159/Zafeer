@@ -21,7 +21,7 @@ function usePayrollEntriesSearch(month: string, projectSearch: string) {
   return useQuery({
     queryKey: ['payroll-entries-search', month, projectSearch],
     queryFn: async () => {
-      let q = supabase
+      const q = supabase
         .from('payroll_entries')
         .select(
           'id,employee_name_snapshot,project_name_snapshot,gross_amount,net_amount,installment_deducted_amount,entry_status,attendance_days,payroll_run:payroll_runs(payroll_month)'

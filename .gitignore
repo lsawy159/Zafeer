@@ -97,6 +97,7 @@ desktop.ini
 
 # ===== Migration backup (نسخة قديمة - مش بترفع) =====
 .migration-backup/
+_backups/
 
 # ===== Test results =====
 /playwright-report
