@@ -15,15 +15,14 @@ export function ImportBase(props: ImportBaseProps = {}) {
   const ctx = useImportBase(props)
   const {
     file,
-    importing, isDeleting,
     validating,
     validationResults,
     importResult,
     importType, setImportType,
-    currentPage, setCurrentPage,
+    setCurrentPage,
     columnValidationError,
-    selectedRows, setSelectedRows,
-    shouldDeleteBeforeImport, setShouldDeleteBeforeImport,
+    setSelectedRows,
+    setShouldDeleteBeforeImport,
     activeScopeIndices, blockingErrorCount, warningRowCountInScope, errorRowCount,
     isInModal, hideTypeSelector,
     handleFileChange, handleDrop, handleDragOver, handleCancel,

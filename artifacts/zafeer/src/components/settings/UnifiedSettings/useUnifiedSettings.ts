@@ -67,7 +67,7 @@ export function useUnifiedSettings({ isReadOnly = false }: { isReadOnly?: boolea
       const next = { ...current, [key]: checked }
       void saveExpiredInclusionSettings(next).catch((error) => {
         logger.error('Error saving expired inclusion settings:', error)
-        toast.error('طظ… ط§ظ„ط­ظپط¸ ط£ظˆ ط¬ط¯ط¯ ط§ظ„ظ…ط­ط§ظˆظ„ط©')
+        toast.error('فشل حفظ إعدادات تضمين المنتهي، أعد المحاولة')
       })
       return next
     })

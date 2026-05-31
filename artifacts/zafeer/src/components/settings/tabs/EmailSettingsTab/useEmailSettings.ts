@@ -55,22 +55,6 @@ function parseSettingValue(raw: unknown): string {
   return String(raw)
 }
 
-function formatBackupType(type: string): string {
-  switch (type) {
-    case 'full':
-      return 'نسخة كاملة'
-    case 'scheduled':
-      return 'نسخة تلقائية'
-    case 'pre-restore-snapshot':
-      return 'Snapshot وقائي'
-    default:
-      return type
-  }
-}
-
-function formatBackupSize(bytes: number): string {
-  return `${bytes.toLocaleString('ar-SA')} بايت`
-}
 
 export function useEmailSettings() {
   const [adminEmail, setAdminEmail] = useState('')

@@ -1,4 +1,4 @@
-import { AlertCircle, CheckCircle, FileUp, Upload, XCircle } from 'lucide-react'
+import { AlertCircle, FileUp, Upload, XCircle } from 'lucide-react'
 import type { useImportBase } from './useImportBase'
 
 type Ctx = ReturnType<typeof useImportBase>

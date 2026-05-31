@@ -4,7 +4,6 @@ import { toast } from 'sonner'
 import { logger } from '@/utils/logger'
 import { loadXlsx } from '@/utils/lazyXlsx'
 import { parseDate, normalizeDate } from '@/utils/dateParser'
-import { formatDateDDMMMYYYY } from '@/utils/dateFormatter'
 import { validateUnifiedNumber, validateLaborSubscription } from '@/utils/companyNumberValidation'
 import {
   HIRED_WORKER_CONTRACT_STATUS_OPTIONS,
