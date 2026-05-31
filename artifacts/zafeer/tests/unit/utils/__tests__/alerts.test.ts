@@ -7,8 +7,8 @@ import {
   getUrgentAlerts,
   getExpiredAlerts,
   type Company,
-} from '../alerts'
-import { type Alert } from '../../components/alerts/AlertCard'
+} from '@/utils/alerts'
+import { type Alert } from '@/components/alerts/AlertCard'
 
 describe('alerts utils', () => {
   let mockCompanies: Company[]
@@ -32,6 +32,8 @@ describe('alerts utils', () => {
       {
         id: '1',
         name: 'شركة منتهية',
+        unified_number: 1001,
+        labor_subscription_number: 'L1001',
         commercial_registration_expiry: yesterday.toISOString().split('T')[0],
         created_at: '2024-01-01',
         updated_at: '2024-01-01',
@@ -39,6 +41,8 @@ describe('alerts utils', () => {
       {
         id: '2',
         name: 'شركة عاجلة',
+        unified_number: 1002,
+        labor_subscription_number: 'L1002',
         commercial_registration_expiry: in5Days.toISOString().split('T')[0],
         created_at: '2024-01-01',
         updated_at: '2024-01-01',
@@ -46,6 +50,8 @@ describe('alerts utils', () => {
       {
         id: '3',
         name: 'شركة متوسطة',
+        unified_number: 1003,
+        labor_subscription_number: 'L1003',
         commercial_registration_expiry: in45Days.toISOString().split('T')[0],
         created_at: '2024-01-01',
         updated_at: '2024-01-01',
@@ -53,6 +59,8 @@ describe('alerts utils', () => {
       {
         id: '4',
         name: 'شركة سارية',
+        unified_number: 1004,
+        labor_subscription_number: 'L1004',
         commercial_registration_expiry: in90Days.toISOString().split('T')[0],
         created_at: '2024-01-01',
         updated_at: '2024-01-01',
@@ -159,6 +167,8 @@ describe('alerts utils', () => {
         {
           id: '5',
           name: 'شركة بدون تواريخ',
+          unified_number: 1005,
+          labor_subscription_number: 'L1005',
           created_at: '2024-01-01',
           updated_at: '2024-01-01',
         },
@@ -365,6 +375,8 @@ describe('alerts utils', () => {
         {
           id: '1',
           name: 'شركة تاريخ خاطئ',
+          unified_number: 1006,
+          labor_subscription_number: 'L1006',
           commercial_registration_expiry: 'invalid-date',
           created_at: '2024-01-01',
           updated_at: '2024-01-01',
@@ -385,6 +397,8 @@ describe('alerts utils', () => {
         {
           id: '1',
           name: 'شركة مستقبلية',
+          unified_number: 1007,
+          labor_subscription_number: 'L1007',
           commercial_registration_expiry: futureDate.toISOString().split('T')[0],
           created_at: '2024-01-01',
           updated_at: '2024-01-01',

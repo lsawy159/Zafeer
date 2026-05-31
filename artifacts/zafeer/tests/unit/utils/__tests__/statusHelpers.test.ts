@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
-import { calculateDaysRemaining, getStatusColor, getStatusColorLevel } from '../statusHelpers'
+import { calculateDaysRemaining, getStatusColor, getStatusColorLevel } from '@/utils/statusHelpers'
 import { add } from 'date-fns'
 import { subDays } from 'date-fns'
 

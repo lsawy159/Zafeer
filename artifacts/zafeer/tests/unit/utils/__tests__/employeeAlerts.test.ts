@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { filterEmployeeAlertsByPriority, type EmployeeAlert } from '../employeeAlerts'
+import { filterEmployeeAlertsByPriority, type EmployeeAlert } from '@/utils/employeeAlerts'
 
 describe('employeeAlerts utils', () => {
   const mockEmployeeAlerts: EmployeeAlert[] = [

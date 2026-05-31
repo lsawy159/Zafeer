@@ -2,7 +2,7 @@ import { render } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import { describe, expect, it } from 'vitest'
 import axe from 'axe-core'
-import NotFound from '../../not-found'
+import NotFound from '@/pages/not-found'
 
 describe('404 page — accessibility', () => {
   it('has no critical axe violations', async () => {

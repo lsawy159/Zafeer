@@ -1,6 +1,6 @@
 import { render, screen, waitFor } from '@testing-library/react'
 import { beforeEach, afterEach, describe, expect, it, vi } from 'vitest'
-import { AuthProvider, useAuth } from './AuthContext'
+import { AuthProvider, useAuth } from '@/contexts/AuthContext'
 
 const {
   getSessionMock,
@@ -18,7 +18,7 @@ const {
   userSessionsLimitMock: vi.fn(),
 }))
 
-vi.mock('../lib/supabase', () => ({
+vi.mock('@/lib/supabase', () => ({
   supabase: {
     auth: {
       getSession: getSessionMock,
@@ -61,7 +61,7 @@ vi.mock('../lib/supabase', () => ({
   },
 }))
 
-vi.mock('../utils/logger', () => ({
+vi.mock('@/utils/logger', () => ({
   logger: {
     debug: vi.fn(),
     info: vi.fn(),
@@ -70,7 +70,7 @@ vi.mock('../utils/logger', () => ({
   },
 }))
 
-vi.mock('../utils/securityLogger', () => ({
+vi.mock('@/utils/securityLogger', () => ({
   AuditActionType: {
     LOGIN: 'login',
     LOGOUT: 'logout',

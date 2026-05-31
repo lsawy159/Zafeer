@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 
 // Import hooks to ensure coverage analysis includes them
-import { usePayrollRuns, usePayrollRunEntries, usePayrollRunSlips, useScopedPayrollEmployees, useCreatePayrollRun, useUpsertPayrollEntry, useUpdatePayrollRunStatus, useDeletePayrollRun } from './usePayroll'
+import { usePayrollRuns, usePayrollRunEntries, usePayrollRunSlips, useScopedPayrollEmployees, useCreatePayrollRun, useUpsertPayrollEntry, useUpdatePayrollRunStatus, useDeletePayrollRun } from '@/hooks/usePayroll'
 
 // Helper function implementations matching the hook's internal functions
 const getLineStatus = (amountDue: number, amountPaid: number): 'unpaid' | 'partial' | 'paid' => {

@@ -11,7 +11,7 @@ export default defineConfig({
       './src/test/setup-symbol.ts',
       './src/test/setup.ts',
     ],
-    include: ['src/**/*.{test,spec}.{ts,tsx}'],
+    include: ['tests/unit/**/*.{test,spec}.{ts,tsx}'],
     exclude: ['node_modules', 'dist'],
     css: false,
   },

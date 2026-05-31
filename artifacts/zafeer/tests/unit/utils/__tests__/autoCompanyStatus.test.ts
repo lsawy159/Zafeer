@@ -4,7 +4,7 @@ import {
   calculateCommercialRegistrationStatus,
   calculateCommercialRegStats,
   calculateCompanyStatusStats,
-} from '../autoCompanyStatus'
+} from '@/utils/autoCompanyStatus'
 
 describe('autoCompanyStatus utils', () => {
   let today: Date

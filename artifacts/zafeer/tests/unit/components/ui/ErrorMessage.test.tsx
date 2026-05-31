@@ -3,7 +3,7 @@ import { render, screen } from '@testing-library/react'
 import { describe, it, expect } from 'vitest'
 
 // 2. استيراد المكون (بالطريقة الصحيحة التي اكتشفناها)
-import { ErrorMessage } from './ErrorMessage'
+import { ErrorMessage } from '@/components/ui/ErrorMessage'
 
 // 3. وصف مجموعة الاختبارات
 describe('ErrorMessage Component', () => {
@@ -22,7 +22,7 @@ describe('ErrorMessage Component', () => {
   // 5. الاختبار الثاني (النسخة المُصلحة)
   it('should render an empty message if no message is provided', () => {
     // "المهمة": ارسم المكون بدون رسالة (نحتاج "container" للبحث)
-    const { container } = render(<ErrorMessage />)
+    const { container } = render(<ErrorMessage message="" />)
 
     // "الفحص": ابحث عن عنصر الـ <p> الذي يحمل الكلاس "text-red-700"
     // (نحن نعرف هذا الكلاس من مخرجات الخطأ السابقة)

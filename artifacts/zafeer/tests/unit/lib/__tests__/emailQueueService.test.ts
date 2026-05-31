@@ -1,9 +1,9 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest'
-import { enqueueEmail } from '../emailQueueService'
-import { supabase } from '../supabase'
+import { enqueueEmail } from '@/lib/emailQueueService'
+import { supabase } from '@/lib/supabase'
 
 // Mock supabase
-vi.mock('../supabase', () => ({
+vi.mock('@/lib/supabase', () => ({
   supabase: {
     from: vi.fn(),
   },
@@ -57,6 +57,7 @@ describe('emailQueueService activity logging', () => {
         if (table === 'activity_log') {
           return { insert: vi.fn(() => ({ catch: vi.fn() })) }
         }
+        return undefined
       })
 
       const result = await enqueueEmail({
@@ -88,6 +89,7 @@ describe('emailQueueService activity logging', () => {
         if (table === 'activity_log') {
           return { insert: insertMock }
         }
+        return undefined
       })
 
       const result = await enqueueEmail({
@@ -128,6 +130,7 @@ describe('emailQueueService activity logging', () => {
         if (table === 'activity_log') {
           return { insert: insertMock }
         }
+        return undefined
       })
 
       const result = await enqueueEmail({
@@ -167,6 +170,7 @@ describe('emailQueueService activity logging', () => {
         if (table === 'activity_log') {
           return { insert: insertMock }
         }
+        return undefined
       })
 
       const result = await enqueueEmail({
@@ -214,6 +218,7 @@ describe('emailQueueService activity logging', () => {
             }),
           }
         }
+        return undefined
       })
 
       const result = await enqueueEmail({
@@ -246,6 +251,7 @@ describe('emailQueueService activity logging', () => {
         if (table === 'activity_log') {
           return { insert: vi.fn(() => ({ catch: vi.fn() })) }
         }
+        return undefined
       })
 
       const result = await enqueueEmail({

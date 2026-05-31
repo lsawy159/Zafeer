@@ -2,7 +2,7 @@ import { render } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import { describe, expect, it, vi } from 'vitest'
 import axe from 'axe-core'
-import Login from '../../Login'
+import Login from '@/pages/Login'
 
 vi.mock('@/contexts/AuthContext', () => ({
   useAuth: () => ({

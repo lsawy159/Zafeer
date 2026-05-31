@@ -5,7 +5,7 @@ import {
   RESIDENCE_MAX_BYTES,
   residenceKindFromPath,
   validateResidenceFile,
-} from './residenceFile'
+} from '@/lib/residenceFile'
 
 function makeFile(name: string, type: string, size: number): File {
   const blob = new Blob([new Uint8Array(size)], { type })

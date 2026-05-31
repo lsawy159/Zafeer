@@ -3,7 +3,7 @@ import {
   roundPayrollAmount,
   calculatePayrollTotals,
   normalizePayrollEntryAmounts,
-} from './payrollMath'
+} from '@/utils/payrollMath'
 
 describe('payrollMath', () => {
   describe('roundPayrollAmount', () => {

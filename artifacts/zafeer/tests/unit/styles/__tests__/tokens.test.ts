@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { TOKEN } from '../../lib/tokens'
+import { TOKEN } from '@/lib/tokens'
 
 /**
  * Convert HSL to RGB

@@ -74,7 +74,6 @@ describe('GeneralSettings permissions deep-link', () => {
     render(
       <MemoryRouter
         initialEntries={['/admin-settings?tab=permissions']}
-        future={{ v7_startTransition: true, v7_relativeSplatPath: true }}
       >
         <Routes>
           <Route path="/admin-settings" element={<GeneralSettings />} />

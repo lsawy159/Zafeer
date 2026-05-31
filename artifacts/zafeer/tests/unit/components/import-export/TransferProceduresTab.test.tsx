@@ -5,13 +5,15 @@ import { MemoryRouter } from 'react-router-dom'
 
 import TransferProceduresTab from '@/components/import-export/TransferProceduresTab'
 
-const mockTransferOrder = vi.fn()
-const mockProjectsOrder = vi.fn()
-const mockTransferDeleteEq = vi.fn()
-const mockTransferDelete = vi.fn(() => ({ eq: mockTransferDeleteEq }))
-const mockToastSuccess = vi.fn()
-const mockToastError = vi.fn()
-const mockToastWarning = vi.fn()
+const mockTransferOrder = vi.fn<(column?: unknown, options?: unknown) => unknown>()
+const mockProjectsOrder = vi.fn<(column?: unknown, options?: unknown) => unknown>()
+const mockTransferDeleteEq = vi.fn<(column: string, value: string) => unknown>()
+const mockTransferDelete = vi.fn<(arg?: unknown) => { eq: typeof mockTransferDeleteEq }>(() => ({
+  eq: mockTransferDeleteEq,
+}))
+const mockToastSuccess = vi.fn<(message?: unknown) => void>()
+const mockToastError = vi.fn<(message?: unknown) => void>()
+const mockToastWarning = vi.fn<(message?: unknown) => void>()
 
 vi.mock('@/lib/supabase', () => ({
   supabase: {
@@ -19,9 +21,9 @@ vi.mock('@/lib/supabase', () => ({
       if (table === 'transfer_procedures') {
         return {
           select: vi.fn(() => ({
-            order: (...args: unknown[]) => mockTransferOrder(...args),
+            order: (...args: unknown[]) => mockTransferOrder(args[0], args[1]),
           })),
-          delete: (...args: unknown[]) => mockTransferDelete(...args),
+          delete: (...args: unknown[]) => mockTransferDelete(args[0]),
         }
       }
 
@@ -29,7 +31,9 @@ vi.mock('@/lib/supabase', () => ({
         return {
           select: vi.fn(() => ({
             eq: vi.fn(() => ({
-              order: (...args: unknown[]) => mockProjectsOrder(...args),
+              eq: vi.fn(() => ({
+                order: (...args: unknown[]) => mockProjectsOrder(args[0], args[1]),
+              })),
             })),
           })),
         }
@@ -150,9 +154,9 @@ vi.mock('@/utils/lazyXlsx', () => ({
 
 vi.mock('sonner', () => ({
   toast: {
-    success: (...args: unknown[]) => mockToastSuccess(...args),
-    error: (...args: unknown[]) => mockToastError(...args),
-    warning: (...args: unknown[]) => mockToastWarning(...args),
+    success: (...args: unknown[]) => mockToastSuccess(args[0]),
+    error: (...args: unknown[]) => mockToastError(args[0]),
+    warning: (...args: unknown[]) => mockToastWarning(args[0]),
     info: vi.fn(),
   },
 }))

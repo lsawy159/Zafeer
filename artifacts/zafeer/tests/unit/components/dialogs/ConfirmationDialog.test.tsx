@@ -2,7 +2,7 @@ import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, expect, it, vi } from 'vitest'
 
-import ConfirmationDialog from './ConfirmationDialog'
+import ConfirmationDialog from '@/components/dialogs/ConfirmationDialog'
 
 describe('ConfirmationDialog', () => {
   it('does not render when closed', () => {
