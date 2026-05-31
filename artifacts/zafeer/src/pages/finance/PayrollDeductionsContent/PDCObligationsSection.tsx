@@ -1,6 +1,6 @@
 import { createPortal } from 'react-dom'
 import {
-  CheckCircle, Download, Eye, FileUp, Loader2, Pencil,
+  CheckCircle, Download, Eye, FileUp, Loader2,
   RefreshCw, Search, Trash2, UserPlus, Users, X,
 } from 'lucide-react'
 import { MultiSelectDropdown } from '@/components/ui/MultiSelectDropdown'
@@ -17,19 +17,18 @@ type Ctx = ReturnType<typeof usePayrollDeductionsContent>
 
 export default function PDCObligationsSection(ctx: Ctx) {
   const {
-    filteredObligationsSummary, allObligationsSummary,
+    filteredObligationsSummary,
     obligationsLoading, refetchObligations,
     obligationsSearchQuery, setObligationsSearchQuery,
     obligationsProjectFilter, setObligationsProjectFilter,
     obligationsTypeFilter, setObligationsTypeFilter,
     obligationsDateFrom, setObligationsDateFrom,
     obligationsDateTo, setObligationsDateTo,
-    showAddObligationDialog, setShowAddObligationDialog,
-    showObligationImportDialog, setShowObligationImportDialog,
-    obligationImportStep, setObligationImportStep,
-    obligationImportHeaderError,
-    showBulkPenaltyDialog, setShowBulkPenaltyDialog,
-    showExportObligationsDialog, setShowExportObligationsDialog,
+    setShowAddObligationDialog,
+    setShowObligationImportDialog,
+    setObligationImportStep,
+    setShowBulkPenaltyDialog,
+    setShowExportObligationsDialog,
     editingDetailPlanId, setEditingDetailPlanId,
     editDetailPlanForm, setEditDetailPlanForm,
     deletingDetailPlanId, setDeletingDetailPlanId,
@@ -48,9 +47,6 @@ export default function PDCObligationsSection(ctx: Ctx) {
     setBulkPenaltyAmount, setBulkPenaltyMonth, setBulkPenaltyNotes,
     // export obligations
     exportingObligations,
-    exportObligationsToExcel,
-    exportScope, setExportScope, exportTypes, setExportTypes,
-    exportColumns, setExportColumns,
   } = ctx
 
   return (
@@ -194,7 +190,7 @@ export default function PDCObligationsSection(ctx: Ctx) {
                     onChange={(values) =>
                       setObligationsTypeFilter(
                         values.filter(
-                          (v): v is 'transfer' | 'renewal' | 'penalty' | 'advance' | 'other' => true
+                          (_v): _v is 'transfer' | 'renewal' | 'penalty' | 'advance' | 'other' => true
                         )
                       )
                     }
