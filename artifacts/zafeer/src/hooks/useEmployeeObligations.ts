@@ -7,6 +7,7 @@ import {
   supabase,
 } from '@/lib/supabase'
 import { logger } from '@/utils/logger'
+import { distributeRemainingAmount } from '@/utils/obligationInstallments'
 
 export interface EmployeeObligationPlan extends EmployeeObligationHeader {
   lines: EmployeeObligationLine[]
@@ -231,17 +232,11 @@ export function useUpdateObligationPlan() {
           (l) => l.line_status === 'unpaid' || l.line_status === 'partial'
         )
         if (unpaidLines.length > 0) {
-          const baseHalalas = Math.floor((newRemaining * 100) / unpaidLines.length)
-          let distributedHalalas = 0
+          const amounts = distributeRemainingAmount(newRemaining, unpaidLines.length)
           for (let i = 0; i < unpaidLines.length; i++) {
-            const isLast = i === unpaidLines.length - 1
-            const amtHalalas = isLast
-              ? Math.round(newRemaining * 100) - distributedHalalas
-              : baseHalalas
-            distributedHalalas += amtHalalas
             const { error } = await supabase
               .from('employee_obligation_lines')
-              .update({ amount_due: amtHalalas / 100 })
+              .update({ amount_due: amounts[i] })
               .eq('id', unpaidLines[i].id)
             if (error) throw error
           }
