@@ -157,6 +157,7 @@ export default function Reports() {
           .select(
             'id,company_id,name,profession,nationality,birth_date,phone,passport_number,residence_number,joining_date,contract_expiry,hired_worker_contract_expiry,residence_expiry,project_id,project_name,bank_account,residence_image_url,health_insurance_expiry,salary,notes,additional_fields,is_deleted,deleted_at,created_at,updated_at'
           )
+          .eq('is_deleted', false)
           .order('name'),
         supabase
           .from('companies')
