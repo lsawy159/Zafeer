@@ -28,14 +28,6 @@ export function useUnifiedSettings({ isReadOnly = false }: { isReadOnly?: boolea
     DEFAULT_EXPIRED_INCLUSION
   )
 
-  useEffect(() => {
-    loadSettings()
-  }, [])
-
-  useEffect(() => {
-    void getExpiredInclusionSettings().then(setExpiredSettings)
-  }, [])
-
   const loadSettings = async () => {
     try {
       const { data: notificationData } = await supabase
@@ -58,6 +50,15 @@ export function useUnifiedSettings({ isReadOnly = false }: { isReadOnly?: boolea
       setLoading(false)
     }
   }
+
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    void loadSettings()
+  }, [])
+
+  useEffect(() => {
+    void getExpiredInclusionSettings().then(setExpiredSettings)
+  }, [])
 
   const handleExpiredInclusionChange = (
     key: keyof ExpiredInclusionSettings,

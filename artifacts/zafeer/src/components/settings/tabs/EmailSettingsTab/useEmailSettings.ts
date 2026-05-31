@@ -164,8 +164,8 @@ export function useEmailSettings() {
   }
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     void Promise.all([loadEmailSettings(), loadRecentBackups()])
-    void loadQueueStats()
   }, [])
 
   useEffect(() => {
