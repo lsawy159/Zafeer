@@ -36,7 +36,20 @@ export function useUpdateUserProfile() {
         throw new Error(result.error)
       }
 
-      return result as { user: User }
+      const updatedUser = (result as { user: User }).user
+      try {
+        await supabase.from('activity_log').insert({
+          entity_type: 'user',
+          entity_id: id,
+          action: 'تحديث مستخدم',
+          details: {
+            user_name: updatedUser.full_name,
+            user_email: updatedUser.email,
+            user_role: updatedUser.role,
+          },
+        })
+      } catch { /* non-blocking */ }
+      return { user: updatedUser }
     },
   })
 }

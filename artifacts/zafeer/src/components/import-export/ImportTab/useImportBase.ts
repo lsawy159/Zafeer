@@ -2163,6 +2163,21 @@ export function useImportBase({
         })
 
         if (successCount > 0) {
+          // تسجيل نشاط الاستيراد (non-blocking)
+          try {
+            const totalProcessedLocal = importType === 'employees' ? uniqueJsonData.length : jsonData.length
+            await supabase.from('activity_log').insert({
+              entity_type: 'import',
+              action: importType === 'employees' ? 'استيراد موظفين' : 'استيراد مؤسسات',
+              details: {
+                added: successCount,
+                updated: 0,
+                failed: failCount,
+                total: totalProcessedLocal,
+              },
+            })
+          } catch { /* non-blocking */ }
+
           const duplicateMessage =
             duplicatesRemoved > 0 ? ` (تم استبعاد ${duplicatesRemoved} صف مكرر)` : ''
           toast.success(

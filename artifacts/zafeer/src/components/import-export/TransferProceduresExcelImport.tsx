@@ -164,6 +164,15 @@ export default function TransferProceduresExcelImport({
         }
       }
 
+      // تسجيل نشاط الاستيراد بعد انتهاء الـ loop (non-blocking)
+      try {
+        await supabase.from('activity_log').insert({
+          entity_type: 'import',
+          action: 'استيراد إجراءات نقل',
+          details: { added: successCount, failed: failedCount, total: validRows.length },
+        })
+      } catch { /* non-blocking */ }
+
       if (errors.length > 0 || failedCount > 0) {
         toast.warning(`تم استيراد ${successCount} صفوف، وتعذر ${failedCount + errors.length} صفوف`)
       } else {

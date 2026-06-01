@@ -97,7 +97,7 @@ Deno.serve(async (req: Request) => {
 
     const { data: project } = await adminClient
       .from('projects')
-      .select('id')
+      .select('id, name')
       .eq('id', id)
       .is('is_deleted', false)
       .maybeSingle()
@@ -129,8 +129,8 @@ Deno.serve(async (req: Request) => {
       user_id: user.id,
       entity_type: 'project',
       entity_id: id,
-      action: 'delete',
-      details: { soft_delete: true },
+      action: 'حذف مشروع',
+      details: { project_name: (project as { name?: string }).name ?? '—' },
     })
 
     return jsonResponse({ success: true, projectId: id })
@@ -155,6 +155,13 @@ Deno.serve(async (req: Request) => {
     if (ids.length > 50) {
       return jsonResponse({ error: 'لا يمكن حذف أكثر من 50 مشروعاً في المرة الواحدة' }, 400)
     }
+
+    // جلب أسماء المشاريع دفعة واحدة قبل الحذف
+    const { data: projectsData } = await adminClient
+      .from('projects')
+      .select('id, name')
+      .in('id', ids)
+    const projectNamesMap = new Map((projectsData ?? []).map((p: { id: string; name: string }) => [p.id, p.name]))
 
     const results: { id: string; success: boolean; error?: string }[] = []
 
@@ -185,8 +192,8 @@ Deno.serve(async (req: Request) => {
         user_id: user.id,
         entity_type: 'project',
         entity_id: id,
-        action: 'delete',
-        details: { soft_delete: true, bulk: true },
+        action: 'حذف مشروع',
+        details: { project_name: projectNamesMap.get(id) ?? '—' },
       })
 
       results.push({ id, success: true })

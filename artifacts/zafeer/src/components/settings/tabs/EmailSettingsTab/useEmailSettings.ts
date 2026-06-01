@@ -208,6 +208,14 @@ export function useEmailSettings() {
       const { error } = await supabase.from('system_settings').upsert(rows, { onConflict: 'setting_key' })
       if (error) throw error
 
+      try {
+        await supabase.from('activity_log').insert({
+          entity_type: 'email_settings',
+          action: 'تحديث إعدادات البريد',
+          details: { changed_count: rows.length },
+        })
+      } catch { /* non-blocking */ }
+
       toast.success('تم حفظ الإعدادات')
     } catch (error) {
       logger.error('[EmailSettingsTab] save email settings error:', error)

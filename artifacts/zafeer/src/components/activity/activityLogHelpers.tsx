@@ -117,8 +117,29 @@ export const getActionLabel = (action: string) => {
     view: 'عرض',
     export: 'تصدير',
     import: 'استيراد',
+    'إنشاء مستخدم': 'إنشاء مستخدم',
+    'تحديث مستخدم': 'تحديث مستخدم',
+    'إعادة ضبط كلمة المرور': 'إعادة ضبط كلمة المرور',
+    'تحديث إعدادات النظام': 'تحديث إعدادات',
+    'تحديث إعدادات البريد': 'تحديث إعدادات البريد',
+    'إنشاء نسخة احتياطية': 'نسخة احتياطية',
+    'استعادة نسخة احتياطية': 'استعادة نسخة',
+    'حذف دور': 'حذف دور',
+    'إنهاء جلسة': 'إنهاء جلسة',
+    'إنهاء كل الجلسات': 'إنهاء جلسات',
+    'إنشاء مستخلص': 'إنشاء مستخلص',
+    'حذف مستخلص': 'حذف مستخلص',
+    'تصدير مستخلص': 'تصدير مستخلص',
+    'إنشاء التزام': 'إنشاء التزام',
+    'تحديث التزام': 'تحديث التزام',
+    'إلغاء التزام': 'إلغاء التزام',
+    'إنشاء مشروع': 'إنشاء مشروع',
+    'تحديث مشروع': 'تحديث مشروع',
+    'استيراد موظفين': 'استيراد موظفين',
+    'استيراد مؤسسات': 'استيراد مؤسسات',
+    'استيراد إجراءات نقل': 'استيراد إجراءات',
   }
-  return labels[action.toLowerCase()] || action
+  return labels[action] || labels[action.toLowerCase()] || action
 }
 
 export const getEntityLabel = (entity: string) => {
@@ -128,6 +149,16 @@ export const getEntityLabel = (entity: string) => {
     user: 'مستخدم',
     settings: 'إعدادات',
     notification: 'تنبيه',
+    project: 'مشروع',
+    payroll: 'مسير رواتب',
+    email_queue: 'قائمة البريد',
+    email_settings: 'إعدادات البريد',
+    backup: 'نسخة احتياطية',
+    role: 'دور',
+    session: 'جلسة',
+    extract: 'مستخلص',
+    obligation: 'التزام',
+    import: 'استيراد',
   }
   return labels[entity?.toLowerCase()] || entity
 }
@@ -395,6 +426,80 @@ export const generateActivityDescription = (log: ActivityLog): string | React.JS
   const employeeName = details.employee_name || details.name
   const companyName = details.company_name || details.company
   const unifiedNumber = details.unified_number
+
+  // ── handlers للـ entity types الجديدة ──
+
+  if (entityType === 'user') {
+    const n = details.user_name || '—'
+    const e = details.user_email ? ` (${details.user_email})` : ''
+    if (log.action.includes('إنشاء')) return `تم إنشاء مستخدم جديد "${n}"${e}${details.user_role ? ` — دور: ${details.user_role}` : ''}`
+    if (log.action.includes('إعادة ضبط')) return `تم إعادة ضبط كلمة مرور المستخدم "${n}"${e}`
+    if (log.action.includes('تحديث') || log.action.includes('تعديل')) return `تم تحديث بيانات المستخدم "${n}"${e}`
+  }
+
+  if (entityType === 'role') {
+    return `تم حذف الدور "${details.role_name || '—'}"`
+  }
+
+  if (entityType === 'session') {
+    const n = details.target_user_name || '—'
+    const e = details.target_user_email ? ` (${details.target_user_email})` : ''
+    if (log.action.includes('كل')) return `تم إنهاء ${details.session_count ?? 0} جلسة للمستخدم "${n}"`
+    return `تم إنهاء جلسة المستخدم "${n}"${e}`
+  }
+
+  if (entityType === 'settings') {
+    const changed = (details.changed_settings as Array<{ key_label: string; old_value: string; new_value: string }> | undefined) ?? []
+    const count = changed.length || (details.changed_count as number | undefined) || 0
+    const preview = changed.slice(0, 2).map((s) => `${s.key_label}: ${s.old_value} ← ${s.new_value}`).join(' | ')
+    return `تم تحديث ${count} إعداد${preview ? ` — ${preview}${changed.length > 2 ? '...' : ''}` : ''}`
+  }
+
+  if (entityType === 'email_settings') {
+    const count = (details.changed_count as number | undefined) ?? 0
+    return `تم تحديث إعدادات البريد الإلكتروني${count ? ` (${count} إعداد)` : ''}`
+  }
+
+  if (entityType === 'backup') {
+    const ts = details.timestamp ? new Date(String(details.timestamp)).toLocaleDateString('ar-SA') : '—'
+    const emp = details.total_employees ?? 0
+    const comp = details.total_companies ?? 0
+    const verb = log.action.includes('استعادة') ? 'استعادة' : 'إنشاء'
+    return `تم ${verb} نسخة احتياطية بتاريخ ${ts} — ${emp} موظف، ${comp} مؤسسة`
+  }
+
+  if (entityType === 'extract') {
+    const title = details.extract_title || '—'
+    const emp = details.employee_count ?? 0
+    const amount = details.total_amount ?? 0
+    const verb = log.action.includes('حذف') ? 'حذف' : log.action.includes('تصدير') ? 'تصدير' : 'إنشاء'
+    return `تم ${verb} مستخلص "${title}" — ${emp} موظف — إجمالي: ${amount} ريال`
+  }
+
+  if (entityType === 'obligation') {
+    const emp = details.employee_name || '—'
+    const type = details.obligation_type || '—'
+    if (log.action.includes('إنشاء')) return `تم إنشاء التزام للموظف "${emp}" — نوع: ${type}${details.amount ? ` — مبلغ: ${details.amount} ريال` : ''}`
+    if (log.action.includes('إلغاء')) return `تم إلغاء التزام للموظف "${emp}" — نوع: ${type}`
+    return `تم تحديث التزام للموظف "${emp}" — نوع: ${type}`
+  }
+
+  if (entityType === 'project') {
+    const name = details.project_name || '—'
+    const emp = details.employee_count ?? 0
+    if (log.action.includes('إنشاء') || log.action === 'create') return `تم إنشاء مشروع "${name}" — ${emp} موظف`
+    if (log.action.includes('حذف') || log.action === 'delete') return `تم حذف مشروع "${name}"`
+    return `تم تحديث مشروع "${name}"`
+  }
+
+  if (entityType === 'import') {
+    const added = details.added ?? 0
+    const updated = details.updated ?? 0
+    const failed = details.failed ?? 0
+    if (log.action.includes('موظفين')) return `تم استيراد موظفين — ${added} مضاف، ${updated} محدّث، ${failed} فاشل`
+    if (log.action.includes('مؤسسات')) return `تم استيراد مؤسسات — ${added} مضاف، ${updated} محدّث، ${failed} فاشل`
+    return `تم استيراد ${added} إجراء نقل${failed ? ` (${failed} فاشل)` : ''}`
+  }
 
   let changedFieldLabels: string[] = []
 

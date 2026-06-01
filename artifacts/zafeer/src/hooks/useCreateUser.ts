@@ -36,7 +36,19 @@ export function useCreateUser() {
         throw new Error(result.error)
       }
 
-      return result as { user: User }
+      const createdUser = (result as { user: User }).user
+      try {
+        await supabase.from('activity_log').insert({
+          entity_type: 'user',
+          action: 'إنشاء مستخدم',
+          details: {
+            user_name: createdUser.full_name,
+            user_email: createdUser.email,
+            user_role: createdUser.role,
+          },
+        })
+      } catch { /* non-blocking */ }
+      return { user: createdUser }
     },
   })
 }

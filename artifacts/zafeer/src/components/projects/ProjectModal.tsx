@@ -118,6 +118,14 @@ export default function ProjectModal({ isOpen, project, onClose, onSuccess }: Pr
           }
         }
 
+        try {
+          await supabase.from('activity_log').insert({
+            entity_type: 'project',
+            entity_id: project.id,
+            action: 'تحديث مشروع',
+            details: { project_name: formData.name.trim(), employee_count: (project as { employee_count?: number }).employee_count ?? 0 },
+          })
+        } catch { /* non-blocking */ }
         toast.success('تم تحديث المشروع بنجاح')
       } else {
         const { error } = await supabase.from('projects').insert({
@@ -134,6 +142,13 @@ export default function ProjectModal({ isOpen, project, onClose, onSuccess }: Pr
           }
           return
         }
+        try {
+          await supabase.from('activity_log').insert({
+            entity_type: 'project',
+            action: 'إنشاء مشروع',
+            details: { project_name: formData.name.trim(), employee_count: 0 },
+          })
+        } catch { /* non-blocking */ }
         toast.success('تم إنشاء المشروع بنجاح')
       }
 

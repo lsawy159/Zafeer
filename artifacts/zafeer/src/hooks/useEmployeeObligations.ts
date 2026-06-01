@@ -23,6 +23,7 @@ export interface CreateEmployeeObligationPlanInput {
   installment_amounts: number[]
   status?: ObligationPlanStatus
   notes?: string | null
+  employee_name?: string
 }
 
 interface CreateEmployeeObligationPlanResult {
@@ -140,7 +141,18 @@ export function useCreateEmployeeObligationPlan() {
 
       return data as CreateEmployeeObligationPlanResult
     },
-    onSuccess: (_, variables) => {
+    onSuccess: async (_, variables) => {
+      try {
+        await supabase.from('activity_log').insert({
+          entity_type: 'obligation',
+          action: 'إنشاء التزام',
+          details: {
+            employee_name: variables.employee_name ?? '—',
+            obligation_type: getObligationTypeLabel(variables.obligation_type),
+            amount: variables.total_amount,
+          },
+        })
+      } catch { /* non-blocking */ }
       queryClient.invalidateQueries({
         queryKey: ['employee-obligations', variables.employee_id],
       })
@@ -200,6 +212,7 @@ export function useUpdateObligationLinePayment() {
 export interface UpdateObligationPlanInput {
   plan: EmployeeObligationPlan
   employeeId: string
+  employee_name?: string
   updates: {
     obligation_type: ObligationType
     title: string
@@ -243,7 +256,18 @@ export function useUpdateObligationPlan() {
         }
       }
     },
-    onSuccess: (_, { employeeId }) => {
+    onSuccess: async (_, { employeeId, employee_name, updates }) => {
+      try {
+        await supabase.from('activity_log').insert({
+          entity_type: 'obligation',
+          action: 'تحديث التزام',
+          details: {
+            employee_name: employee_name ?? '—',
+            obligation_type: getObligationTypeLabel(updates.obligation_type),
+            amount: updates.total_amount,
+          },
+        })
+      } catch { /* non-blocking */ }
       queryClient.invalidateQueries({ queryKey: ['employee-obligations', employeeId] })
       queryClient.invalidateQueries({ queryKey: ['all-obligations-summary'] })
     },
@@ -253,14 +277,24 @@ export function useUpdateObligationPlan() {
 export function useDeleteObligationPlan() {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: async ({ planId }: { planId: string; employeeId: string }) => {
+    mutationFn: async ({ planId }: { planId: string; employeeId: string; employee_name?: string; obligation_type?: ObligationType }) => {
       const { error } = await supabase
         .from('employee_obligation_headers')
         .update({ status: 'cancelled' })
         .eq('id', planId)
       if (error) throw error
     },
-    onSuccess: (_, { employeeId }) => {
+    onSuccess: async (_, { employeeId, employee_name, obligation_type }) => {
+      try {
+        await supabase.from('activity_log').insert({
+          entity_type: 'obligation',
+          action: 'إلغاء التزام',
+          details: {
+            employee_name: employee_name ?? '—',
+            obligation_type: obligation_type ? getObligationTypeLabel(obligation_type) : '—',
+          },
+        })
+      } catch { /* non-blocking */ }
       queryClient.invalidateQueries({ queryKey: ['employee-obligations', employeeId] })
       queryClient.invalidateQueries({ queryKey: ['all-obligations-summary'] })
     },

@@ -164,6 +164,18 @@ export default function SessionsManager() {
 
       if (error) throw error
 
+      try {
+        await supabase.from('activity_log').insert({
+          entity_type: 'session',
+          entity_id: sessionToDelete.id,
+          action: 'إنهاء جلسة',
+          details: {
+            target_user_name: sessionToDelete.users?.full_name ?? '—',
+            target_user_email: sessionToDelete.users?.email ?? '—',
+          },
+        })
+      } catch { /* non-blocking */ }
+
       setSessionHistory((prev) => prev.filter((s) => s.id !== sessionToDelete.id))
       setActiveSessions((prev) => prev.filter((s) => s.id !== sessionToDelete.id))
       setSelectedSessions((prev) => {
@@ -197,6 +209,19 @@ export default function SessionsManager() {
       const { error } = await supabase.from('user_sessions').delete().in('id', sessionIds)
 
       if (error) throw error
+
+      // جلب اسم مالك الجلسات (يفترض جلسات مستخدم واحد في الغالب)
+      try {
+        const firstSession = [...activeSessions, ...sessionHistory].find((s) => selectedSessions.has(s.id))
+        await supabase.from('activity_log').insert({
+          entity_type: 'session',
+          action: 'إنهاء كل الجلسات',
+          details: {
+            target_user_name: firstSession?.users?.full_name ?? '—',
+            session_count: sessionIds.length,
+          },
+        })
+      } catch { /* non-blocking */ }
 
       setSessionHistory((prev) => prev.filter((s) => !selectedSessions.has(s.id)))
       setActiveSessions((prev) => prev.filter((s) => !selectedSessions.has(s.id)))
