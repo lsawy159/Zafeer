@@ -38,6 +38,8 @@ export type PermissionKey =
   | 'reports.view'
   | 'reports.export'
   | 'payroll.view'
+  | 'payroll.create'
+  | 'payroll.delete'
   | 'payroll.export'
   | 'activityLogs.view'
   | 'importExport.view'
@@ -46,11 +48,16 @@ export type PermissionKey =
   | 'users.view'
   | 'users.create'
   | 'users.edit'
-  | 'users.delete'
   | 'adminSettings.view'
   | 'adminSettings.edit'
-  | 'centralizedSettings.view'
-  | 'centralizedSettings.edit'
+  | 'backupSettings.view'
+  | 'backupSettings.edit'
+  | 'sessionsManagement.view'
+  | 'sessionsManagement.delete'
+  | 'emailSettings.view'
+  | 'emailSettings.edit'
+  | 'alertsSettings.view'
+  | 'alertsSettings.edit'
 
 // Component-specific types (add more as needed)
 export interface LoadingSpinnerProps {

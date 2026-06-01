@@ -183,11 +183,11 @@ function AppRoutes() {
           />
           <Route
             path="/users"
-            element={<Navigate to="/admin-settings?tab=users-permissions" replace />}
+            element={<Navigate to="/admin-settings?tab=permissions" replace />}
           />
           <Route
             path="/settings"
-            element={<Navigate to="/admin-settings?tab=users-permissions" replace />}
+            element={<Navigate to="/admin-settings?tab=permissions" replace />}
           />
           <Route
             path="/admin-settings"
@@ -254,7 +254,7 @@ function AppRoutes() {
           <Route path="/general-settings" element={<Navigate to="/admin-settings" replace />} />
           <Route
             path="/permissions"
-            element={<Navigate to="/settings?tab=users-permissions" replace />}
+            element={<Navigate to="/admin-settings?tab=permissions" replace />}
           />
         </Route>
 

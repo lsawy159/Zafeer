@@ -10,9 +10,12 @@ import {
 export interface PermissionMatrix {
   employees: { view: boolean; create: boolean; edit: boolean; delete: boolean }
   companies: { view: boolean; create: boolean; edit: boolean; delete: boolean }
-  users: { view: boolean; create: boolean; edit: boolean; delete: boolean }
+  users: { view: boolean; create: boolean; edit: boolean }
   adminSettings: { view: boolean; edit: boolean }
-  centralizedSettings: { view: boolean; edit: boolean }
+  backupSettings: { view: boolean; edit: boolean }
+  sessionsManagement: { view: boolean; delete: boolean }
+  emailSettings: { view: boolean; edit: boolean }
+  alertsSettings: { view: boolean; edit: boolean }
   projects: { view: boolean; create: boolean; edit: boolean; delete: boolean }
   transferProcedures: {
     view: boolean
@@ -23,7 +26,7 @@ export interface PermissionMatrix {
     export: boolean
   }
   reports: { view: boolean; export: boolean }
-  payroll: { view: boolean; export: boolean }
+  payroll: { view: boolean; create: boolean; delete: boolean; export: boolean }
   extracts: { view: boolean; create: boolean; edit: boolean; delete: boolean; export: boolean }
   revenue: { view: boolean; manage: boolean }
   alerts: { view: boolean }
@@ -194,11 +197,12 @@ export function normalizePermissionsFlat(
     return matrixToFlatPermissions(createFullAdminPermissions())
   }
 
+  // class 3: object-shaped legacy payload — never silently trusted, always deny (return empty)
   if (!Array.isArray(permissions)) {
     return []
   }
 
-  // تصفية وتحقق من صحة كل صلاحية
+  // تصفية وتحقق من صحة كل صلاحية (class 1: stale, class 2: unknown → both denied by catalog check)
   return permissions.filter((perm) => {
     if (typeof perm !== 'string') return false
 

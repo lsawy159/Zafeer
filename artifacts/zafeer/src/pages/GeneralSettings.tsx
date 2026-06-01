@@ -55,6 +55,20 @@ export default function GeneralSettings() {
   const hasViewPermission = canView('adminSettings')
   const hasEditPermission = canEdit('adminSettings')
 
+  const tabPermissions: Record<string, boolean> = {
+    system: canView('adminSettings'),
+    'advanced-notifications': canView('adminSettings'),
+    backup: canView('backupSettings'),
+    sessions: canView('sessionsManagement'),
+    audit: canView('activityLogs'),
+    permissions: canView('users'),
+    'email-settings': canView('emailSettings'),
+    'alert-settings': canView('alertsSettings'),
+    'activity-logs': canView('activityLogs'),
+  }
+
+  const hasAnyTabAccess = Object.values(tabPermissions).some(Boolean)
+
   const cleanupLegacySystemSettings = async () => {
     try {
       const table = supabase.from('system_settings') as unknown as {
@@ -125,13 +139,13 @@ export default function GeneralSettings() {
 
   useEffect(() => {
     const tab = searchParams.get('tab')
-    if (!tab) {
-      return
-    }
-
-    if (ALLOWED_TABS.includes(tab as TabType)) {
+    if (tab && ALLOWED_TABS.includes(tab as TabType) && (tabPermissions[tab] ?? true)) {
       setActiveTab(tab as TabType)
+    } else if (!tab || !tabPermissions[activeTab]) {
+      const firstAccessible = ALLOWED_TABS.find((t) => tabPermissions[t] ?? true)
+      if (firstAccessible) setActiveTab(firstAccessible)
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams])
 
   const loadDeferredNotifications = useCallback(async () => {
@@ -173,7 +187,7 @@ export default function GeneralSettings() {
     setSearchParams({ tab })
   }
 
-  if (!user || !hasViewPermission) {
+  if (!user || !hasAnyTabAccess) {
     return (
       <Layout>
         <div className="flex items-center justify-center h-screen">
@@ -189,7 +203,7 @@ export default function GeneralSettings() {
     )
   }
 
-  const settingsCategories: SettingsCategory[] = buildSettingsCategories(
+  const allSettingsCategories: SettingsCategory[] = buildSettingsCategories(
     SystemDefaultsInfo,
     BackupTab,
     SessionsManager,
@@ -198,6 +212,10 @@ export default function GeneralSettings() {
     UnifiedSettings,
     ActivityLogsEmbedded,
     EmailSettingsTab
+  )
+
+  const settingsCategories = allSettingsCategories.filter(
+    (cat) => tabPermissions[cat.key] ?? true
   )
 
   const saveActiveTabSettings = async () => {

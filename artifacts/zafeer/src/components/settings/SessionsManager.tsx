@@ -6,6 +6,7 @@ import { formatDateWithHijri } from '@/utils/dateFormatter'
 import { HijriDateDisplay } from '@/components/ui/HijriDateDisplay'
 import ConfirmationDialog from '@/components/dialogs/ConfirmationDialog'
 import { useAuth } from '@/contexts/AuthContext'
+import { usePermissions } from '@/utils/permissions'
 
 interface UserSession {
   id: string
@@ -26,6 +27,8 @@ interface UserSession {
 
 export default function SessionsManager() {
   const { user, signOut } = useAuth()
+  const { canDelete } = usePermissions()
+  const canDeleteSessions = canDelete('sessionsManagement')
   const [activeSessions, setActiveSessions] = useState<UserSession[]>([])
   const [sessionHistory, setSessionHistory] = useState<UserSession[]>([])
   const [selectedSessions, setSelectedSessions] = useState<Set<string>>(new Set())
@@ -267,7 +270,7 @@ export default function SessionsManager() {
           <h2 className="text-lg font-semibold">الجلسات</h2>
         </div>
         <div className="flex items-center gap-2">
-          {selectedSessions.size > 0 && (
+          {selectedSessions.size > 0 && canDeleteSessions && (
             <button
               onClick={deleteSelectedSessions}
               disabled={isDeletingSessions}
@@ -463,13 +466,15 @@ export default function SessionsManager() {
                         </span>
                       </td>
                       <td className="px-4 py-3">
-                        <button
-                          onClick={() => deleteSession(session)}
-                          className="p-1 text-red-600 hover:bg-red-100 rounded"
-                          title="حذف"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
+                        {canDeleteSessions && (
+                          <button
+                            onClick={() => deleteSession(session)}
+                            className="p-1 text-red-600 hover:bg-red-100 rounded"
+                            title="حذف"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        )}
                       </td>
                     </tr>
                   ))}
@@ -529,15 +534,17 @@ export default function SessionsManager() {
                     )}
                   </div>
 
-                  <div className="pt-1 border-t border-neutral-100">
-                    <button
-                      onClick={() => deleteSession(session)}
-                      className="w-full px-2 py-2 text-xs text-red-600 hover:bg-red-50 rounded-lg transition font-medium"
-                    >
-                      <Trash2 className="w-3 h-3 inline mr-1" />
-                      حذف
-                    </button>
-                  </div>
+                  {canDeleteSessions && (
+                    <div className="pt-1 border-t border-neutral-100">
+                      <button
+                        onClick={() => deleteSession(session)}
+                        className="w-full px-2 py-2 text-xs text-red-600 hover:bg-red-50 rounded-lg transition font-medium"
+                      >
+                        <Trash2 className="w-3 h-3 inline mr-1" />
+                        حذف
+                      </button>
+                    </div>
+                  )}
                 </div>
               ))}
             </div>
