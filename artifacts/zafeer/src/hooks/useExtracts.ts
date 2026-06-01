@@ -122,7 +122,22 @@ export function useCreateExtract() {
       }
       return data as string
     },
-    onSuccess: (invoiceId) => {
+    onSuccess: async (invoiceId) => {
+      // جلب بيانات المستخلص بعد الإنشاء لتسجيل النشاط (non-blocking)
+      try {
+        const { data: inv } = await supabase.from('extract_invoices').select('total_amount,employee_count,projects(name)').eq('id', invoiceId).maybeSingle()
+        const project = (inv as { projects?: { name: string } | null } | null)?.projects
+        await supabase.from('activity_log').insert({
+          entity_type: 'extract',
+          entity_id: invoiceId,
+          action: 'إنشاء مستخلص',
+          details: {
+            extract_title: project?.name ?? invoiceId,
+            employee_count: (inv as { employee_count?: number } | null)?.employee_count ?? 0,
+            total_amount: (inv as { total_amount?: number } | null)?.total_amount ?? 0,
+          },
+        })
+      } catch { /* non-blocking */ }
       queryClient.invalidateQueries({ queryKey: ['extracts'] })
       navigate(`/extracts/${invoiceId}`)
     },
@@ -134,6 +149,17 @@ export function useMarkExported() {
 
   return useMutation({
     mutationFn: async (invoiceId: string) => {
+      // جلب بيانات المستخلص قبل التصدير — non-blocking، لا يوقف العملية
+      let inv: unknown = null
+      try {
+        const { data } = await supabase
+          .from('extract_invoices')
+          .select('total_amount,employee_count,projects(name)')
+          .eq('id', invoiceId)
+          .maybeSingle()
+        inv = data
+      } catch { /* non-blocking */ }
+
       const { error } = await supabase
         .from('extract_invoices')
         .update({ status: 'exported', exported_at: new Date().toISOString() })
@@ -143,8 +169,23 @@ export function useMarkExported() {
         logger.error('Error marking extract as exported:', error)
         throw error
       }
+
+      return inv
     },
-    onSuccess: (_, invoiceId) => {
+    onSuccess: async (inv, invoiceId) => {
+      try {
+        const project = (inv as { projects?: { name: string } | null } | null)?.projects
+        await supabase.from('activity_log').insert({
+          entity_type: 'extract',
+          entity_id: invoiceId,
+          action: 'تصدير مستخلص',
+          details: {
+            extract_title: project?.name ?? invoiceId,
+            employee_count: (inv as { employee_count?: number } | null)?.employee_count ?? 0,
+            total_amount: (inv as { total_amount?: number } | null)?.total_amount ?? 0,
+          },
+        })
+      } catch { /* non-blocking */ }
       queryClient.invalidateQueries({ queryKey: ['extracts'] })
       queryClient.invalidateQueries({ queryKey: ['extract', invoiceId] })
     },
@@ -185,9 +226,34 @@ export function useDeleteExtract() {
 
   return useMutation({
     mutationFn: async (extractId: string) => {
-      return baseMutation.mutateAsync({ id: extractId })
+      // جلب بيانات المستخلص قبل الحذف — non-blocking، لا يوقف الحذف
+      let inv: unknown = null
+      try {
+        const { data } = await supabase
+          .from('extract_invoices')
+          .select('total_amount,employee_count,projects(name)')
+          .eq('id', extractId)
+          .maybeSingle()
+        inv = data
+      } catch { /* non-blocking */ }
+
+      await baseMutation.mutateAsync({ id: extractId })
+      return inv
     },
-    onSuccess: () => {
+    onSuccess: async (inv, extractId) => {
+      try {
+        const project = (inv as { projects?: { name: string } | null } | null)?.projects
+        await supabase.from('activity_log').insert({
+          entity_type: 'extract',
+          entity_id: extractId,
+          action: 'حذف مستخلص',
+          details: {
+            extract_title: project?.name ?? extractId,
+            employee_count: (inv as { employee_count?: number } | null)?.employee_count ?? 0,
+            total_amount: (inv as { total_amount?: number } | null)?.total_amount ?? 0,
+          },
+        })
+      } catch { /* non-blocking */ }
       queryClient.invalidateQueries({ queryKey: ['extracts'] })
       queryClient.removeQueries({ queryKey: ['extract'] })
       navigate('/extracts')

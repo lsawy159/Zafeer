@@ -271,6 +271,14 @@ export function useEmployeeCardLogic({
       setShowCreateProjectModal(false)
       setNewProjectName('')
       setIsProjectDropdownOpen(false)
+      try {
+        await supabase.from('activity_log').insert({
+          entity_type: 'project',
+          entity_id: newProject.id,
+          action: 'إنشاء مشروع',
+          details: { project_name: newProject.name, employee_count: 0 },
+        })
+      } catch { /* non-blocking */ }
       toast.success('تم إنشاء المشروع بنجاح')
     } catch (error) {
       logger.error('Error creating project:', error)

@@ -175,7 +175,21 @@ export async function triggerManualBackup(): Promise<BackupRecord | null> {
     .maybeSingle()
 
   if (latestErr) throw latestErr
-  return latest as BackupRecord | null
+  const record = latest as BackupRecord | null
+  if (record) {
+    try {
+      await supabase.from('activity_log').insert({
+        entity_type: 'backup',
+        action: 'إنشاء نسخة احتياطية',
+        details: {
+          timestamp: record.started_at,
+          total_employees: record.table_record_counts?.['employees'] ?? 0,
+          total_companies: record.table_record_counts?.['companies'] ?? 0,
+        },
+      })
+    } catch { /* non-blocking */ }
+  }
+  return record
 }
 
 export async function getBackupDownloadUrl(filePath: string): Promise<string | null> {

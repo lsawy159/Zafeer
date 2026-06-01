@@ -222,6 +222,20 @@ export default function GeneralSettings() {
         }
       })
 
+      // قراءة القيم الحالية قبل الحفظ لبناء diff
+      interface ChangedSetting { key_label: string; old_value: string; new_value: string }
+      let oldValuesMap: Record<string, string> = {}
+      try {
+        const keys = rows.map((r) => r.setting_key)
+        const { data: oldRows } = await supabase
+          .from('system_settings')
+          .select('setting_key,setting_value')
+          .in('setting_key', keys)
+        if (oldRows) {
+          oldValuesMap = Object.fromEntries(oldRows.map((r: { setting_key: string; setting_value: string }) => [r.setting_key, r.setting_value]))
+        }
+      } catch { /* non-blocking */ }
+
       const { error } = await supabase.from('system_settings').upsert(rows, { onConflict: 'setting_key' })
 
       if (error) {
@@ -229,6 +243,22 @@ export default function GeneralSettings() {
         toast.error('فشل حفظ الإعدادات. يرجى المحاولة مرة أخرى.')
         return
       }
+
+      // تسجيل النشاط مع diff (non-blocking)
+      try {
+        const changedSettings: ChangedSetting[] = rows
+          .filter((r) => oldValuesMap[r.setting_key] !== r.setting_value)
+          .map((r) => ({
+            key_label: r.setting_key,
+            old_value: oldValuesMap[r.setting_key] ?? '—',
+            new_value: r.setting_value,
+          }))
+        await supabase.from('activity_log').insert({
+          entity_type: 'settings',
+          action: 'تحديث إعدادات النظام',
+          details: { changed_settings: changedSettings, changed_count: changedSettings.length },
+        })
+      } catch { /* non-blocking */ }
 
       toast.success('تم حفظ إعدادات هذا التبويب بنجاح')
     } catch (error) {

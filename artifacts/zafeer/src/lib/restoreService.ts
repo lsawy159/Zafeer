@@ -41,7 +41,25 @@ export async function triggerRestore(
     throw new Error(String(data.error))
   }
 
-  return data as RestoreResult
+  const result = data as RestoreResult
+  try {
+    // قراءة بيانات النسخة الاحتياطية الأصلية للحصول على عدد السجلات
+    const { data: backupRecord } = await supabase
+      .from('backup_history')
+      .select('started_at, table_record_counts')
+      .eq('id', backupId)
+      .maybeSingle()
+    await supabase.from('activity_log').insert({
+      entity_type: 'backup',
+      action: 'استعادة نسخة احتياطية',
+      details: {
+        timestamp: new Date().toISOString(),
+        total_employees: (backupRecord as { table_record_counts?: Record<string, number> } | null)?.table_record_counts?.['employees'] ?? 0,
+        total_companies: (backupRecord as { table_record_counts?: Record<string, number> } | null)?.table_record_counts?.['companies'] ?? 0,
+      },
+    })
+  } catch { /* non-blocking */ }
+  return result
 }
 
 export async function fetchRestoreHistory(): Promise<RestoreHistoryRecord[]> {

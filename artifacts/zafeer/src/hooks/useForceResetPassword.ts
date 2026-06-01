@@ -34,6 +34,19 @@ export function useForceResetPassword() {
         throw new Error(result.error)
       }
 
+      // جلب بيانات المستخدم لتسجيل اسمه في النشاط (non-blocking)
+      try {
+        const { data: userRow } = await supabase.from('users').select('full_name,email').eq('id', id).single()
+        await supabase.from('activity_log').insert({
+          entity_type: 'user',
+          entity_id: id,
+          action: 'إعادة ضبط كلمة المرور',
+          details: {
+            user_name: userRow?.full_name ?? '—',
+            user_email: userRow?.email ?? '—',
+          },
+        })
+      } catch { /* non-blocking */ }
       return result as { success: true }
     },
   })

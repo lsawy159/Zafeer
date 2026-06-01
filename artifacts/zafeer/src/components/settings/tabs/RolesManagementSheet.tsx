@@ -89,7 +89,16 @@ export function RolesManagementSheet({ isOpen, onOpenChange }: RolesManagementSh
 
   const handleDeleteRole = async (roleId: string) => {
     if (window.confirm('هل تريد حذف هذا الدور؟')) {
+      const roleToDelete = roles.find((r) => r.id === roleId)
       await deleteRoleMutation.mutateAsync(roleId)
+      try {
+        await supabase.from('activity_log').insert({
+          entity_type: 'role',
+          entity_id: roleId,
+          action: 'حذف دور',
+          details: { role_name: roleToDelete?.name ?? '—' },
+        })
+      } catch { /* non-blocking */ }
     }
   }
 
