@@ -17,67 +17,80 @@
  * - actions: مصفوفة الأفعال المتاحة للقسم
  */
 export const PERMISSION_SECTIONS = {
+  // [active] — dashboard.view
   dashboard: {
     label: 'الرئيسية',
     description: 'عرض لوحة المؤشرات الرئيسية فقط.',
     actions: ['view'] as const,
   },
+  // [active] — employees.{view,create,edit,delete}
   employees: {
     label: 'الموظفين',
     description: 'إدارة بيانات الموظفين وسجلاتهم الأساسية.',
     actions: ['view', 'create', 'edit', 'delete'] as const,
   },
+  // [active] — companies.{view,create,edit,delete}
   companies: {
     label: 'المؤسسات',
     description: 'إدارة المؤسسات والكيانات المرتبطة بالموظفين.',
     actions: ['view', 'create', 'edit', 'delete'] as const,
   },
+  // [active] — projects.{view,create,edit,delete}
   projects: {
     label: 'المشاريع',
     description: 'إدارة المشاريع وربط الموظفين وطلبات النقل بها.',
     actions: ['view', 'create', 'edit', 'delete'] as const,
   },
+  // [active] — transferProcedures.{view,create,edit,delete,import,export}
   transferProcedures: {
     label: 'إجراءات النقل',
     description: 'صفحة تشغيلية مستقلة لإدارة طلبات النقل، تحديث حالتها، ثم تحويل الطلب إلى موظف.',
     actions: ['view', 'create', 'edit', 'delete', 'import', 'export'] as const,
   },
+  // [active] — alerts.view
   alerts: {
     label: 'التنبيهات',
     description: 'متابعة التنبيهات والإشعارات المهمة داخل النظام.',
     actions: ['view'] as const,
   },
+  // [active] — reports.{view,export}
   reports: {
     label: 'التقارير',
     description: 'عرض التقارير النظامية وتصديرها فقط، بدون منح صلاحيات الرواتب أو النقل تلقائيًا.',
     actions: ['view', 'export'] as const,
   },
+  // [active] — payroll.{view,create,delete,export}
   payroll: {
     label: 'الرواتب والاستقطاعات',
     description: 'صلاحية مستقلة لمسيرات الرواتب والاستقطاعات، منفصلة تمامًا عن التقارير.',
-    actions: ['view', 'export'] as const,
+    actions: ['view', 'create', 'delete', 'export'] as const,
   },
+  // [active] — activityLogs.view; embedded tab in adminSettings; key retained for future narrowing
   activityLogs: {
     label: 'سجل النشاطات',
     description: 'عرض سجل العمليات والتغييرات داخل النظام.',
     actions: ['view'] as const,
   },
+  // [active] — importExport.{view,import,export}
   importExport: {
     label: 'استيراد/تصدير',
     description:
       'صفحة ملفات Excel فقط. صلاحيتها لا تعني إدارة إجراءات النقل نفسها، بل استيرادها وتصديرها كملفات.',
     actions: ['view', 'import', 'export'] as const,
   },
+  // [active] — users.{view,create,edit}; users.delete: [orphaned] removed — no frontend delete path for public.users
   users: {
     label: 'المستخدمين',
     description: 'الوصول إلى شاشة إدارة المستخدمين وصلاحياتهم.',
-    actions: ['view', 'create', 'edit', 'delete'] as const,
+    actions: ['view', 'create', 'edit'] as const,
   },
+  // [active] — extracts.{view,create,edit,delete,export}; served via /finance redirect
   extracts: {
     label: 'المستخلصات',
     description: 'إنشاء وتصدير فواتير التكاليف الشهرية للمشاريع الخارجية.',
     actions: ['view', 'create', 'edit', 'delete', 'export'] as const,
   },
+  // [active] — revenue.{view,manage}
   revenue: {
     label: 'الإيرادات والربحية',
     description: 'عرض تقارير الإيرادات والهامش للمشاريع. يجمع بيانات المستخلصات والرواتب.',
@@ -85,16 +98,39 @@ export const PERMISSION_SECTIONS = {
     // view: يتيح عرض تبويب الإيرادات وجدول P&L والأرقام الإجمالية للوضع النقدي
     // manage: يتيح إضافةً لـ view — فتح قائمة الالتزامات المسددة وتنفيذ حذفها النهائي
   },
+  // [active] — adminSettings.{view,edit}; governs: system tab + advanced-notifications tab
   adminSettings: {
     label: 'إعدادات النظام',
-    description: 'إعدادات النظام الإدارية العامة.',
+    description: 'إعدادات النظام الأساسية وإعدادات الإشعارات العامة.',
     actions: ['view', 'edit'] as const,
   },
-  centralizedSettings: {
+  // [active] — backupSettings.{view,edit}; governs backup tab in /admin-settings
+  backupSettings: {
+    label: 'النسخ الاحتياطية',
+    description: 'عرض وإدارة النسخ الاحتياطية وجدولتها.',
+    actions: ['view', 'edit'] as const,
+  },
+  // [active] — sessionsManagement.{view,delete}; governs sessions tab in /admin-settings
+  sessionsManagement: {
+    label: 'إدارة الجلسات',
+    description: 'عرض الجلسات النشطة وإنهاء أي جلسة عن بُعد.',
+    actions: ['view', 'delete'] as const,
+  },
+  // [active] — emailSettings.{view,edit}; governs email-settings tab in /admin-settings
+  emailSettings: {
+    label: 'إعدادات الإيميلات',
+    description: 'إدارة مستلمي الإيميلات وإعدادات الإرسال التلقائي.',
+    actions: ['view', 'edit'] as const,
+  },
+  // [active] — alertsSettings.{view,edit}; governs alert-settings tab in /admin-settings
+  alertsSettings: {
     label: 'إعدادات التنبيهات',
-    description: 'إعدادات التنبيهات والإشعارات المركزية.',
+    description: 'تخصيص حدود التنبيهات وألوانها وحالاتها.',
     actions: ['view', 'edit'] as const,
   },
+  // [orphaned] — centralizedSettings.{view,edit}: old /centralized-settings route redirected into
+  // /admin-settings umbrella; no active RLS/RPC enforcement; subsumed by adminSettings.
+  // Removed from editable catalog per T007 (see research.md Audit Catalog).
 } as const
 
 /**
@@ -119,7 +155,7 @@ export const VALID_PERMISSION_SECTIONS = Object.keys(
 /**
  * نسخة المخطط (للمتابعة والترقيات المستقبلية)
  */
-export const PERMISSION_SCHEMA_VERSION = '2.0'
+export const PERMISSION_SCHEMA_VERSION = '2.1'
 
 /**
  * Helper: الحصول على الأفعال المسموح بها لقسم معين

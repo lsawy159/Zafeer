@@ -52,7 +52,7 @@ export default function PDCRunsSection(ctx: Ctx) {
     selectedPayrollExportRunIds, exportingSelectedPayrollRuns,
     allExportablePayrollRunsSelected,
     paymentMethodFilter, setPaymentMethodFilter,
-    canDelete, canExport, isAdmin,
+    canDelete, canCreate, canExport, isAdmin,
     updatePayrollRunStatus, deletePayrollRun, upsertPayrollEntry,
     getRunDisplayName, getPayrollStatusText, getPayrollInputModeText, formatPayrollMonthLabel,
     handleTogglePayrollRunForm, handleRefreshPayrollData,
@@ -1278,7 +1278,7 @@ export default function PDCRunsSection(ctx: Ctx) {
                     أنشئ مسيرًا جديدًا لمؤسسة أو مشروع، ثم راجع كشف الموظفين المرتبط به
                   </p>
                 </div>
-                {isAdmin && (
+                {canCreate('payroll') && (
                   <button
                     onClick={handleTogglePayrollRunForm}
                     className={primaryCompactButtonClass}

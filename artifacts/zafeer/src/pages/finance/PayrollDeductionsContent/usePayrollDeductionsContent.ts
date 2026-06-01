@@ -85,7 +85,7 @@ export function usePayrollDeductionsContent({
   defaultTab?: 'search' | 'runs' | 'obligations'
   hideTabBar?: boolean
 } = {}) {
-  const { canEdit, canDelete, canExport, canView, isAdmin } = usePermissions()
+  const { canEdit, canDelete, canCreate, canExport, canView, isAdmin } = usePermissions()
   const [activePageTab, setActivePageTab] = useState<'search' | 'runs' | 'obligations'>(defaultTab)
   const [obligationsSearchQuery, setObligationsSearchQuery] = useState('')
   const [obligationsProjectFilter, setObligationsProjectFilter] = useState('')
@@ -3071,7 +3071,7 @@ tr:last-child td{border-bottom:none}
   const showRunsBlock = !hideTabBar || activePageTab === 'runs'
 
   return {
-    canEdit, canDelete, canExport, canView, isAdmin,
+    canEdit, canDelete, canCreate, canExport, canView, isAdmin,
     hasPayrollViewPermission,
     activePageTab, setActivePageTab,
     showRunsBlock, hideTabBar,

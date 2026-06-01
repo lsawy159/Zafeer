@@ -18,11 +18,23 @@ type TabType = 'export' | 'import' | 'templates'
 type DataEntityType = 'employees' | 'companies' | 'transferProcedures'
 
 export default function ImportExport() {
-  const { canImport, canExport } = usePermissions()
+  const { canImport, canExport, canView } = usePermissions()
   const [activeTab, setActiveTab] = useState<TabType>('export')
   const [importEntityType, setImportEntityType] = useState<DataEntityType>('employees')
   const [exportEntityType, setExportEntityType] = useState<DataEntityType>('employees')
   const [exportingAll, setExportingAll] = useState(false)
+
+  if (!canView('importExport')) {
+    return (
+      <Layout>
+        <div className="p-6">
+          <div className="rounded-xl border border-red-200 bg-red-50 p-6 text-sm text-red-700">
+            لا تملك صلاحية الوصول إلى صفحة الاستيراد والتصدير.
+          </div>
+        </div>
+      </Layout>
+    )
+  }
 
   const exportAll = async () => {
     if (!canExport('importExport')) {
