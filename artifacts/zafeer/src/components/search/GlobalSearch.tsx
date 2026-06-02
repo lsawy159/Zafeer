@@ -81,6 +81,7 @@ export function GlobalSearch() {
       const { data: employees } = await supabase
         .from('employees')
         .select('id, name, profession, nationality, companies(name)')
+        .eq('is_deleted', false)
         .textSearch('search_vector', searchQuery, {
           type: 'websearch',
           config: 'arabic',

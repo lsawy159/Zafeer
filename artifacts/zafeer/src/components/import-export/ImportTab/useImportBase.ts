@@ -1566,10 +1566,11 @@ export function useImportBase({
         // Get projects for lookup (exclude deleted)
         const { data: projects } = await supabase.from('projects').select('id, name').eq('is_deleted', false)
 
-        // Load existing employees from database with their IDs for update operations
+        // Load existing active employees from database with their IDs for update operations
         const { data: existingEmployees } = await supabase
           .from('employees')
           .select('id, residence_number')
+          .eq('is_deleted', false)
         const existingEmployeesByResidenceNumber = new Map<string, string>() // residence_number -> employee_id
         existingEmployees?.forEach((emp) => {
           if (emp.residence_number) {
@@ -1633,6 +1634,7 @@ export function useImportBase({
                         .from('employees')
                         .select('id')
                         .eq('residence_number', rn)
+                        .eq('is_deleted', false)
                         .single()
                       if (existing) {
                         const cleaned = cleanEmployeeDataForUpdate(row)

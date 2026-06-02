@@ -1,6 +1,8 @@
 import {
   pgTable, uuid, text, bigint, date, timestamp, boolean, numeric, jsonb,
+  uniqueIndex,
 } from 'drizzle-orm/pg-core'
+import { sql } from 'drizzle-orm'
 import { createInsertSchema, createSelectSchema } from 'drizzle-zod'
 import { z } from 'zod/v4'
 import { companiesTable } from './companies'
@@ -16,7 +18,7 @@ export const employeesTable = pgTable('employees', {
   birth_date: date('birth_date'),
   phone: text('phone'),
   passport_number: text('passport_number'),
-  residence_number: bigint('residence_number', { mode: 'number' }),
+  residence_number: bigint('residence_number', { mode: 'number' }).notNull(),
   joining_date: date('joining_date'),
   contract_expiry: date('contract_expiry'),
   hired_worker_contract_expiry: date('hired_worker_contract_expiry'),
@@ -32,7 +34,11 @@ export const employeesTable = pgTable('employees', {
   deleted_at: timestamp('deleted_at', { withTimezone: true }),
   created_at: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   updated_at: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
-})
+}, (table) => [
+  uniqueIndex('employees_residence_number_active_unique')
+    .on(table.residence_number)
+    .where(sql`is_deleted IS NOT TRUE`),
+])
 
 export const insertEmployeeSchema = createInsertSchema(employeesTable)
 export const selectEmployeeSchema = createSelectSchema(employeesTable)
