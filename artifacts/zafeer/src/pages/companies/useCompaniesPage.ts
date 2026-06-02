@@ -235,7 +235,7 @@ export function useCompaniesPage() {
       if (companiesError) throw companiesError
       if (!companiesData) { setCompanies([]); return }
 
-      const { data: employeesData, error: employeesError } = await supabase.from('employees').select('company_id')
+      const { data: employeesData, error: employeesError } = await supabase.from('employees').select('company_id').eq('is_deleted', false)
       if (employeesError) throw employeesError
 
       const employeeCounts: Record<string, number> = {}

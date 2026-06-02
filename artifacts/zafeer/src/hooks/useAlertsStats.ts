@@ -99,8 +99,9 @@ async function fetchAlertsStatsQuery(): Promise<AlertsStats> {
         supabase
           .from('employees')
           .select(
-            'id,contract_expiry,residence_expiry,health_insurance_expiry,hired_worker_contract_expiry,is_deleted'
-          ),
+            'id,contract_expiry,residence_expiry,health_insurance_expiry,hired_worker_contract_expiry'
+          )
+          .eq('is_deleted', false),
         getStatusThresholds().catch(() => DEFAULT_STATUS_THRESHOLDS),
         getEmployeeNotificationThresholdsPublic().catch(() => DEFAULT_EMPLOYEE_THRESHOLDS),
         getExpiredInclusionSettings().catch(() => DEFAULT_EXPIRED_INCLUSION),
@@ -112,7 +113,7 @@ async function fetchAlertsStatsQuery(): Promise<AlertsStats> {
     if (employeesResult.error) throw employeesResult.error
 
     const companies = companiesResult.data || []
-    const employees = (employeesResult.data || []).filter((e) => !e.is_deleted)
+    const employees = employeesResult.data || []
     const today = new Date()
 
     let companyUrgent = 0

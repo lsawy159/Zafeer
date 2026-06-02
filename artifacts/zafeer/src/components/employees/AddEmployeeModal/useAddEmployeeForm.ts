@@ -418,6 +418,7 @@ export function useAddEmployeeForm({ isOpen, onClose, onSuccess, initialData }: 
           .from('employees')
           .select('id, name, residence_number')
           .eq('residence_number', residenceNumberStr)
+          .eq('is_deleted', false)
           .single()
         if (existingEmployee) {
           toast.error(`رقم الإقامة ${residenceNumberStr} موجود بالفعل للموظف: ${existingEmployee.name}`)
