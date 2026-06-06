@@ -68,7 +68,7 @@ vi.mock('sonner', () => ({
 
 describe('GeneralSettings permissions deep-link', () => {
   it('opens permissions tab when URL query contains tab=permissions', async () => {
-    mockCanView.mockImplementation((section: string) => section === 'adminSettings')
+    mockCanView.mockImplementation((section: string) => section === 'adminSettings' || section === 'users')
     mockCanEdit.mockImplementation((section: string) => section === 'adminSettings')
 
     render(

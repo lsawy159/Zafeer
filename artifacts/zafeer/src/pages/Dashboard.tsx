@@ -29,6 +29,7 @@ import { usePermissions } from '@/utils/permissions'
 import { useAllEmployeesPage } from '@/hooks/useEmployees'
 import { useAllCompanies } from '@/hooks/useCompanies'
 import { useAlertsStats } from '@/hooks/useAlertsStats'
+import { useDashboardDocStats } from '@/hooks/useDashboardDocStats'
 import { DashboardCompaniesTab } from './dashboard/DashboardCompaniesTab'
 import { DashboardEmployeesTab } from './dashboard/DashboardEmployeesTab'
 import { calculateDashboardStats, type DashboardStats } from './dashboard/dashboardStats'
@@ -42,6 +43,8 @@ export default function Dashboard() {
   const { data: employees = [], isLoading: isLoadingEmployees } = useAllEmployeesPage()
   const { data: companies = [], isLoading: isLoadingCompanies } = useAllCompanies()
   const { alertsStats } = useAlertsStats()
+  // Hook خفيف للإحصائيات — يجلب حقول الانتهاء فقط مع range صريح لتجاوز حد 1000 صف
+  const { docEmployees, docCompanies, isLoadingDocStats } = useDashboardDocStats()
 
   // Fetch real total counts (bypasses pagination)
   const { data: totalCompaniesCount = 0 } = useQuery({
@@ -81,48 +84,55 @@ export default function Dashboard() {
     totalContractSlots: 0,
     avgEmployeesPerCompany: 0,
     utilizationRate: 0,
-    // إحصائيات العقود (5 فئات)
+    // إحصائيات العقود (5 فئات + بلا وثيقة)
     expiredContracts: 0,
     urgentContracts: 0,
     highContracts: 0,
     mediumContracts: 0,
     validContracts: 0,
-    // إحصائيات الإقامات (5 فئات)
+    noDocumentContracts: 0,
+    // إحصائيات الإقامات (5 فئات + بلا وثيقة)
     expiredResidences: 0,
     urgentResidences: 0,
     highResidences: 0,
     mediumResidences: 0,
     validResidences: 0,
-    // إحصائيات التأمين الصحي (5 فئات)
+    noDocumentResidences: 0,
+    // إحصائيات التأمين الصحي (5 فئات + بلا وثيقة)
     expiredInsurance: 0,
     urgentInsurance: 0,
     highInsurance: 0,
     mediumInsurance: 0,
     validInsurance: 0,
-    // إحصائيات عقد أجير (5 فئات)
+    noDocumentInsurance: 0,
+    // إحصائيات عقد أجير (5 فئات + بلا وثيقة)
     expiredHiredWorkerContracts: 0,
     urgentHiredWorkerContracts: 0,
     highHiredWorkerContracts: 0,
     mediumHiredWorkerContracts: 0,
     validHiredWorkerContracts: 0,
-    // إحصائيات السجل التجاري (5 فئات)
+    noDocumentHiredWorker: 0,
+    // إحصائيات السجل التجاري (5 فئات + بلا وثيقة)
     expiredCommercialReg: 0,
     urgentCommercialReg: 0,
     highCommercialReg: 0,
     mediumCommercialReg: 0,
     validCommercialReg: 0,
-    // إحصائيات اشتراك قوى (5 فئات)
+    noDocumentCommercialReg: 0,
+    // إحصائيات اشتراك قوى (5 فئات + بلا وثيقة)
     expiredPower: 0,
     urgentPower: 0,
     highPower: 0,
     mediumPower: 0,
     validPower: 0,
-    // إحصائيات اشتراك مقيم (5 فئات)
+    noDocumentPower: 0,
+    // إحصائيات اشتراك مقيم (5 فئات + بلا وثيقة)
     expiredMoqeem: 0,
     urgentMoqeem: 0,
     highMoqeem: 0,
     mediumMoqeem: 0,
     validMoqeem: 0,
+    noDocumentMoqeem: 0,
   })
 
   // Load thresholds on mount
@@ -155,13 +165,18 @@ export default function Dashboard() {
     loadReadAlerts()
   }, [])
 
-  // Calculate stats when data changes
+  // Calculate stats when data changes — uses docEmployees/docCompanies (lightweight, range-safe)
   useEffect(() => {
-    if (employees && employees.length > 0 && companies && companies.length > 0) {
-      setStats(calculateDashboardStats(employees, companies, companyThresholds, employeeThresholds))
+    if (!isLoadingDocStats) {
+      setStats(calculateDashboardStats(
+        docEmployees as never,
+        docCompanies as never,
+        companyThresholds,
+        employeeThresholds
+      ))
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [employees, companies, companyThresholds, employeeThresholds])
+  }, [docEmployees, docCompanies, companyThresholds, employeeThresholds, isLoadingDocStats])
 
   // Generate alerts when data changes
   useEffect(() => {
@@ -213,7 +228,8 @@ export default function Dashboard() {
   // التحقق من الصلاحية دون إرجاع مبكر للحفاظ على ترتيب الـ Hooks
   const unauthorized = !canView('dashboard')
 
-  const loading = isLoadingEmployees || isLoadingCompanies
+  // Spinner يختفي فور جهوز الإحصائيات — القوائم تظهر تلقائياً حين تتحمل
+  const loading = isLoadingDocStats
 
   return (
     <Layout>
@@ -322,8 +338,8 @@ export default function Dashboard() {
                 />
                 <MetricCard
                   title="متوسط الموظفين"
-                  value={(stats.totalCompanies > 0
-                    ? Math.round(stats.totalEmployees / stats.totalCompanies)
+                  value={(totalCompaniesCount > 0
+                    ? Math.round(totalEmployeesCount / totalCompaniesCount)
                     : 0
                   ).toString()}
                   subtitle="لكل مؤسسة"

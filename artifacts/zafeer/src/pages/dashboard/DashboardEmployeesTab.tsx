@@ -17,21 +17,25 @@ interface Stats {
   highContracts: number
   mediumContracts: number
   validContracts: number
+  noDocumentContracts: number
   expiredResidences: number
   urgentResidences: number
   highResidences: number
   mediumResidences: number
   validResidences: number
+  noDocumentResidences: number
   expiredInsurance: number
   urgentInsurance: number
   highInsurance: number
   mediumInsurance: number
   validInsurance: number
+  noDocumentInsurance: number
   expiredHiredWorkerContracts: number
   urgentHiredWorkerContracts: number
   highHiredWorkerContracts: number
   mediumHiredWorkerContracts: number
   validHiredWorkerContracts: number
+  noDocumentHiredWorker: number
 }
 
 interface EmployeeThresholds {
@@ -73,7 +77,7 @@ export function DashboardEmployeesTab({
             <FileText className="w-3.5 h-3.5 text-blue-600" />
             إحصائيات العقود
           </h3>
-          <div className="grid grid-cols-1 md:grid-cols-5 gap-1.5">
+          <div className={`grid grid-cols-1 gap-1.5 ${stats.noDocumentContracts > 0 ? 'md:grid-cols-6' : 'md:grid-cols-5'}`}>
             <div className="bg-surface rounded-lg p-2.5 border border-blue-200">
               <div className="flex items-center justify-between mb-1">
                 <span className="text-xs text-foreground-secondary">منتهية</span>
@@ -121,6 +125,15 @@ export function DashboardEmployeesTab({
                 أكثر من {employeeThresholds.contract_medium_days} يوم
               </p>
             </div>
+            {stats.noDocumentContracts > 0 && (
+              <div className="bg-surface rounded-lg p-2.5 border border-blue-200">
+                <div className="flex items-center justify-between mb-1">
+                  <span className="text-xs text-foreground-secondary">بلا وثيقة</span>
+                  <FileText className="w-3 h-3 text-neutral-400" />
+                </div>
+                <p className="text-lg font-bold text-neutral-500">{stats.noDocumentContracts}</p>
+              </div>
+            )}
           </div>
         </div>
 
@@ -130,7 +143,7 @@ export function DashboardEmployeesTab({
             <Shield className="w-3.5 h-3.5 text-purple-600" />
             إحصائيات الإقامات
           </h3>
-          <div className="grid grid-cols-1 md:grid-cols-5 gap-1.5">
+          <div className={`grid grid-cols-1 gap-1.5 ${stats.noDocumentResidences > 0 ? 'md:grid-cols-6' : 'md:grid-cols-5'}`}>
             <div className="bg-surface rounded-lg p-2.5 border border-purple-200">
               <div className="flex items-center justify-between mb-1">
                 <span className="text-xs text-foreground-secondary">منتهية</span>
@@ -178,6 +191,15 @@ export function DashboardEmployeesTab({
                 أكثر من {employeeThresholds.residence_medium_days} يوم
               </p>
             </div>
+            {stats.noDocumentResidences > 0 && (
+              <div className="bg-surface rounded-lg p-2.5 border border-purple-200">
+                <div className="flex items-center justify-between mb-1">
+                  <span className="text-xs text-foreground-secondary">بلا وثيقة</span>
+                  <Shield className="w-3 h-3 text-neutral-400" />
+                </div>
+                <p className="text-lg font-bold text-neutral-500">{stats.noDocumentResidences}</p>
+              </div>
+            )}
           </div>
         </div>
 
@@ -187,7 +209,7 @@ export function DashboardEmployeesTab({
             <Shield className="w-3.5 h-3.5 text-green-600" />
             إحصائيات التأمين الصحي
           </h3>
-          <div className="grid grid-cols-1 md:grid-cols-5 gap-1.5">
+          <div className={`grid grid-cols-1 gap-1.5 ${stats.noDocumentInsurance > 0 ? 'md:grid-cols-6' : 'md:grid-cols-5'}`}>
             <div className="bg-surface rounded-lg p-2.5 border border-green-200">
               <div className="flex items-center justify-between mb-1">
                 <span className="text-xs text-foreground-secondary">منتهية</span>
@@ -235,6 +257,15 @@ export function DashboardEmployeesTab({
                 أكثر من {employeeThresholds.health_insurance_medium_days} يوم
               </p>
             </div>
+            {stats.noDocumentInsurance > 0 && (
+              <div className="bg-surface rounded-lg p-2.5 border border-green-200">
+                <div className="flex items-center justify-between mb-1">
+                  <span className="text-xs text-foreground-secondary">بلا وثيقة</span>
+                  <Shield className="w-3 h-3 text-neutral-400" />
+                </div>
+                <p className="text-lg font-bold text-neutral-500">{stats.noDocumentInsurance}</p>
+              </div>
+            )}
           </div>
         </div>
 
@@ -244,7 +275,7 @@ export function DashboardEmployeesTab({
             <FileText className="w-3.5 h-3.5 text-amber-600" />
             إحصائيات عقد أجير
           </h3>
-          <div className="grid grid-cols-1 md:grid-cols-5 gap-1.5">
+          <div className={`grid grid-cols-1 gap-1.5 ${stats.noDocumentHiredWorker > 0 ? 'md:grid-cols-6' : 'md:grid-cols-5'}`}>
             <div className="bg-surface rounded-lg p-2.5 border border-amber-200">
               <div className="flex items-center justify-between mb-1">
                 <span className="text-xs text-foreground-secondary">منتهية</span>
@@ -292,6 +323,15 @@ export function DashboardEmployeesTab({
                 أكثر من {employeeThresholds.hired_worker_contract_medium_days} يوم
               </p>
             </div>
+            {stats.noDocumentHiredWorker > 0 && (
+              <div className="bg-surface rounded-lg p-2.5 border border-amber-200">
+                <div className="flex items-center justify-between mb-1">
+                  <span className="text-xs text-foreground-secondary">بلا وثيقة</span>
+                  <FileText className="w-3 h-3 text-neutral-400" />
+                </div>
+                <p className="text-lg font-bold text-neutral-500">{stats.noDocumentHiredWorker}</p>
+              </div>
+            )}
           </div>
         </div>
       </div>

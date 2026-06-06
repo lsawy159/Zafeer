@@ -6,7 +6,7 @@ import { normalizePermissions } from '@/utils/permissions'
 describe('payroll permissions', () => {
   it('defines payroll as a standalone permission section', () => {
     expect(PERMISSION_SECTIONS.payroll.label).toBe('الرواتب والاستقطاعات')
-    expect(PERMISSION_SECTIONS.payroll.actions).toEqual(['view', 'export'])
+    expect(PERMISSION_SECTIONS.payroll.actions).toEqual(['view', 'create', 'delete', 'export'])
   })
 
   it('does not grant payroll access when only reports permissions exist', () => {
