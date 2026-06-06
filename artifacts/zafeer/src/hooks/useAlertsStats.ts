@@ -95,13 +95,15 @@ async function fetchAlertsStatsQuery(): Promise<AlertsStats> {
           .from('companies')
           .select(
             'id,commercial_registration_expiry,ending_subscription_power_date,ending_subscription_moqeem_date'
-          ),
+          )
+          .range(0, 999),
         supabase
           .from('employees')
           .select(
             'id,contract_expiry,residence_expiry,health_insurance_expiry,hired_worker_contract_expiry'
           )
-          .eq('is_deleted', false),
+          .eq('is_deleted', false)
+          .range(0, 4999),
         getStatusThresholds().catch(() => DEFAULT_STATUS_THRESHOLDS),
         getEmployeeNotificationThresholdsPublic().catch(() => DEFAULT_EMPLOYEE_THRESHOLDS),
         getExpiredInclusionSettings().catch(() => DEFAULT_EXPIRED_INCLUSION),

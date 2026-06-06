@@ -1,0 +1,27 @@
+# Development override — يحل محل nginx بـ Vite dev server مع hot reload
+# التشغيل: docker compose up (يُحمَّل تلقائياً مع docker-compose.yml)
+# للإنتاج فقط: docker compose -f docker-compose.yml up
+
+services:
+  web:
+    build:
+      context: .
+      dockerfile: artifacts/zafeer/Dockerfile.dev
+    env_file:
+      - artifacts/zafeer/.env
+    environment:
+      NODE_ENV: development
+      PORT: "80"
+      CHOKIDAR_USEPOLLING: "true"
+      CHOKIDAR_INTERVAL: "300"
+    volumes:
+      - .:/workspace
+      - /workspace/node_modules
+      - /workspace/artifacts/zafeer/node_modules
+      - /workspace/lib/db/node_modules
+      - /workspace/lib/api-zod/node_modules
+      - /workspace/lib/api-spec/node_modules
+      - /workspace/lib/api-client-react/node_modules
+    depends_on:
+      api:
+        condition: service_healthy

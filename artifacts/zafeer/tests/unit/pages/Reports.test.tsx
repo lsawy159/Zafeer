@@ -37,6 +37,7 @@ vi.mock('@/lib/supabase', () => ({
 vi.mock('@/utils/permissions', () => ({
   usePermissions: () => ({
     canExport: () => true,
+    canView: () => true,
   }),
 }))
 

@@ -26,16 +26,19 @@ interface Stats {
   highCommercialReg: number
   mediumCommercialReg: number
   validCommercialReg: number
+  noDocumentCommercialReg: number
   expiredPower: number
   urgentPower: number
   highPower: number
   mediumPower: number
   validPower: number
+  noDocumentPower: number
   expiredMoqeem: number
   urgentMoqeem: number
   highMoqeem: number
   mediumMoqeem: number
   validMoqeem: number
+  noDocumentMoqeem: number
 }
 
 interface CompanyThresholds {
@@ -105,7 +108,7 @@ export function DashboardCompaniesTab({
             <FileText className="w-3.5 h-3.5 text-orange-600" />
             إحصائيات السجل التجاري
           </h3>
-          <div className="grid grid-cols-1 md:grid-cols-5 gap-1.5">
+          <div className={`grid grid-cols-1 gap-1.5 ${stats.noDocumentCommercialReg > 0 ? 'md:grid-cols-6' : 'md:grid-cols-5'}`}>
             <div className="bg-surface rounded-lg p-2.5 border border-orange-200">
               <div className="flex items-center justify-between mb-1">
                 <span className="text-xs text-foreground-secondary">منتهية</span>
@@ -153,6 +156,15 @@ export function DashboardCompaniesTab({
                 أكثر من {companyThresholds.commercial_reg_medium_days} يوم
               </p>
             </div>
+            {stats.noDocumentCommercialReg > 0 && (
+              <div className="bg-surface rounded-lg p-2.5 border border-orange-200">
+                <div className="flex items-center justify-between mb-1">
+                  <span className="text-xs text-foreground-secondary">بلا وثيقة</span>
+                  <FileText className="w-3 h-3 text-neutral-400" />
+                </div>
+                <p className="text-lg font-bold text-neutral-500">{stats.noDocumentCommercialReg}</p>
+              </div>
+            )}
           </div>
         </div>
 
@@ -162,7 +174,7 @@ export function DashboardCompaniesTab({
             <Shield className="w-3.5 h-3.5 text-cyan-600" />
             إحصائيات اشتراك قوى
           </h3>
-          <div className="grid grid-cols-1 md:grid-cols-5 gap-1.5">
+          <div className={`grid grid-cols-1 gap-1.5 ${stats.noDocumentPower > 0 ? 'md:grid-cols-6' : 'md:grid-cols-5'}`}>
             <div className="bg-surface rounded-lg p-2.5 border border-cyan-200">
               <div className="flex items-center justify-between mb-1">
                 <span className="text-xs text-foreground-secondary">منتهية</span>
@@ -210,6 +222,15 @@ export function DashboardCompaniesTab({
                 أكثر من {companyThresholds.power_subscription_medium_days} يوم
               </p>
             </div>
+            {stats.noDocumentPower > 0 && (
+              <div className="bg-surface rounded-lg p-2.5 border border-cyan-200">
+                <div className="flex items-center justify-between mb-1">
+                  <span className="text-xs text-foreground-secondary">بلا وثيقة</span>
+                  <Shield className="w-3 h-3 text-neutral-400" />
+                </div>
+                <p className="text-lg font-bold text-neutral-500">{stats.noDocumentPower}</p>
+              </div>
+            )}
           </div>
         </div>
 
@@ -219,7 +240,7 @@ export function DashboardCompaniesTab({
             <Shield className="w-3.5 h-3.5 text-teal-600" />
             إحصائيات اشتراك مقيم
           </h3>
-          <div className="grid grid-cols-1 md:grid-cols-5 gap-1.5">
+          <div className={`grid grid-cols-1 gap-1.5 ${stats.noDocumentMoqeem > 0 ? 'md:grid-cols-6' : 'md:grid-cols-5'}`}>
             <div className="bg-surface rounded-lg p-2.5 border border-teal-200">
               <div className="flex items-center justify-between mb-1">
                 <span className="text-xs text-foreground-secondary">منتهية</span>
@@ -267,6 +288,15 @@ export function DashboardCompaniesTab({
                 أكثر من {companyThresholds.moqeem_subscription_medium_days} يوم
               </p>
             </div>
+            {stats.noDocumentMoqeem > 0 && (
+              <div className="bg-surface rounded-lg p-2.5 border border-teal-200">
+                <div className="flex items-center justify-between mb-1">
+                  <span className="text-xs text-foreground-secondary">بلا وثيقة</span>
+                  <Shield className="w-3 h-3 text-neutral-400" />
+                </div>
+                <p className="text-lg font-bold text-neutral-500">{stats.noDocumentMoqeem}</p>
+              </div>
+            )}
           </div>
         </div>
       </div>

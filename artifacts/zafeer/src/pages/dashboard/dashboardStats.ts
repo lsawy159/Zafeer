@@ -50,21 +50,25 @@ export interface DashboardStats {
   highContracts: number
   mediumContracts: number
   validContracts: number
+  noDocumentContracts: number
   expiredResidences: number
   urgentResidences: number
   highResidences: number
   mediumResidences: number
   validResidences: number
+  noDocumentResidences: number
   expiredInsurance: number
   urgentInsurance: number
   highInsurance: number
   mediumInsurance: number
   validInsurance: number
+  noDocumentInsurance: number
   expiredHiredWorkerContracts: number
   urgentHiredWorkerContracts: number
   highHiredWorkerContracts: number
   mediumHiredWorkerContracts: number
   validHiredWorkerContracts: number
+  noDocumentHiredWorker: number
   expiredCommercialReg: number
   urgentCommercialReg: number
   highCommercialReg: number
@@ -80,6 +84,9 @@ export interface DashboardStats {
   highMoqeem: number
   mediumMoqeem: number
   validMoqeem: number
+  noDocumentCommercialReg: number
+  noDocumentPower: number
+  noDocumentMoqeem: number
 }
 
 export function calculateFiveCategories(
@@ -139,21 +146,23 @@ export function calculateDashboardStats(
       : 0
 
   const accum = (field: keyof Employee, thresholds: { urgent: number; high: number; medium: number }) => {
-    let expired = 0, urgent = 0, high = 0, medium = 0, valid = 0
+    let expired = 0, urgent = 0, high = 0, medium = 0, valid = 0, noDocument = 0
     employees.forEach((emp) => {
+      if (!emp[field]) { noDocument++; return }
       const cats = calculateFiveCategories(emp[field] as string | null | undefined, today, thresholds)
       expired += cats.expired; urgent += cats.urgent; high += cats.high; medium += cats.medium; valid += cats.valid
     })
-    return { expired, urgent, high, medium, valid }
+    return { expired, urgent, high, medium, valid, noDocument }
   }
 
   const accumCompany = (field: keyof Company, thresholds: { urgent: number; high: number; medium: number }) => {
-    let expired = 0, urgent = 0, high = 0, medium = 0, valid = 0
+    let expired = 0, urgent = 0, high = 0, medium = 0, valid = 0, noDocument = 0
     companies.forEach((company) => {
+      if (!company[field]) { noDocument++; return }
       const cats = calculateFiveCategories(company[field] as string | null | undefined, today, thresholds)
       expired += cats.expired; urgent += cats.urgent; high += cats.high; medium += cats.medium; valid += cats.valid
     })
-    return { expired, urgent, high, medium, valid }
+    return { expired, urgent, high, medium, valid, noDocument }
   }
 
   const contracts = accum('contract_expiry', {
@@ -197,19 +206,24 @@ export function calculateDashboardStats(
     totalAvailableSlots, totalContractSlots, avgEmployeesPerCompany, utilizationRate,
     expiredContracts: contracts.expired, urgentContracts: contracts.urgent,
     highContracts: contracts.high, mediumContracts: contracts.medium, validContracts: contracts.valid,
+    noDocumentContracts: contracts.noDocument,
     expiredResidences: residences.expired, urgentResidences: residences.urgent,
     highResidences: residences.high, mediumResidences: residences.medium, validResidences: residences.valid,
+    noDocumentResidences: residences.noDocument,
     expiredInsurance: insurance.expired, urgentInsurance: insurance.urgent,
     highInsurance: insurance.high, mediumInsurance: insurance.medium, validInsurance: insurance.valid,
+    noDocumentInsurance: insurance.noDocument,
     expiredHiredWorkerContracts: hiredWorker.expired, urgentHiredWorkerContracts: hiredWorker.urgent,
     highHiredWorkerContracts: hiredWorker.high, mediumHiredWorkerContracts: hiredWorker.medium,
-    validHiredWorkerContracts: hiredWorker.valid,
+    validHiredWorkerContracts: hiredWorker.valid, noDocumentHiredWorker: hiredWorker.noDocument,
     expiredCommercialReg: commercialReg.expired, urgentCommercialReg: commercialReg.urgent,
     highCommercialReg: commercialReg.high, mediumCommercialReg: commercialReg.medium,
-    validCommercialReg: commercialReg.valid,
+    validCommercialReg: commercialReg.valid, noDocumentCommercialReg: commercialReg.noDocument,
     expiredPower: power.expired, urgentPower: power.urgent,
     highPower: power.high, mediumPower: power.medium, validPower: power.valid,
+    noDocumentPower: power.noDocument,
     expiredMoqeem: moqeem.expired, urgentMoqeem: moqeem.urgent,
     highMoqeem: moqeem.high, mediumMoqeem: moqeem.medium, validMoqeem: moqeem.valid,
+    noDocumentMoqeem: moqeem.noDocument,
   }
 }
