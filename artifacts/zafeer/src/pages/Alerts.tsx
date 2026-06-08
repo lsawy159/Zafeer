@@ -131,12 +131,9 @@ export default function Alerts({ initialTab = 'all', initialFilter = 'all' }: Al
             </div>
             <div className="p-6">
               <CompanyCard
-                company={{ ...p.selectedCompany, employee_count: 0, available_slots: 0, max_employees: p.selectedCompany.max_employees || 4 }}
+                company={{ ...p.selectedCompany, employee_count: 0 }}
                 onEdit={p.handleEditCompany}
                 onDelete={() => {}}
-                getAvailableSlotsColor={(slots) => slots > 0 ? 'text-success-600' : 'text-red-600'}
-                getAvailableSlotsTextColor={(slots) => slots > 0 ? 'text-success-600' : 'text-red-600'}
-                getAvailableSlotsText={(slots) => `متاح: ${slots} أماكن`}
               />
             </div>
           </div>

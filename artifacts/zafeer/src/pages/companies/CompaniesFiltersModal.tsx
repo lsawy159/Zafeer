@@ -2,7 +2,6 @@ import { createPortal } from 'react-dom'
 import { X } from 'lucide-react'
 import { MultiSelectDropdown } from '@/components/ui/MultiSelectDropdown'
 
-type AvailableSlotsFilter = 'all' | '0' | '1' | '2' | '3' | '4+'
 type ExemptionsFilter = string
 
 interface CompaniesFiltersModalProps {
@@ -17,8 +16,6 @@ interface CompaniesFiltersModalProps {
   setEmployeeCountMin: (v: number | null) => void
   employeeCountMax: number | null
   setEmployeeCountMax: (v: number | null) => void
-  availableSlotsFilter: AvailableSlotsFilter
-  setAvailableSlotsFilter: (v: AvailableSlotsFilter) => void
   createdAtFrom: string | null
   setCreatedAtFrom: (v: string | null) => void
   createdAtTo: string | null
@@ -49,8 +46,6 @@ export function CompaniesFiltersModal({
   setEmployeeCountMin,
   employeeCountMax,
   setEmployeeCountMax,
-  availableSlotsFilter,
-  setAvailableSlotsFilter,
   createdAtFrom,
   setCreatedAtFrom,
   createdAtTo,
@@ -154,24 +149,6 @@ export function CompaniesFiltersModal({
                 className="focus-ring-brand w-full rounded-md border border-input bg-surface px-3 py-2 text-sm transition-[border-color,box-shadow] duration-[var(--motion-fast)] ease-[var(--ease-out)]"
                 placeholder="اختياري"
               />
-            </div>
-
-            <div>
-              <label className="mb-2 block text-sm font-medium text-neutral-700">
-                الأماكن الشاغرة
-              </label>
-              <select
-                value={availableSlotsFilter}
-                onChange={(e) => setAvailableSlotsFilter(e.target.value as AvailableSlotsFilter)}
-                className="focus-ring-brand w-full rounded-md border border-input bg-surface px-3 py-2 text-sm transition-[border-color,box-shadow] duration-[var(--motion-fast)] ease-[var(--ease-out)]"
-              >
-                <option value="all">الكل</option>
-                <option value="0">المؤسسات المكتملة</option>
-                <option value="1">مكان واحد شاغر</option>
-                <option value="2">مكانين شاغرين</option>
-                <option value="3">ثلاثة أماكن شاغرة</option>
-                <option value="4+">أربعة أماكن فأكثر</option>
-              </select>
             </div>
 
             <div>

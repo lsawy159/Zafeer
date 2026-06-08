@@ -12,15 +12,10 @@ import { formatDateShortWithHijri } from '@/utils/dateFormatter'
 interface CompanyDetailModalProps {
   company: Company & {
     employee_count?: number
-    available_slots?: number
-    max_employees?: number
   }
   onClose: () => void
   onEdit?: (company: Company) => void
   onDelete?: (company: Company) => void
-  getAvailableSlotsColor?: (slots: number) => string
-  getAvailableSlotsTextColor?: (slots: number) => string
-  getAvailableSlotsText?: (slots: number) => string
 }
 
 export default function CompanyDetailModal({
@@ -28,9 +23,6 @@ export default function CompanyDetailModal({
   onClose,
   onEdit,
   onDelete,
-  getAvailableSlotsColor,
-  getAvailableSlotsTextColor,
-  getAvailableSlotsText,
 }: CompanyDetailModalProps) {
   const navigate = useNavigate()
   const [employees, setEmployees] = useState<EmployeeWithRelations[]>([])
@@ -172,14 +164,9 @@ export default function CompanyDetailModal({
                 company={{
                   ...company,
                   employee_count: company.employee_count || employees.length,
-                  available_slots: company.available_slots,
-                  max_employees: company.max_employees || 4,
                 }}
                 onEdit={onEdit ?? (() => {})}
                 onDelete={onDelete ?? (() => {})}
-                getAvailableSlotsColor={getAvailableSlotsColor}
-                getAvailableSlotsTextColor={getAvailableSlotsTextColor}
-                getAvailableSlotsText={getAvailableSlotsText}
               />
             </div>
           </div>

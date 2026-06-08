@@ -39,12 +39,7 @@ export interface EmployeeThresholds {
 export interface DashboardStats {
   totalEmployees: number
   totalCompanies: number
-  fullCompanies: number
-  companiesWithFewSlots: number
-  totalAvailableSlots: number
-  totalContractSlots: number
   avgEmployeesPerCompany: number
-  utilizationRate: number
   expiredContracts: number
   urgentContracts: number
   highContracts: number
@@ -122,28 +117,7 @@ export function calculateDashboardStats(
 
   const totalEmployees = employees.length
   const totalCompanies = companies.length
-  let fullCompanies = 0
-  let companiesWithFewSlots = 0
-  let totalAvailableSlots = 0
-  let totalContractSlots = 0
-
-  companies.forEach((company) => {
-    const employeesInCompany = employees.filter((emp) => emp.company_id === company.id).length
-    const maxEmployees = company.max_employees || 4
-    const availableSlots = Math.max(0, maxEmployees - employeesInCompany)
-    const contractSlots = company.max_employees || 4
-
-    totalAvailableSlots += availableSlots
-    totalContractSlots += contractSlots
-    if (availableSlots === 0) fullCompanies++
-    if (availableSlots <= 2) companiesWithFewSlots++
-  })
-
   const avgEmployeesPerCompany = totalCompanies > 0 ? Math.round(totalEmployees / totalCompanies) : 0
-  const utilizationRate =
-    totalContractSlots > 0
-      ? Math.round(((totalContractSlots - totalAvailableSlots) / totalContractSlots) * 100)
-      : 0
 
   const accum = (field: keyof Employee, thresholds: { urgent: number; high: number; medium: number }) => {
     let expired = 0, urgent = 0, high = 0, medium = 0, valid = 0, noDocument = 0
@@ -202,8 +176,7 @@ export function calculateDashboardStats(
   })
 
   return {
-    totalEmployees, totalCompanies, fullCompanies, companiesWithFewSlots,
-    totalAvailableSlots, totalContractSlots, avgEmployeesPerCompany, utilizationRate,
+    totalEmployees, totalCompanies, avgEmployeesPerCompany,
     expiredContracts: contracts.expired, urgentContracts: contracts.urgent,
     highContracts: contracts.high, mediumContracts: contracts.medium, validContracts: contracts.valid,
     noDocumentContracts: contracts.noDocument,

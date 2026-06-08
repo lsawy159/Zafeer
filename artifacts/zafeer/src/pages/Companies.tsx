@@ -152,7 +152,6 @@ export default function Companies() {
             moqeemSubscriptionStatus={p.moqeemSubscriptionStatus} setMoqeemSubscriptionStatus={p.setMoqeemSubscriptionStatus}
             employeeCountMin={p.employeeCountMin} setEmployeeCountMin={p.setEmployeeCountMin}
             employeeCountMax={p.employeeCountMax} setEmployeeCountMax={p.setEmployeeCountMax}
-            availableSlotsFilter={p.availableSlotsFilter} setAvailableSlotsFilter={p.setAvailableSlotsFilter}
             createdAtFrom={p.createdAtFrom} setCreatedAtFrom={p.setCreatedAtFrom}
             createdAtTo={p.createdAtTo} setCreatedAtTo={p.setCreatedAtTo}
             exemptionsFilter={p.exemptionsFilter} setExemptionsFilter={p.setExemptionsFilter}
@@ -241,9 +240,6 @@ export default function Companies() {
             onClose={p.handleCloseCompanyDetailModal}
             onEdit={p.handleEditCompany}
             onDelete={p.handleDeleteCompany}
-            getAvailableSlotsColor={(slots) => { if (slots === 0) return 'text-red-600 bg-red-50 border-red-200'; if (slots === 1) return 'text-warning-600 bg-orange-50 border-orange-200'; if (slots <= 3) return 'text-yellow-600 bg-yellow-50 border-yellow-200'; return 'text-success-600 bg-green-50 border-green-200' }}
-            getAvailableSlotsTextColor={(slots) => { if (slots === 0) return 'text-red-600'; if (slots === 1) return 'text-warning-600'; if (slots <= 3) return 'text-yellow-600'; return 'text-success-600' }}
-            getAvailableSlotsText={(slots) => { if (slots === 0) return 'مكتملة'; if (slots === 1) return 'مكان واحد متبقي'; if (slots <= 3) return 'أماكن قليلة متاحة'; return 'أماكن متاحة' }}
           />
         )}
 

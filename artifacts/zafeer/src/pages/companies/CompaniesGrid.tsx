@@ -2,7 +2,6 @@ import { type CSSProperties } from 'react'
 import { Company } from '@/lib/supabase'
 import CompanyCard from '@/components/companies/CompanyCard'
 import type { CompanyWithCount } from './useCompaniesPage'
-import { getAvailableSlotsColor, getAvailableSlotsTextColor, getAvailableSlotsText } from './useCompaniesPage'
 
 interface CompaniesGridProps {
   paginatedCompanies: CompanyWithCount[]
@@ -32,9 +31,6 @@ export function CompaniesGrid({
             company={company}
             onEdit={onEdit}
             onDelete={onDelete}
-            getAvailableSlotsColor={getAvailableSlotsColor}
-            getAvailableSlotsTextColor={getAvailableSlotsTextColor}
-            getAvailableSlotsText={getAvailableSlotsText}
           />
         </div>
       ))}

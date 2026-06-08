@@ -252,7 +252,7 @@ export function useAddEmployeeForm({ isOpen, onClose, onSuccess, initialData }: 
   const getAvailableSlotsText = (availableSlots: number) => {
     if (availableSlots === 0) return 'مكتملة'
     if (availableSlots === 1) return 'مكان واحد متبقي'
-    return `${availableSlots} أماكن متاحة`
+    return `${availableSlots} مكان متبقي`
   }
 
   const filteredCompanies = companies.filter((company) => {

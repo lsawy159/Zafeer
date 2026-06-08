@@ -447,8 +447,6 @@ export function CompanyExport({ companies, dataLoading }: CompanyExportProps) {
                 </div>
                 <div className="text-neutral-600">
                   {company.max_employees && ` | الحد: ${company.max_employees} موظف`}
-                  {company.available_slots !== undefined &&
-                    ` | أماكن شاغرة: ${company.available_slots}`}
                 </div>
               </div>
             </div>
@@ -514,14 +512,6 @@ export function CompanyExport({ companies, dataLoading }: CompanyExportProps) {
                 <div className="bg-purple-50 p-2 rounded">
                   <p className="text-xs text-neutral-600">الحد الأقصى</p>
                   <p className="text-lg font-bold text-purple-700">{company.max_employees}</p>
-                </div>
-              )}
-              {company.available_slots !== undefined && (
-                <div className="bg-green-50 p-2 rounded">
-                  <p className="text-xs text-neutral-600">أماكن شاغرة</p>
-                  <p className="text-lg font-bold text-success-700">
-                    {company.available_slots}
-                  </p>
                 </div>
               )}
             </div>
