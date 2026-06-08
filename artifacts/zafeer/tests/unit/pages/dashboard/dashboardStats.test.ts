@@ -57,7 +57,7 @@ describe('dashboardStats', () => {
     })
   })
 
-  it('aggregates dashboard utilization and alert buckets correctly', () => {
+  it('aggregates dashboard alert buckets correctly', () => {
     const employees = [
       {
         id: 1,
@@ -138,12 +138,7 @@ describe('dashboardStats', () => {
 
     expect(stats.totalEmployees).toBe(3)
     expect(stats.totalCompanies).toBe(2)
-    expect(stats.fullCompanies).toBe(1)
-    expect(stats.companiesWithFewSlots).toBe(1)
-    expect(stats.totalAvailableSlots).toBe(4)
-    expect(stats.totalContractSlots).toBe(7)
     expect(stats.avgEmployeesPerCompany).toBe(2)
-    expect(stats.utilizationRate).toBe(43)
 
     expect(stats.expiredContracts).toBe(1)
     expect(stats.urgentContracts).toBe(1)

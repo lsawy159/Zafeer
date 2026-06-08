@@ -12,7 +12,6 @@ export interface DocStatsEmployee {
 
 export interface DocStatsCompany {
   id: string
-  max_employees: number | null
   commercial_registration_expiry: string | null
   ending_subscription_power_date: string | null
   ending_subscription_moqeem_date: string | null
@@ -39,7 +38,7 @@ export function useDashboardDocStats() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('companies')
-        .select('id,max_employees,commercial_registration_expiry,ending_subscription_power_date,ending_subscription_moqeem_date')
+        .select('id,commercial_registration_expiry,ending_subscription_power_date,ending_subscription_moqeem_date')
         .range(0, 999)
       if (error) throw error
       return (data ?? []) as DocStatsCompany[]

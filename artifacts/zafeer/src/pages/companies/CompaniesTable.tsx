@@ -7,7 +7,6 @@ import {
   calculateMoqeemSubscriptionStatus,
 } from '@/utils/autoCompanyStatus'
 import type { CompanyWithCount } from './useCompaniesPage'
-import { getAvailableSlotsColor } from './useCompaniesPage'
 
 interface CompaniesTableProps {
   paginatedCompanies: CompanyWithCount[]
@@ -82,7 +81,6 @@ export function CompaniesTable({
               <th className="px-4 py-3 text-right font-semibold text-neutral-700">حالة اشتراك قوى</th>
               <th className="px-4 py-3 text-right font-semibold text-neutral-700">حالة اشتراك مقيم</th>
               <th className="px-4 py-3 text-right font-semibold text-neutral-700">عدد الموظفين</th>
-              <th className="px-4 py-3 text-right font-semibold text-neutral-700">الأماكن الشاغرة</th>
               <th className="px-4 py-3 text-right font-semibold text-neutral-700">الإجراءات</th>
             </tr>
           </thead>
@@ -122,11 +120,6 @@ export function CompaniesTable({
                   <td className="px-4 py-3">{statusBadge(powerStatus, company.ending_subscription_power_date)}</td>
                   <td className="px-4 py-3">{statusBadge(moqeemStatus, company.ending_subscription_moqeem_date)}</td>
                   <td className="px-4 py-3 text-neutral-700">{company.employee_count || 0}</td>
-                  <td className="px-4 py-3">
-                    <span className={`px-2 py-1 rounded-full text-xs ${getAvailableSlotsColor(company.available_slots || 0)}`}>
-                      {company.available_slots || 0}
-                    </span>
-                  </td>
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
                       {canEdit('companies') && <Button onClick={() => onEdit(company)} variant="secondary" size="sm">تعديل</Button>}

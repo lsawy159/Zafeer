@@ -7,8 +7,6 @@ import {
   AlertTriangle,
   Bell,
   LayoutDashboard,
-  TrendingUp,
-  MapPin,
 } from 'lucide-react'
 import Layout from '@/components/layout/Layout'
 import { useNavigate } from 'react-router-dom'
@@ -78,12 +76,7 @@ export default function Dashboard() {
   const [stats, setStats] = useState<DashboardStats>({
     totalEmployees: 0,
     totalCompanies: 0,
-    fullCompanies: 0,
-    companiesWithFewSlots: 0,
-    totalAvailableSlots: 0,
-    totalContractSlots: 0,
     avgEmployeesPerCompany: 0,
-    utilizationRate: 0,
     // إحصائيات العقود (5 فئات + بلا وثيقة)
     expiredContracts: 0,
     urgentContracts: 0,
@@ -290,7 +283,7 @@ export default function Dashboard() {
                 />
               </div>
 
-              <div className="mb-2 grid grid-cols-2 gap-3 md:grid-cols-4 lg:grid-cols-7">
+              <div className="mb-2 grid grid-cols-2 gap-3 md:grid-cols-4">
                 <StatCard
                   title="عدد المؤسسات"
                   value={totalCompaniesCount}
@@ -322,28 +315,6 @@ export default function Dashboard() {
                   icon={<Bell className="h-5 w-5" />}
                   accent="danger"
                   onClick={() => navigate('/alerts?tab=employees')}
-                />
-                <MetricCard
-                  title="معدل الاستفادة"
-                  value={`${stats.utilizationRate}%`}
-                  subtitle="من السعة المتاحة"
-                  trend={stats.utilizationRate >= 75 ? 4 : -3}
-                  icon={<TrendingUp className="h-4 w-4" />}
-                />
-                <MetricCard
-                  title="أماكن شاغرة"
-                  value={stats.totalAvailableSlots.toString()}
-                  subtitle="مكان متاح للإضافة"
-                  icon={<MapPin className="h-4 w-4" />}
-                />
-                <MetricCard
-                  title="متوسط الموظفين"
-                  value={(totalCompaniesCount > 0
-                    ? Math.round(totalEmployeesCount / totalCompaniesCount)
-                    : 0
-                  ).toString()}
-                  subtitle="لكل مؤسسة"
-                  icon={<Users className="h-4 w-4" />}
                 />
               </div>
 

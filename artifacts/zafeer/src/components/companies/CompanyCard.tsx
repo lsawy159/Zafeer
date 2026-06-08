@@ -11,23 +11,15 @@ import { usePermissions } from '@/utils/permissions'
 interface CompanyCardProps {
   company: Company & {
     employee_count: number
-    available_slots?: number
-    max_employees?: number
   }
   onEdit: (company: Company) => void
   onDelete: (company: Company) => void
-  getAvailableSlotsColor?: (slots: number) => string
-  getAvailableSlotsTextColor?: (slots: number) => string
-  getAvailableSlotsText?: (slots: number) => string
 }
 
 function CompanyCard({
   company,
   onEdit,
   onDelete,
-  getAvailableSlotsColor,
-  getAvailableSlotsTextColor,
-  getAvailableSlotsText,
 }: CompanyCardProps) {
   // الحصول على الصلاحيات
   const { canEdit, canDelete } = usePermissions()
@@ -56,14 +48,6 @@ function CompanyCard({
     >
       <div className="pointer-events-none absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-cyan-400/70 via-sky-300/60 to-emerald-300/70 opacity-70 transition group-hover:opacity-100" />
 
-      {/* مؤشر حالة الأماكن الشاغرة */}
-      {getAvailableSlotsTextColor && getAvailableSlotsText && (
-        <div
-          className={`absolute left-3 top-3 h-2.5 w-2.5 rounded-full ${getAvailableSlotsTextColor(company.available_slots || 0).replace('text-', 'bg-')}`}
-          title={getAvailableSlotsText(company.available_slots || 0)}
-        />
-      )}
-
       <div className="mb-3 flex items-start justify-between">
         <div className="app-icon-chip scale-90">
           <Building2 className="h-4 w-4" />
@@ -72,8 +56,7 @@ function CompanyCard({
           <div className="text-xs text-neutral-600">
             <Users className="w-3.5 h-3.5 inline ml-1" />
             <span className="font-medium text-neutral-700">{company.employee_count}</span>
-            <span className="text-xs">/</span>
-            <span className="text-xs">{company.max_employees || 4}</span>
+            <span className="text-xs"> موظف</span>
           </div>
           <div className="flex gap-1" onClick={(e) => e.stopPropagation()}>
             {canEdit('companies') && (
@@ -125,27 +108,6 @@ function CompanyCard({
             </span>
           </div>
         )}
-        <div className="app-card-meta-row">
-          <span className="app-card-meta-label">الأماكن الشاغرة:</span>
-          <div className="flex items-center gap-2">
-            {getAvailableSlotsColor && getAvailableSlotsText && (
-              <>
-                <span
-                  className={`rounded-full px-2 py-1 text-xs font-semibold ${getAvailableSlotsColor(company.available_slots || 0)}`}
-                >
-                  {company.available_slots || 0} / {company.max_employees || 4}
-                </span>
-                {(company.available_slots || 0) > 0 && (
-                  <span
-                    className={`text-xs font-medium ${getAvailableSlotsTextColor?.(company.available_slots || 0) || ''}`}
-                  >
-                    {getAvailableSlotsText(company.available_slots || 0)}
-                  </span>
-                )}
-              </>
-            )}
-          </div>
-        </div>
         {company.exemptions && (
           <div className="app-card-meta-row">
             <span className="app-card-meta-label">الاعفاءات:</span>
@@ -254,7 +216,6 @@ export default memo(CompanyCard, (prevProps, nextProps) => {
   return (
     prevProps.company.id === nextProps.company.id &&
     prevProps.company.employee_count === nextProps.company.employee_count &&
-    prevProps.company.available_slots === nextProps.company.available_slots &&
     prevProps.company.commercial_registration_expiry ===
       nextProps.company.commercial_registration_expiry &&
     prevProps.company.ending_subscription_power_date ===

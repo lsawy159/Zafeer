@@ -7,20 +7,11 @@ import {
   XCircle,
   Clock,
   Calendar,
-  MapPin,
-  TrendingUp,
-  Users,
   ArrowRight,
 } from 'lucide-react'
-import { MetricCard } from '@/components/ui/MetricCard'
 import { useNavigate } from 'react-router-dom'
 
 interface Stats {
-  fullCompanies: number
-  totalAvailableSlots: number
-  utilizationRate: number
-  totalEmployees: number
-  totalCompanies: number
   expiredCommercialReg: number
   urgentCommercialReg: number
   highCommercialReg: number
@@ -70,37 +61,6 @@ export function DashboardCompaniesTab({
 
   return (
     <div className="space-y-3">
-      <div className="grid grid-cols-1 gap-2 md:grid-cols-2 lg:grid-cols-4">
-        <MetricCard
-          title="مؤسسات مكتملة"
-          value={stats.fullCompanies.toString()}
-          subtitle="لا يمكن إضافة موظفين"
-          icon={<XCircle className="h-4 w-4" />}
-        />
-        <MetricCard
-          title="أماكن شاغرة"
-          value={stats.totalAvailableSlots.toString()}
-          subtitle="مكان متاح للإضافة"
-          icon={<MapPin className="h-4 w-4" />}
-        />
-        <MetricCard
-          title="معدل الاستفادة"
-          value={`${stats.utilizationRate}%`}
-          subtitle="من السعة المتاحة"
-          trend={stats.utilizationRate >= 75 ? 4 : -3}
-          icon={<TrendingUp className="h-4 w-4" />}
-        />
-        <MetricCard
-          title="متوسط الموظفين"
-          value={(stats.totalCompanies > 0
-            ? Math.round(stats.totalEmployees / stats.totalCompanies)
-            : 0
-          ).toString()}
-          subtitle="لكل مؤسسة"
-          icon={<Users className="h-4 w-4" />}
-        />
-      </div>
-
       <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
         {/* إحصائيات السجل التجاري */}
         <div className="app-panel border-orange-200/60 bg-surface p-3 dark:border-orange-500/20">
@@ -319,8 +279,6 @@ export function DashboardCompaniesTab({
         <div className="space-y-1">
           {companies.slice(0, 5).map((company) => {
             const employeesInCompany = employees.filter((emp) => emp.company_id === company.id).length
-            const maxEmployees = company.max_employees || 4
-            const availableSlots = Math.max(0, maxEmployees - employeesInCompany)
             return (
               <div
                 key={company.id}
@@ -331,19 +289,8 @@ export function DashboardCompaniesTab({
                   <div>
                     <p className="font-semibold text-xs text-neutral-900">{company.name}</p>
                     <p className="text-xs text-neutral-600">
-                      {employeesInCompany} / {maxEmployees} موظف
+                      {employeesInCompany} موظف
                     </p>
-                  </div>
-                  <div
-                    className={`px-2 py-0.5 rounded-full text-xs font-medium ${
-                      availableSlots === 0
-                        ? 'bg-red-100 text-red-700'
-                        : availableSlots <= 2
-                          ? 'bg-yellow-100 text-yellow-700'
-                          : 'bg-green-100 text-green-700'
-                    }`}
-                  >
-                    {availableSlots === 0 ? 'مكتمل' : `${availableSlots} مكان متاح`}
                   </div>
                 </div>
               </div>

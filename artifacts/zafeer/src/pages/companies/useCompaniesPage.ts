@@ -29,12 +29,11 @@ export type SortField =
   | 'power_subscription_status'
   | 'moqeem_subscription_status'
 export type SortDirection = 'asc' | 'desc'
-export type AvailableSlotsFilter = 'all' | '0' | '1' | '2' | '3' | '4+'
 export type ExemptionsFilter = string
 export type ViewMode = 'grid' | 'table'
 export type CompanyCardStatus = 'ساري' | 'متوسط' | 'عاجل' | 'طارئ' | 'منتهي'
 export type CardStatusFilter = 'all' | CompanyCardStatus | 'مؤجلة' | null
-export type CompanyWithCount = Company & { employee_count: number; available_slots?: number }
+export type CompanyWithCount = Company & { employee_count: number }
 
 type CommercialRegStatus = 'expired' | 'expiring_soon' | 'valid'
 type PowerSubscriptionStatus = 'expired' | 'expiring_soon' | 'valid'
@@ -88,26 +87,6 @@ function compareSortableValues(aValue: string | number | null, bValue: string | 
   return direction === 'asc' ? comparison : -comparison
 }
 
-export function getAvailableSlotsColor(availableSlots: number) {
-  if (availableSlots === 0) return 'text-red-600 bg-red-50 border-red-200'
-  if (availableSlots === 1) return 'text-warning-600 bg-orange-50 border-orange-200'
-  if (availableSlots <= 3) return 'text-yellow-600 bg-yellow-50 border-yellow-200'
-  return 'text-success-600 bg-green-50 border-green-200'
-}
-
-export function getAvailableSlotsTextColor(availableSlots: number) {
-  if (availableSlots === 0) return 'text-red-600'
-  if (availableSlots === 1) return 'text-warning-600'
-  if (availableSlots <= 3) return 'text-yellow-600'
-  return 'text-success-600'
-}
-
-export function getAvailableSlotsText(availableSlots: number) {
-  if (availableSlots === 0) return 'مكتملة'
-  if (availableSlots === 1) return 'مكان واحد متبقي'
-  if (availableSlots <= 3) return 'أماكن قليلة متاحة'
-  return 'أماكن متاحة'
-}
 
 // ─── Hook ────────────────────────────────────────────────────────────────────
 
@@ -138,7 +117,6 @@ export function useCompaniesPage() {
   const [cardStatusFilter, setCardStatusFilter] = useState<CardStatusFilter>(null)
   const [employeeCountMin, setEmployeeCountMin] = useState<number | null>(null)
   const [employeeCountMax, setEmployeeCountMax] = useState<number | null>(null)
-  const [availableSlotsFilter, setAvailableSlotsFilter] = useState<AvailableSlotsFilter>('all')
   const [createdAtFrom, setCreatedAtFrom] = useState<string | null>(null)
   const [createdAtTo, setCreatedAtTo] = useState<string | null>(null)
   const [exemptionsFilter, setExemptionsFilter] = useState<ExemptionsFilter>('all')
@@ -184,8 +162,6 @@ export function useCompaniesPage() {
         setEmployeeCountMax(parsed)
       }
 
-      setAvailableSlotsFilter(filters.availableSlotsFilter || 'all')
-
       const savedFrom = normalizeDateFilter(filters.createdAtFrom)
       const savedTo = normalizeDateFilter(filters.createdAtTo)
       if (savedFrom !== null || savedTo !== null) {
@@ -215,7 +191,7 @@ export function useCompaniesPage() {
     try {
       localStorage.setItem('companiesFilters', JSON.stringify({
         searchTerm, commercialRegStatus, powerSubscriptionStatus, moqeemSubscriptionStatus,
-        showAlertsOnly, employeeCountMin, employeeCountMax, availableSlotsFilter,
+        showAlertsOnly, employeeCountMin, employeeCountMax,
         createdAtFrom, createdAtTo, exemptionsFilter, sortField, sortDirection,
       }))
     } catch (error) {
@@ -223,7 +199,7 @@ export function useCompaniesPage() {
     }
   }, [searchTerm, commercialRegStatus, powerSubscriptionStatus, moqeemSubscriptionStatus,
     showAlertsOnly, cardStatusFilter, employeeCountMin, employeeCountMax,
-    availableSlotsFilter, createdAtFrom, createdAtTo, exemptionsFilter, sortField, sortDirection])
+    createdAtFrom, createdAtTo, exemptionsFilter, sortField, sortDirection])
 
   const loadCompanies = useCallback(async () => {
     try {
@@ -246,11 +222,10 @@ export function useCompaniesPage() {
       const companiesWithCount = companiesData.map((company) => {
         try {
           const employeeCount = employeeCounts[company.id] || 0
-          const maxEmployees = company.max_employees || 4
-          return { ...company, employee_count: employeeCount, available_slots: Math.max(0, maxEmployees - employeeCount) }
+          return { ...company, employee_count: employeeCount }
         } catch (err) {
           logger.error(`Error processing company ${company.id}:`, err)
-          return { ...company, employee_count: 0, available_slots: company.max_employees || 4 }
+          return { ...company, employee_count: 0 }
         }
       })
       setCompanies(companiesWithCount)
@@ -393,15 +368,6 @@ export function useCompaniesPage() {
       filtered = filtered.filter((c) => (employeeCountMin === null || c.employee_count >= employeeCountMin) && (employeeCountMax === null || c.employee_count <= employeeCountMax))
     }
 
-    if (availableSlotsFilter !== 'all') {
-      filtered = filtered.filter((c) => {
-        const slots = c.available_slots || 0
-        if (availableSlotsFilter === '0') return slots === 0
-        if (availableSlotsFilter === '4+') return slots >= 4
-        return slots === parseInt(availableSlotsFilter)
-      })
-    }
-
     if (createdAtFrom || createdAtTo) {
       const startDate = createdAtFrom ? new Date(`${createdAtFrom}T00:00:00`) : null
       const endDate = createdAtTo ? new Date(`${createdAtTo}T23:59:59.999`) : null
@@ -436,7 +402,7 @@ export function useCompaniesPage() {
 
     return filtered
   }, [companies, searchTerm, commercialRegStatus, powerSubscriptionStatus, moqeemSubscriptionStatus,
-    showAlertsOnly, cardStatusFilter, employeeCountMin, employeeCountMax, availableSlotsFilter,
+    showAlertsOnly, cardStatusFilter, employeeCountMin, employeeCountMax,
     createdAtFrom, createdAtTo, exemptionsFilter, sortField, sortDirection,
     getDaysRemaining, hasCompanyAlert, getCompanyUnifiedStatus, snoozedAlertIds])
 
@@ -490,13 +456,13 @@ export function useCompaniesPage() {
     return () => document.removeEventListener('keydown', handleKeyDown)
   }, [selectedRowIndex, showAddModal, showEditModal, showDeleteModal, showCompanyDetailModal, showFiltersModal, viewMode])
 
-  useEffect(() => { setSelectedRowIndex(null) }, [searchTerm, commercialRegStatus, powerSubscriptionStatus, moqeemSubscriptionStatus, showAlertsOnly, cardStatusFilter, employeeCountMin, employeeCountMax, availableSlotsFilter, createdAtFrom, createdAtTo, exemptionsFilter, sortField, sortDirection, currentPage])
+  useEffect(() => { setSelectedRowIndex(null) }, [searchTerm, commercialRegStatus, powerSubscriptionStatus, moqeemSubscriptionStatus, showAlertsOnly, cardStatusFilter, employeeCountMin, employeeCountMax, createdAtFrom, createdAtTo, exemptionsFilter, sortField, sortDirection, currentPage])
   useEffect(() => { setCurrentPage(1) }, [filteredCompanies.length, itemsPerPage])
 
   const clearFilters = () => {
     setSearchTerm(''); setCommercialRegStatus([]); setPowerSubscriptionStatus([]); setMoqeemSubscriptionStatus([])
     setShowAlertsOnly(false); setCardStatusFilter(null); setEmployeeCountMin(null); setEmployeeCountMax(null)
-    setAvailableSlotsFilter('all'); setCreatedAtFrom(null); setCreatedAtTo(null); setExemptionsFilter('all')
+    setCreatedAtFrom(null); setCreatedAtTo(null); setExemptionsFilter('all')
   }
 
   const handleSort = useCallback((field: SortField) => {
@@ -580,7 +546,7 @@ export function useCompaniesPage() {
   const activeFiltersCount = [
     searchTerm !== '', commercialRegStatus.length > 0, powerSubscriptionStatus.length > 0,
     moqeemSubscriptionStatus.length > 0, showAlertsOnly, cardStatusFilter !== null,
-    employeeCountMin !== null || employeeCountMax !== null, availableSlotsFilter !== 'all',
+    employeeCountMin !== null || employeeCountMax !== null,
     createdAtFrom !== null || createdAtTo !== null, exemptionsFilter !== 'all',
   ].filter(Boolean).length
 
@@ -614,7 +580,6 @@ export function useCompaniesPage() {
     moqeemSubscriptionStatus, setMoqeemSubscriptionStatus,
     showAlertsOnly, setShowAlertsOnly, cardStatusFilter, setCardStatusFilter,
     employeeCountMin, setEmployeeCountMin, employeeCountMax, setEmployeeCountMax,
-    availableSlotsFilter, setAvailableSlotsFilter,
     createdAtFrom, setCreatedAtFrom, createdAtTo, setCreatedAtTo,
     exemptionsFilter, setExemptionsFilter,
     showFiltersModal, setShowFiltersModal, clearFilters, activeFiltersCount,

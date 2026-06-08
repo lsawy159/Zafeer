@@ -2,7 +2,7 @@ import { createPortal } from 'react-dom'
 import { EmployeeWithRelations } from '@/lib/supabase'
 import { validateResidenceFile } from '@/lib/residenceFile'
 import {
-  X, UserPlus, AlertCircle, CheckCircle, Users, Search, ChevronDown,
+  X, UserPlus, Users, Search, ChevronDown,
   FolderKanban, Plus, Loader2, Upload, FileText,
 } from 'lucide-react'
 import { HIRED_WORKER_CONTRACT_STATUS_OPTIONS } from '@/utils/employeeBusinessFields'
@@ -32,7 +32,6 @@ export default function AddEmployeeModal(props: AddEmployeeModalProps) {
     creatingProject, pendingFile, setPendingFile, pendingFileError, setPendingFileError,
     residenceFileInputRef, companyDropdownRef, projectDropdownRef,
     filteredCompanies, filteredProjects, showCreateOption,
-    getAvailableSlotsColor, getAvailableSlotsText,
     handleChange, handleSubmit, handleOverlayClick, handleCreateProject,
     selectCompany, selectProject, clearProject,
   } = useAddEmployeeForm(props)
@@ -206,19 +205,11 @@ export default function AddEmployeeModal(props: AddEmployeeModalProps) {
               {formData.company_id && (() => {
                 const selectedCompany = companies.find((c) => c.id === formData.company_id)
                 if (!selectedCompany) return null
-                const availableSlots = selectedCompany.available_slots
-                const slotsColor = getAvailableSlotsColor(availableSlots)
-                const slotsText = getAvailableSlotsText(availableSlots)
                 return (
-                  <div className={`mt-3 p-3 rounded-lg border ${availableSlots === 0 ? 'border-red-200 bg-red-50' : availableSlots === 1 ? 'border-orange-200 bg-orange-50' : 'border-green-200 bg-green-50'}`}>
+                  <div className="mt-3 p-3 rounded-lg border border-neutral-200 bg-neutral-50">
                     <div className="flex items-center gap-2 mb-2"><Users className="w-4 h-4" /><span className="text-sm font-medium text-neutral-700">معلومات المؤسسة</span></div>
                     <div className="space-y-2">
                       <div className="flex justify-between text-sm"><span className="text-neutral-600">العدد الحالي:</span><span className="font-medium">{selectedCompany.employee_count} موظف</span></div>
-                      <div className="flex justify-between text-sm"><span className="text-neutral-600">الحد الأقصى:</span><span className="font-medium">{selectedCompany.max_employees} موظف</span></div>
-                      <div className="flex justify-between items-center"><span className="text-neutral-600">الأماكن الشاغرة:</span><span className={`px-2 py-1 rounded-full text-xs font-medium ${slotsColor}`}>{slotsText}</span></div>
-                      {availableSlots === 0 && (<div className="flex items-center gap-2 mt-2 p-2 bg-red-100 rounded-lg"><AlertCircle className="w-4 h-4 text-red-600" /><span className="text-xs text-red-700 font-medium">هذه المؤسسة مكتملة ولا يمكن إضافة موظفين جدد</span></div>)}
-                      {availableSlots === 1 && (<div className="flex items-center gap-2 mt-2 p-2 bg-orange-100 rounded-lg"><AlertCircle className="w-4 h-4 text-warning-600" /><span className="text-xs text-warning-700 font-medium">تحذير: يتبقى مكان واحد فقط في هذه المؤسسة</span></div>)}
-                      {availableSlots > 1 && (<div className="flex items-center gap-2 mt-2 p-2 bg-green-100 rounded-lg"><CheckCircle className="w-4 h-4 text-success-600" /><span className="text-xs text-success-700 font-medium">يمكن إضافة موظفين جدد ({availableSlots} أماكن متاحة)</span></div>)}
                     </div>
                   </div>
                 )
