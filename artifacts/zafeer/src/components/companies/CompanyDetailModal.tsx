@@ -167,6 +167,7 @@ export default function CompanyDetailModal({
                 }}
                 onEdit={onEdit ?? (() => {})}
                 onDelete={onDelete ?? (() => {})}
+                showDates
               />
             </div>
           </div>
