@@ -7,6 +7,7 @@ import {
 } from '@/utils/autoCompanyStatus'
 import { Company } from '@/lib/supabase'
 import { usePermissions } from '@/utils/permissions'
+import { formatDateShortWithHijri } from '@/utils/dateFormatter'
 
 interface CompanyCardProps {
   company: Company & {
@@ -14,12 +15,14 @@ interface CompanyCardProps {
   }
   onEdit: (company: Company) => void
   onDelete: (company: Company) => void
+  showDates?: boolean
 }
 
 function CompanyCard({
   company,
   onEdit,
   onDelete,
+  showDates = false,
 }: CompanyCardProps) {
   // الحصول على الصلاحيات
   const { canEdit, canDelete } = usePermissions()
@@ -131,11 +134,11 @@ function CompanyCard({
           <div className="text-center text-[11px] font-semibold text-neutral-600">اشتراك مقيم</div>
         </div>
         {/* صف Boxes — نفس الارتفاع، نفس البداية، نفس النهاية */}
-        <div className="grid grid-cols-3 gap-2" style={{ gridAutoRows: '74px' }}>
+        <div className="grid grid-cols-3 gap-2" style={{ gridAutoRows: showDates ? 'auto' : '74px' }}>
           {/* السجل التجاري */}
           {company.commercial_registration_expiry ? (
             <div
-              className={`flex flex-col justify-center rounded-lg border-2 px-2 py-1 text-xs font-medium ${commercialRegStatus.color.backgroundColor} ${commercialRegStatus.color.textColor} ${commercialRegStatus.color.borderColor}`}
+              className={`flex flex-col justify-center rounded-lg border-2 px-2 py-2 text-xs font-medium ${commercialRegStatus.color.backgroundColor} ${commercialRegStatus.color.textColor} ${commercialRegStatus.color.borderColor}`}
             >
               <div className="flex items-center gap-1">
                 <span>
@@ -146,6 +149,11 @@ function CompanyCard({
                   <br />({Math.abs(commercialRegStatus.daysRemaining)})
                 </span>
               </div>
+              {showDates && (
+                <div className="mt-1.5 text-[10px] opacity-80 font-mono [direction:ltr] text-center">
+                  {formatDateShortWithHijri(company.commercial_registration_expiry)}
+                </div>
+              )}
             </div>
           ) : (
             <div className="flex items-center justify-center rounded-lg border-2 border-neutral-200 bg-neutral-100 px-2 py-1 text-xs font-medium text-neutral-500">
@@ -156,7 +164,7 @@ function CompanyCard({
           {/* اشتراك قوى */}
           {company.ending_subscription_power_date ? (
             <div
-              className={`flex flex-col justify-center rounded-lg border-2 px-2 py-1 text-xs font-medium ${powerStatus.color.backgroundColor} ${powerStatus.color.textColor} ${powerStatus.color.borderColor}`}
+              className={`flex flex-col justify-center rounded-lg border-2 px-2 py-2 text-xs font-medium ${powerStatus.color.backgroundColor} ${powerStatus.color.textColor} ${powerStatus.color.borderColor}`}
             >
               <div className="flex items-center gap-1">
                 <span>
@@ -167,6 +175,11 @@ function CompanyCard({
                   <br />({Math.abs(powerStatus.daysRemaining)})
                 </span>
               </div>
+              {showDates && (
+                <div className="mt-1.5 text-[10px] opacity-80 font-mono [direction:ltr] text-center">
+                  {formatDateShortWithHijri(company.ending_subscription_power_date)}
+                </div>
+              )}
             </div>
           ) : (
             <div className="flex items-center justify-center rounded-lg border-2 border-neutral-200 bg-neutral-100 px-2 py-1 text-xs font-medium text-neutral-500">
@@ -177,7 +190,7 @@ function CompanyCard({
           {/* اشتراك مقيم */}
           {company.ending_subscription_moqeem_date ? (
             <div
-              className={`flex flex-col justify-center rounded-lg border-2 px-2 py-1 text-xs font-medium ${moqeemStatus.color.backgroundColor} ${moqeemStatus.color.textColor} ${moqeemStatus.color.borderColor}`}
+              className={`flex flex-col justify-center rounded-lg border-2 px-2 py-2 text-xs font-medium ${moqeemStatus.color.backgroundColor} ${moqeemStatus.color.textColor} ${moqeemStatus.color.borderColor}`}
             >
               <div className="flex items-center gap-1">
                 <span>
@@ -188,6 +201,11 @@ function CompanyCard({
                   <br />({Math.abs(moqeemStatus.daysRemaining)})
                 </span>
               </div>
+              {showDates && (
+                <div className="mt-1.5 text-[10px] opacity-80 font-mono [direction:ltr] text-center">
+                  {formatDateShortWithHijri(company.ending_subscription_moqeem_date)}
+                </div>
+              )}
             </div>
           ) : (
             <div className="flex items-center justify-center rounded-lg border-2 border-neutral-200 bg-neutral-100 px-2 py-1 text-xs font-medium text-neutral-500">

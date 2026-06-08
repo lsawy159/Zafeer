@@ -6,7 +6,7 @@ import ProjectModal from '@/components/projects/ProjectModal'
 import ProjectCard from '@/components/projects/ProjectCard'
 import ProjectDetailModal from '@/components/projects/ProjectDetailModal'
 import ProjectStatistics from '@/components/projects/ProjectStatistics'
-import { FolderKanban, Plus, Shield, ArrowUpDown, Trash2 } from 'lucide-react'
+import { FolderKanban, Plus, Shield, ArrowUpDown, Trash2, CheckSquare } from 'lucide-react'
 import { toast } from 'sonner'
 import { usePermissions } from '@/utils/permissions'
 import { useCardColumns } from '@/hooks/useUiPreferences'
@@ -83,8 +83,16 @@ export default function Projects() {
   const [extractCount, setExtractCount] = useState(0)
 
   // Bulk selection
+  const [selectionMode, setSelectionMode] = useState(false)
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
   const [bulkLoading, setBulkLoading] = useState(false)
+
+  const toggleSelectionMode = () => {
+    setSelectionMode((prev) => {
+      if (prev) setSelectedIds(new Set())
+      return !prev
+    })
+  }
 
   // Filter states
   const [searchTerm, setSearchTerm] = useState('')
@@ -496,7 +504,17 @@ export default function Projects() {
                   </DropdownMenuContent>
                 </DropdownMenu>
 
-                {filteredProjects.length > 0 && (
+                <Button
+                  variant={selectionMode ? 'default' : 'secondary'}
+                  className="h-9 px-3 text-sm"
+                  onClick={toggleSelectionMode}
+                  title={selectionMode ? 'إيقاف وضع التحديد' : 'تفعيل وضع التحديد'}
+                >
+                  <CheckSquare className="w-4 h-4 ml-1" />
+                  {selectionMode ? 'إيقاف التحديد' : 'تحديد'}
+                </Button>
+
+                {selectionMode && filteredProjects.length > 0 && (
                   <Button
                     variant="secondary"
                     className="h-9 px-3 text-sm"
@@ -560,13 +578,15 @@ export default function Projects() {
                 <div className={projectGridClass}>
                   {filteredProjects.map((project) => (
                     <div key={project.id} className="relative">
-                      <input
-                        type="checkbox"
-                        checked={selectedIds.has(project.id)}
-                        onChange={() => toggleProjectSelection(project.id)}
-                        className="absolute top-3 right-3 z-10 w-4 h-4 rounded border-neutral-300 accent-red-600 cursor-pointer"
-                        title="تحديد للحذف"
-                      />
+                      {selectionMode && (
+                        <input
+                          type="checkbox"
+                          checked={selectedIds.has(project.id)}
+                          onChange={() => toggleProjectSelection(project.id)}
+                          className="absolute top-3 right-3 z-10 w-4 h-4 rounded border-neutral-300 accent-red-600 cursor-pointer"
+                          title="تحديد للحذف"
+                        />
+                      )}
                       <ProjectCard
                         project={project}
                         onEdit={handleEditProject}
