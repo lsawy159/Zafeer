@@ -2,7 +2,7 @@ import { createPortal } from 'react-dom'
 import { EmployeeWithRelations } from '@/lib/supabase'
 import { validateResidenceFile } from '@/lib/residenceFile'
 import {
-  X, UserPlus, AlertCircle, CheckCircle, Users, Search, ChevronDown,
+  X, UserPlus, Users, Search, ChevronDown,
   FolderKanban, Plus, Loader2, Upload, FileText,
 } from 'lucide-react'
 import { HIRED_WORKER_CONTRACT_STATUS_OPTIONS } from '@/utils/employeeBusinessFields'
@@ -32,7 +32,6 @@ export default function AddEmployeeModal(props: AddEmployeeModalProps) {
     creatingProject, pendingFile, setPendingFile, pendingFileError, setPendingFileError,
     residenceFileInputRef, companyDropdownRef, projectDropdownRef,
     filteredCompanies, filteredProjects, showCreateOption,
-    getAvailableSlotsColor, getAvailableSlotsText,
     handleChange, handleSubmit, handleOverlayClick, handleCreateProject,
     selectCompany, selectProject, clearProject,
   } = useAddEmployeeForm(props)
