@@ -1,8 +1,10 @@
 import { useRef } from 'react'
 import { createPortal } from 'react-dom'
-import { X, FileUp, AlertTriangle, CheckCircle, Loader2 } from 'lucide-react'
+import { X, FileUp, AlertTriangle, CheckCircle, Loader2, Download } from 'lucide-react'
 import { type ObligationImportRow } from './payrollTypes'
 import { normalizeResidenceNumber, toNumericPayrollValue } from './payrollExcelUtils'
+import { loadXlsx } from '@/utils/lazyXlsx'
+import { saveAs } from 'file-saver'
 
 interface SimpleEmployee {
   id: string
@@ -44,6 +46,18 @@ export default function ObligationImportDialog({
   onConfirmImport,
 }: ObligationImportDialogProps) {
   const obligationImportFileRef = useRef<HTMLInputElement | null>(null)
+
+  const handleDownloadTemplate = async () => {
+    const XLSX = await loadXlsx()
+    const headers = ['رقم الإقامة', 'اسم الموظف', 'سلفة', 'نقل كفالة', 'تجديد', 'غرامة', 'أخرى', 'ملاحظات']
+    const example = ['1234567890', 'أحمد محمد', '500', '200', '0', '0', '0', 'ملاحظة توضيحية']
+    const ws = XLSX.utils.aoa_to_sheet([headers, example])
+    const wb = XLSX.utils.book_new()
+    XLSX.utils.book_append_sheet(wb, ws, 'الالتزامات')
+    const buffer = XLSX.write(wb, { bookType: 'xlsx', type: 'array' }) as ArrayBuffer
+    const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' })
+    saveAs(blob, 'قالب-استيراد-الالتزامات.xlsx')
+  }
 
   if (!show) return null
 
@@ -99,7 +113,17 @@ export default function ObligationImportDialog({
           <div className="p-6 space-y-5">
             {/* Column guide */}
             <div className="rounded-xl border border-border-200 bg-surface-secondary-50 p-4 text-xs text-foreground-secondary space-y-1.5">
-              <p className="font-semibold text-foreground text-sm">الأعمدة المتوقعة في الملف</p>
+              <div className="flex items-center justify-between gap-2">
+                <p className="font-semibold text-foreground text-sm">الأعمدة المتوقعة في الملف</p>
+                <button
+                  type="button"
+                  onClick={() => void handleDownloadTemplate()}
+                  className="inline-flex items-center gap-1.5 text-xs text-blue-600 hover:text-blue-800 underline underline-offset-2 shrink-0"
+                >
+                  <Download className="h-3.5 w-3.5" />
+                  تحميل قالب جاهز
+                </button>
+              </div>
               <div className="grid grid-cols-2 gap-x-4 gap-y-1 mt-2">
                 <span>• <span className="font-medium text-foreground">رقم الإقامة</span> — مطلوب</span>
                 <span>• اسم الموظف — اختياري</span>

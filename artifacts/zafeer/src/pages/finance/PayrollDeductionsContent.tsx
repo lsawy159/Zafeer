@@ -176,7 +176,7 @@ export default function PayrollDeductionsContent({
         importingObligations={importingObligations}
         obligationImportFileName={obligationImportFileName}
         obligationImportHeaderError={obligationImportHeaderError}
-        allEmployees={allEmployees}
+        allEmployees={allActiveEmployees}
         compactButtonBaseClass={compactButtonBaseClass}
         outlineCompactButtonClass={outlineCompactButtonClass}
         onClose={() => setShowObligationImportDialog(false)}

@@ -100,7 +100,14 @@ export function useCreateEmployee() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['employees'] })
+      queryClient.invalidateQueries({ queryKey: EMPLOYEES_PAGE_QUERY_KEY })
+      queryClient.invalidateQueries({ queryKey: ['employees-all-active'] })
       queryClient.invalidateQueries({ queryKey: ['companies'] })
+      queryClient.invalidateQueries({ queryKey: ['dashboard-stats'] })
+      queryClient.invalidateQueries({ queryKey: ['dashboard-doc-stats-employees'] })
+      queryClient.invalidateQueries({ queryKey: ['employees-total-count'] })
+      queryClient.invalidateQueries({ queryKey: ['alerts-stats'] })
+      queryClient.invalidateQueries({ queryKey: ['snoozed-alerts'] })
     },
   })
 }
@@ -118,14 +125,21 @@ export function useUpdateEmployee() {
         .single()
 
       if (error) {
-        logger.error('Error updating employee:', error)
+        logger.error('Error updatingEmployee:', error)
         throw error
       }
       return data
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['employees'] })
+      queryClient.invalidateQueries({ queryKey: EMPLOYEES_PAGE_QUERY_KEY })
+      queryClient.invalidateQueries({ queryKey: ['employees-all-active'] })
       queryClient.invalidateQueries({ queryKey: ['companies'] })
+      queryClient.invalidateQueries({ queryKey: ['dashboard-stats'] })
+      queryClient.invalidateQueries({ queryKey: ['dashboard-doc-stats-employees'] })
+      queryClient.invalidateQueries({ queryKey: ['employees-total-count'] })
+      queryClient.invalidateQueries({ queryKey: ['alerts-stats'] })
+      queryClient.invalidateQueries({ queryKey: ['snoozed-alerts'] })
     },
   })
 }
@@ -147,7 +161,13 @@ export function useDeleteEmployee() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['employees'] })
       queryClient.invalidateQueries({ queryKey: EMPLOYEES_PAGE_QUERY_KEY })
+      queryClient.invalidateQueries({ queryKey: ['employees-all-active'] })
       queryClient.invalidateQueries({ queryKey: ['companies'] })
+      queryClient.invalidateQueries({ queryKey: ['dashboard-stats'] })
+      queryClient.invalidateQueries({ queryKey: ['dashboard-doc-stats-employees'] })
+      queryClient.invalidateQueries({ queryKey: ['employees-total-count'] })
+      queryClient.invalidateQueries({ queryKey: ['alerts-stats'] })
+      queryClient.invalidateQueries({ queryKey: ['snoozed-alerts'] })
     },
   })
 }

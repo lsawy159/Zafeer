@@ -1,8 +1,10 @@
 import { createPortal } from 'react-dom'
+import { useState } from 'react'
 import {
   AlertTriangle,
   Loader2,
   Plus,
+  Search,
   X,
 } from 'lucide-react'
 import { PayrollInputMode, PayrollScopeType } from '@/lib/supabase'
@@ -58,6 +60,12 @@ export default function CreatePayrollRunModal({
   onClose,
   onSubmit,
 }: Props) {
+  const [iqamaSearch, setIqamaSearch] = useState('')
+
+  const filteredRows = iqamaSearch.trim()
+    ? newPayrollRunRows.filter((r) => r.residence_number.includes(iqamaSearch.trim()))
+    : newPayrollRunRows
+
   if (!show) return null
 
   return createPortal(
@@ -209,17 +217,31 @@ export default function CreatePayrollRunModal({
                   محمّلة تلقائيًا وقابلة للتعديل قبل الإنشاء.
                 </div>
               </div>
-              {newPayrollRunRows.length > 0 && (
-                <label className="inline-flex items-center gap-2 text-sm text-foreground-secondary">
-                  <input
-                    type="checkbox"
-                    checked={allNewPayrollRunRowsSelected}
-                    onChange={(e) => onToggleSelectAll(e.target.checked)}
-                    className="rounded border-border-300"
-                  />
-                  تحديد الكل
-                </label>
-              )}
+              <div className="flex items-center gap-3 flex-wrap">
+                {newPayrollRunRows.length > 0 && (
+                  <div className="relative">
+                    <Search className="absolute right-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-foreground-tertiary pointer-events-none" />
+                    <input
+                      type="text"
+                      value={iqamaSearch}
+                      onChange={(e) => setIqamaSearch(e.target.value)}
+                      placeholder="بحث برقم الإقامة"
+                      className="rounded-lg border border-border-200 bg-surface py-1.5 pr-8 pl-3 text-xs placeholder:text-foreground-tertiary focus:outline-none focus:ring-1 focus:ring-blue-400 w-44"
+                    />
+                  </div>
+                )}
+                {newPayrollRunRows.length > 0 && (
+                  <label className="inline-flex items-center gap-2 text-sm text-foreground-secondary">
+                    <input
+                      type="checkbox"
+                      checked={allNewPayrollRunRowsSelected}
+                      onChange={(e) => onToggleSelectAll(e.target.checked)}
+                      className="rounded border-border-300"
+                    />
+                    تحديد الكل
+                  </label>
+                )}
+              </div>
             </div>
 
             {!payrollForm.scope_id || !normalizedPayrollFormMonth ? (
@@ -234,6 +256,10 @@ export default function CreatePayrollRunModal({
             ) : newPayrollRunRows.length === 0 ? (
               <div className="px-4 py-10 text-center text-sm text-foreground-tertiary">
                 لا يوجد موظفون داخل هذا النطاق حاليًا.
+              </div>
+            ) : filteredRows.length === 0 ? (
+              <div className="px-4 py-10 text-center text-sm text-foreground-tertiary">
+                لا يوجد موظف برقم إقامة يحتوي "{iqamaSearch}".
               </div>
             ) : (
               <div className="overflow-x-auto">
@@ -256,7 +282,7 @@ export default function CreatePayrollRunModal({
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-border-100">
-                    {newPayrollRunRows.map((row) => {
+                    {filteredRows.map((row) => {
                       const rowDailyRate = roundPayrollAmount(row.basic_salary_snapshot / 30)
                       const rowTotalDeductions =
                         row.transfer_renewal_amount +

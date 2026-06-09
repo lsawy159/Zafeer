@@ -589,7 +589,7 @@ export function usePayrollDeductionsContent({
       }
 
       const empByIqama = new Map<string, { id: string; name: string }>()
-      allEmployees.forEach((emp) => {
+      allActiveEmployees.forEach((emp) => {
         const iqama = normalizeResidenceNumber(emp.residence_number)
         if (iqama) empByIqama.set(iqama, { id: emp.id, name: emp.name })
       })
@@ -1199,7 +1199,8 @@ export function usePayrollDeductionsContent({
           .eq('is_deleted', false),
         supabase
           .from('employee_obligation_lines')
-          .select('employee_id, due_month, amount_due, amount_paid, line_status')
+          .select('employee_id, due_month, amount_due, amount_paid, line_status, header_id')
+          .neq('line_status', 'cancelled')
           .order('due_month', { ascending: false }),
       ])
 

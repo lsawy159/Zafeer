@@ -283,6 +283,14 @@ export function useDeleteObligationPlan() {
         .update({ status: 'cancelled' })
         .eq('id', planId)
       if (error) throw error
+
+      // Cancel unpaid/partial lines so they don't appear in summary totals
+      const { error: linesError } = await supabase
+        .from('employee_obligation_lines')
+        .update({ line_status: 'cancelled' })
+        .eq('header_id', planId)
+        .in('line_status', ['unpaid', 'partial'])
+      if (linesError) throw linesError
     },
     onSuccess: async (_, { employeeId, employee_name, obligation_type }) => {
       try {
@@ -450,6 +458,8 @@ export function useAllObligationsSummary() {
       }
 
       ;(linesData ?? []).forEach((line) => {
+        // Skip lines whose header is cancelled/not active (headerTypeMap only has active/draft headers)
+        if (!headerTypeMap.has(line.header_id as string)) return
         const obligationType = headerTypeMap.get(line.header_id as string) ?? 'other'
         const remaining = Math.max(
           Number(line.amount_due || 0) - Number(line.amount_paid || 0),
