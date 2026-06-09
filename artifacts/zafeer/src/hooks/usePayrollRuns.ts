@@ -410,6 +410,10 @@ export function useUpdatePayrollRunStatus() {
       queryClient.invalidateQueries({ queryKey: ['payroll-run-slips', run.id] })
       queryClient.invalidateQueries({ queryKey: ['payroll-scope-employees'] })
       queryClient.invalidateQueries({ queryKey: ['employee-obligations'] })
+      queryClient.invalidateQueries({ queryKey: ['all-obligations-summary'] })
+      queryClient.invalidateQueries({ queryKey: ['revenue-pnl'] })
+      queryClient.invalidateQueries({ queryKey: ['unlinked-payroll-count'] })
+      queryClient.invalidateQueries({ queryKey: ['payroll-entries-search'] })
     },
   })
 }
@@ -480,6 +484,10 @@ export function useDeletePayrollRun() {
       queryClient.invalidateQueries({ queryKey: ['payroll-run-slips', runId] })
       queryClient.invalidateQueries({ queryKey: ['payroll-scope-employees'] })
       queryClient.invalidateQueries({ queryKey: ['employee-obligations'] })
+      queryClient.invalidateQueries({ queryKey: ['all-obligations-summary'] })
+      queryClient.invalidateQueries({ queryKey: ['revenue-pnl'] })
+      queryClient.invalidateQueries({ queryKey: ['unlinked-payroll-count'] })
+      queryClient.invalidateQueries({ queryKey: ['payroll-entries-search'] })
     },
   })
 }

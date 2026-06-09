@@ -558,6 +558,9 @@ export function useUpsertPayrollEntry() {
       queryClient.invalidateQueries({ queryKey: ['payroll-scope-employees'] })
       queryClient.invalidateQueries({ queryKey: ['employee-obligations', variables.employee_id] })
       queryClient.invalidateQueries({ queryKey: ['employees'] })
+      queryClient.invalidateQueries({ queryKey: ['revenue-pnl'] })
+      queryClient.invalidateQueries({ queryKey: ['unlinked-payroll-count'] })
+      queryClient.invalidateQueries({ queryKey: ['payroll-entries-search'] })
     },
   })
 }

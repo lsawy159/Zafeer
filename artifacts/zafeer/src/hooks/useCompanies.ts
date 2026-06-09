@@ -75,6 +75,12 @@ export function useCreateCompany() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['companies'] })
+      queryClient.invalidateQueries({ queryKey: ALL_COMPANIES_QUERY_KEY })
+      queryClient.invalidateQueries({ queryKey: ['dashboard-stats'] })
+      queryClient.invalidateQueries({ queryKey: ['dashboard-doc-stats-companies'] })
+      queryClient.invalidateQueries({ queryKey: ['companies-total-count'] })
+      queryClient.invalidateQueries({ queryKey: ['alerts-stats'] })
+      queryClient.invalidateQueries({ queryKey: ['snoozed-alerts'] })
     },
   })
 }
@@ -99,6 +105,12 @@ export function useUpdateCompany() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['companies'] })
+      queryClient.invalidateQueries({ queryKey: ALL_COMPANIES_QUERY_KEY })
+      queryClient.invalidateQueries({ queryKey: ['dashboard-stats'] })
+      queryClient.invalidateQueries({ queryKey: ['dashboard-doc-stats-companies'] })
+      queryClient.invalidateQueries({ queryKey: ['companies-total-count'] })
+      queryClient.invalidateQueries({ queryKey: ['alerts-stats'] })
+      queryClient.invalidateQueries({ queryKey: ['snoozed-alerts'] })
     },
   })
 }
@@ -117,6 +129,12 @@ export function useDeleteCompany() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['companies'] })
+      queryClient.invalidateQueries({ queryKey: ALL_COMPANIES_QUERY_KEY })
+      queryClient.invalidateQueries({ queryKey: ['dashboard-stats'] })
+      queryClient.invalidateQueries({ queryKey: ['dashboard-doc-stats-companies'] })
+      queryClient.invalidateQueries({ queryKey: ['companies-total-count'] })
+      queryClient.invalidateQueries({ queryKey: ['alerts-stats'] })
+      queryClient.invalidateQueries({ queryKey: ['snoozed-alerts'] })
     },
   })
 }
