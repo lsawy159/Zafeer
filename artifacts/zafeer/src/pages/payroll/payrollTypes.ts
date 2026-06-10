@@ -202,5 +202,7 @@ export const OBLIGATION_IMPORT_HEADERS = {
   renewal_amount: ['تجديد', 'renewal', 'renewal_amount', 'رسوم تجديد'],
   penalty_amount: ['غرامة', 'غرامات', 'جزاءات', 'penalty', 'penalty_amount'],
   other_amount: ['أخرى', 'أخر', 'other', 'other_amount'],
+  installments: ['عدد الأشهر', 'الأشهر', 'أشهر', 'أقساط', 'عدد الأقساط', 'installments', 'months', 'num_months'],
+  start_month: ['شهر البداية', 'البداية', 'بداية', 'شهر الاستقطاع', 'start_month', 'start month', 'month'],
   notes: ['ملاحظات', 'notes', 'note'],
 } as const
