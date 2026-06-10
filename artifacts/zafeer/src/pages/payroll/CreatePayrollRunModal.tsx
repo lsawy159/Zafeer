@@ -1,5 +1,5 @@
 import { createPortal } from 'react-dom'
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import {
   AlertTriangle,
   Loader2,
@@ -65,6 +65,22 @@ export default function CreatePayrollRunModal({
   const filteredRows = iqamaSearch.trim()
     ? newPayrollRunRows.filter((r) => r.residence_number.includes(iqamaSearch.trim()))
     : newPayrollRunRows
+
+  const createTotals = useMemo(() => {
+    const selected = filteredRows.filter((r) => r.included)
+    return {
+      basic_salary:     selected.reduce((s, r) => s + r.basic_salary_snapshot, 0),
+      overtime:         selected.reduce((s, r) => s + r.overtime_amount, 0),
+      transfer:         selected.reduce((s, r) => s + r.transfer_renewal_amount, 0),
+      penalty:          selected.reduce((s, r) => s + r.penalty_amount, 0),
+      advance:          selected.reduce((s, r) => s + r.advance_amount, 0),
+      other:            selected.reduce((s, r) => s + r.other_amount, 0),
+      total_deductions: selected.reduce(
+        (s, r) => s + r.transfer_renewal_amount + r.penalty_amount + r.advance_amount + r.other_amount,
+        0
+      ),
+    }
+  }, [filteredRows])
 
   if (!show) return null
 
@@ -461,6 +477,23 @@ export default function CreatePayrollRunModal({
                       )
                     })}
                   </tbody>
+                  <tfoot>
+                    <tr className="border-t-2 border-border-200 bg-surface-secondary-50 font-semibold text-sm">
+                      <td className="px-3 py-3" />
+                      <td className="px-3 py-3 text-foreground">المجموع</td>
+                      <td className="px-3 py-3" />
+                      <td className="px-3 py-3">{createTotals.basic_salary.toLocaleString('en-US')}</td>
+                      <td className="px-3 py-3" />
+                      <td className="px-3 py-3" />
+                      <td className="px-3 py-3" />
+                      <td className="px-3 py-3">{createTotals.overtime.toLocaleString('en-US')}</td>
+                      <td className="px-3 py-3">{createTotals.transfer.toLocaleString('en-US')}</td>
+                      <td className="px-3 py-3">{createTotals.penalty.toLocaleString('en-US')}</td>
+                      <td className="px-3 py-3">{createTotals.advance.toLocaleString('en-US')}</td>
+                      <td className="px-3 py-3">{createTotals.other.toLocaleString('en-US')}</td>
+                      <td className="px-3 py-3 text-red-600">{createTotals.total_deductions.toLocaleString('en-US')}</td>
+                    </tr>
+                  </tfoot>
                 </table>
               </div>
             )}

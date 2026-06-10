@@ -1,4 +1,5 @@
 ﻿import { ChangeEvent, useState, useEffect, useMemo, useRef, useCallback } from 'react'
+import { useQueryClient } from '@tanstack/react-query'
 import { useVirtualizer } from '@tanstack/react-virtual'
 import { useLocation } from 'react-router-dom'
 import { useModalScrollLock } from '@/hooks/useModalScrollLock'
@@ -18,7 +19,9 @@ import {
   useScopedPayrollEmployees,
   useUpsertPayrollEntry,
   useUpdatePayrollRunStatus,
+  syncPayrollEntryComponents,
   type ScopedPayrollEmployee,
+  type UpsertPayrollEntryInput,
 } from '@/hooks/usePayroll'
 import {
   useAllObligationsSummary,
@@ -252,6 +255,7 @@ export function usePayrollDeductionsContent({
   const { data: payrollSlips = [], refetch: refetchPayrollSlips } = usePayrollRunSlips(
     selectedPayrollRunId ?? undefined
   )
+  const queryClient = useQueryClient()
   const createPayrollRun = useCreatePayrollRun()
   const upsertPayrollEntry = useUpsertPayrollEntry()
   const updatePayrollRunStatus = useUpdatePayrollRunStatus()
@@ -1790,52 +1794,128 @@ export function usePayrollDeductionsContent({
         notes: payrollForm.notes.trim() || null,
       })
 
-      for (const row of selectedNewPayrollRunRows) {
-        const employee = payrollRunSeedEmployees.find((item) => item.id === row.employee_id)
-        if (!employee) {
-          continue
-        }
-
-        const rowBreakdown = normalizePayrollObligationBreakdown({
-          transfer_renewal: row.transfer_renewal_amount,
-          penalty: row.penalty_amount,
-          advance: row.advance_amount,
-          other: row.other_amount,
-        })
-        const rowDeductionsTotal = getPayrollObligationBreakdownTotal(rowBreakdown)
-        const rowTotals = calculatePayrollTotals(
-          row.basic_salary_snapshot,
-          row.attendance_days,
-          row.paid_leave_days,
-          row.overtime_amount,
-          rowDeductionsTotal
+      if (selectedNewPayrollRunRows.length > 0) {
+        const employeeById = new Map(
+          payrollRunSeedEmployees.map((emp) => [emp.id, emp])
         )
 
-        await upsertPayrollEntry.mutateAsync({
-          payroll_run_id: createdRun.id,
-          payroll_run_status: createdRun.status,
-          payroll_month: createdRun.payroll_month,
-          employee_id: employee.id,
-          residence_number_snapshot: employee.residence_number,
-          employee_name_snapshot: employee.name,
-          company_name_snapshot: employee.company?.name ?? null,
-          project_name_snapshot: employee.project?.name ?? null,
-          basic_salary_snapshot: row.basic_salary_snapshot,
-          daily_rate_snapshot: rowTotals.dailyRate,
-          attendance_days: row.attendance_days,
-          paid_leave_days: row.paid_leave_days,
-          overtime_amount: row.overtime_amount,
-          overtime_notes: row.overtime_notes.trim() || null,
-          deductions_amount: row.penalty_amount + row.other_amount,
-          deductions_notes: row.deductions_notes.trim() || null,
-          installment_deducted_amount:
-            row.transfer_renewal_amount + row.advance_amount,
-          deduction_breakdown: rowBreakdown,
-          gross_amount: rowTotals.grossAmount,
-          net_amount: rowTotals.netAmount,
-          entry_status: 'calculated',
-          notes: row.notes.trim() || null,
-        })
+        const dbPayloads: Array<{
+          payroll_run_id: string
+          employee_id: string
+          residence_number_snapshot: number
+          employee_name_snapshot: string
+          company_name_snapshot: string | null
+          project_name_snapshot: string | null
+          basic_salary_snapshot: number
+          daily_rate_snapshot: number
+          attendance_days: number
+          paid_leave_days: number
+          overtime_amount: number
+          overtime_notes: string | null
+          deductions_amount: number
+          deductions_notes: string | null
+          installment_deducted_amount: number
+          gross_amount: number
+          net_amount: number
+          entry_status: PayrollEntry['entry_status']
+          notes: string | null
+        }> = []
+        const inputByEmployeeId = new Map<string, UpsertPayrollEntryInput>()
+
+        for (const row of selectedNewPayrollRunRows) {
+          const employee = employeeById.get(row.employee_id)
+          if (!employee) continue
+
+          const rowBreakdown = normalizePayrollObligationBreakdown({
+            transfer_renewal: row.transfer_renewal_amount,
+            penalty: row.penalty_amount,
+            advance: row.advance_amount,
+            other: row.other_amount,
+          })
+          const rowDeductionsTotal = getPayrollObligationBreakdownTotal(rowBreakdown)
+          const rowTotals = calculatePayrollTotals(
+            row.basic_salary_snapshot,
+            row.attendance_days,
+            row.paid_leave_days,
+            row.overtime_amount,
+            rowDeductionsTotal
+          )
+
+          dbPayloads.push({
+            payroll_run_id: createdRun.id,
+            employee_id: employee.id,
+            residence_number_snapshot: employee.residence_number,
+            employee_name_snapshot: employee.name,
+            company_name_snapshot: employee.company?.name ?? null,
+            project_name_snapshot: employee.project?.name ?? null,
+            basic_salary_snapshot: row.basic_salary_snapshot,
+            daily_rate_snapshot: rowTotals.dailyRate,
+            attendance_days: row.attendance_days,
+            paid_leave_days: row.paid_leave_days,
+            overtime_amount: row.overtime_amount,
+            overtime_notes: row.overtime_notes.trim() || null,
+            deductions_amount: row.penalty_amount + row.other_amount,
+            deductions_notes: row.deductions_notes.trim() || null,
+            installment_deducted_amount: row.transfer_renewal_amount + row.advance_amount,
+            gross_amount: rowTotals.grossAmount,
+            net_amount: rowTotals.netAmount,
+            entry_status: 'calculated',
+            notes: row.notes.trim() || null,
+          })
+
+          inputByEmployeeId.set(employee.id, {
+            payroll_run_id: createdRun.id,
+            payroll_run_status: createdRun.status,
+            payroll_month: createdRun.payroll_month,
+            employee_id: employee.id,
+            residence_number_snapshot: employee.residence_number,
+            employee_name_snapshot: employee.name,
+            company_name_snapshot: employee.company?.name ?? null,
+            project_name_snapshot: employee.project?.name ?? null,
+            basic_salary_snapshot: row.basic_salary_snapshot,
+            daily_rate_snapshot: rowTotals.dailyRate,
+            attendance_days: row.attendance_days,
+            paid_leave_days: row.paid_leave_days,
+            overtime_amount: row.overtime_amount,
+            overtime_notes: row.overtime_notes.trim() || null,
+            deductions_amount: row.penalty_amount + row.other_amount,
+            deductions_notes: row.deductions_notes.trim() || null,
+            installment_deducted_amount: row.transfer_renewal_amount + row.advance_amount,
+            deduction_breakdown: rowBreakdown,
+            gross_amount: rowTotals.grossAmount,
+            net_amount: rowTotals.netAmount,
+            entry_status: 'calculated',
+            notes: row.notes.trim() || null,
+          })
+        }
+
+        if (dbPayloads.length > 0) {
+          const { data: insertedEntries, error: insertError } = await supabase
+            .from('payroll_entries')
+            .insert(dbPayloads)
+            .select(
+              'id,payroll_run_id,employee_id,residence_number_snapshot,employee_name_snapshot,company_name_snapshot,project_name_snapshot,basic_salary_snapshot,daily_rate_snapshot,attendance_days,paid_leave_days,overtime_amount,overtime_notes,deductions_amount,deductions_notes,installment_deducted_amount,gross_amount,net_amount,entry_status,notes,created_at,updated_at'
+            )
+
+          if (insertError) throw insertError
+
+          await Promise.all(
+            (insertedEntries ?? []).map((entry) => {
+              const input = inputByEmployeeId.get(entry.employee_id as string)
+              if (!input) return Promise.resolve()
+              return syncPayrollEntryComponents(entry as PayrollEntry, input, false)
+            })
+          )
+
+          queryClient.invalidateQueries({ queryKey: ['payroll-runs'] })
+          queryClient.invalidateQueries({ queryKey: ['payroll-run-entries', createdRun.id] })
+          queryClient.invalidateQueries({ queryKey: ['payroll-scope-employees'] })
+          queryClient.invalidateQueries({ queryKey: ['employee-obligations'] })
+          queryClient.invalidateQueries({ queryKey: ['employees'] })
+          queryClient.invalidateQueries({ queryKey: ['revenue-pnl'] })
+          queryClient.invalidateQueries({ queryKey: ['unlinked-payroll-count'] })
+          queryClient.invalidateQueries({ queryKey: ['payroll-entries-search'] })
+        }
       }
 
       setSelectedPayrollRunId(createdRun.id)
