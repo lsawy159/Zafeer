@@ -338,35 +338,37 @@ export function useUpdatePayrollRunStatus() {
       const runEntries = (entryRows ?? []) as PayrollEntry[]
 
       if (status === 'finalized') {
-        for (const entry of runEntries) {
-          await syncPayrollEntryComponents(
-            entry,
-            {
-              payroll_run_id: run.id,
-              payroll_run_status: 'finalized',
-              payroll_month: run.payroll_month,
-              employee_id: entry.employee_id,
-              residence_number_snapshot: entry.residence_number_snapshot,
-              employee_name_snapshot: entry.employee_name_snapshot,
-              company_name_snapshot: entry.company_name_snapshot ?? null,
-              project_name_snapshot: entry.project_name_snapshot ?? null,
-              basic_salary_snapshot: entry.basic_salary_snapshot,
-              daily_rate_snapshot: entry.daily_rate_snapshot,
-              attendance_days: entry.attendance_days,
-              paid_leave_days: entry.paid_leave_days,
-              overtime_amount: entry.overtime_amount,
-              overtime_notes: entry.overtime_notes ?? null,
-              deductions_amount: entry.deductions_amount,
-              deductions_notes: entry.deductions_notes ?? null,
-              installment_deducted_amount: entry.installment_deducted_amount,
-              gross_amount: entry.gross_amount,
-              net_amount: entry.net_amount,
-              entry_status: entry.entry_status,
-              notes: entry.notes ?? null,
-            } as UpsertPayrollEntryInput,
-            true
+        await Promise.all(
+          runEntries.map((entry) =>
+            syncPayrollEntryComponents(
+              entry,
+              {
+                payroll_run_id: run.id,
+                payroll_run_status: 'finalized',
+                payroll_month: run.payroll_month,
+                employee_id: entry.employee_id,
+                residence_number_snapshot: entry.residence_number_snapshot,
+                employee_name_snapshot: entry.employee_name_snapshot,
+                company_name_snapshot: entry.company_name_snapshot ?? null,
+                project_name_snapshot: entry.project_name_snapshot ?? null,
+                basic_salary_snapshot: entry.basic_salary_snapshot,
+                daily_rate_snapshot: entry.daily_rate_snapshot,
+                attendance_days: entry.attendance_days,
+                paid_leave_days: entry.paid_leave_days,
+                overtime_amount: entry.overtime_amount,
+                overtime_notes: entry.overtime_notes ?? null,
+                deductions_amount: entry.deductions_amount,
+                deductions_notes: entry.deductions_notes ?? null,
+                installment_deducted_amount: entry.installment_deducted_amount,
+                gross_amount: entry.gross_amount,
+                net_amount: entry.net_amount,
+                entry_status: entry.entry_status,
+                notes: entry.notes ?? null,
+              } as UpsertPayrollEntryInput,
+              true
+            )
           )
-        }
+        )
         await syncPayrollSlipsForRun(run)
       } else {
         await restorePayrollEntryAllocations(runEntries.map((entry) => entry.id))

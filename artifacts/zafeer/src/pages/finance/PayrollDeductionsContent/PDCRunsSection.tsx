@@ -705,6 +705,27 @@ export default function PDCRunsSection(ctx: Ctx) {
           const bankNet = bankEntries.reduce((s, e) => s + Number(e.net_amount || 0), 0)
           const cashNet = cashEntries.reduce((s, e) => s + Number(e.net_amount || 0), 0)
 
+          const viewTotals = displayedEntries.reduce(
+            (acc, e) => {
+              const bd = normalizePayrollObligationBreakdown(
+                payrollEntryBreakdownById.get(e.id) ?? {
+                  ...EMPTY_PAYROLL_OBLIGATION_BREAKDOWN,
+                  penalty: Number(e.deductions_amount || 0),
+                  advance: Number(e.installment_deducted_amount || 0),
+                }
+              )
+              return {
+                gross:    acc.gross    + Number(e.gross_amount || 0),
+                transfer: acc.transfer + bd.transfer_renewal,
+                penalty:  acc.penalty  + bd.penalty,
+                advance:  acc.advance  + bd.advance,
+                other:    acc.other    + bd.other,
+                net:      acc.net      + Number(e.net_amount || 0),
+              }
+            },
+            { gross: 0, transfer: 0, penalty: 0, advance: 0, other: 0, net: 0 }
+          )
+
           return (
           <div className="space-y-3">
             {/* Payment split summary + filter */}
@@ -868,6 +889,22 @@ export default function PDCRunsSection(ctx: Ctx) {
                   )
                 })}
               </tbody>
+              <tfoot>
+                <tr className="border-t-2 border-border-200 bg-surface-secondary-50 font-semibold text-sm">
+                  <td className="px-4 py-3 text-foreground">المجموع</td>
+                  <td className="px-4 py-3" />
+                  <td className="px-4 py-3" />
+                  <td className="px-4 py-3">{viewTotals.gross.toLocaleString('en-US')}</td>
+                  <td className="px-4 py-3">{viewTotals.transfer.toLocaleString('en-US')}</td>
+                  <td className="px-4 py-3">{viewTotals.penalty.toLocaleString('en-US')}</td>
+                  <td className="px-4 py-3">{viewTotals.advance.toLocaleString('en-US')}</td>
+                  <td className="px-4 py-3">{viewTotals.other.toLocaleString('en-US')}</td>
+                  <td className="px-4 py-3 text-blue-700">{viewTotals.net.toLocaleString('en-US')}</td>
+                  <td className="px-4 py-3" />
+                  <td className="px-4 py-3" />
+                  <td className="px-4 py-3" />
+                </tr>
+              </tfoot>
             </table>
           </div>
           </div>
