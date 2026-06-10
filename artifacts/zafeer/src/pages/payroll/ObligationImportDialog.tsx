@@ -49,8 +49,8 @@ export default function ObligationImportDialog({
 
   const handleDownloadTemplate = async () => {
     const XLSX = await loadXlsx()
-    const headers = ['رقم الإقامة', 'اسم الموظف', 'سلفة', 'نقل كفالة', 'تجديد', 'غرامة', 'أخرى', 'ملاحظات']
-    const example = ['1234567890', 'أحمد محمد', '500', '200', '0', '0', '0', 'ملاحظة توضيحية']
+    const headers = ['رقم الإقامة', 'اسم الموظف', 'سلفة', 'نقل كفالة', 'تجديد', 'غرامة', 'أخرى', 'عدد الأشهر', 'شهر البداية', 'ملاحظات']
+    const example = ['1234567890', 'أحمد محمد', '500', '200', '0', '0', '0', '5', '2026-06', 'ملاحظة توضيحية']
     const ws = XLSX.utils.aoa_to_sheet([headers, example])
     const wb = XLSX.utils.book_new()
     XLSX.utils.book_append_sheet(wb, ws, 'الالتزامات')
@@ -132,6 +132,8 @@ export default function ObligationImportDialog({
                 <span>• تجديد</span>
                 <span>• غرامة</span>
                 <span>• أخرى</span>
+                <span>• عدد الأشهر</span>
+                <span>• شهر البداية</span>
                 <span>• ملاحظات</span>
               </div>
             </div>

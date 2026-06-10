@@ -65,6 +65,7 @@ import {
   normalizePayrollExcelHeader,
   normalizeResidenceNumber,
   toNumericPayrollValue,
+  parseObligationStartMonth,
 } from '../../payroll/payrollExcelUtils'
 import {
   getPayrollStatusText,
@@ -609,6 +610,14 @@ export function usePayrollDeductionsContent({
         const renewalAmt = colMap.renewal_amount !== undefined ? toNumericPayrollValue(row[colMap.renewal_amount]) : 0
         const penaltyAmt = colMap.penalty_amount !== undefined ? toNumericPayrollValue(row[colMap.penalty_amount]) : 0
         const otherAmt = colMap.other_amount !== undefined ? toNumericPayrollValue(row[colMap.other_amount]) : 0
+        const installmentsRaw = colMap.installments !== undefined ? row[colMap.installments] : undefined
+        const numInstallments = installmentsRaw !== undefined
+          ? Math.max(1, Math.min(60, Math.floor(toNumericPayrollValue(installmentsRaw))))
+          : 1
+        const startMonthRaw = colMap.start_month !== undefined ? row[colMap.start_month] : undefined
+        const resolvedStartMonth = startMonthRaw !== undefined
+          ? parseObligationStartMonth(startMonthRaw, defaultStartMonth)
+          : defaultStartMonth
         rows.push({
           row_number: i,
           employee_name_from_file:
@@ -621,20 +630,20 @@ export function usePayrollDeductionsContent({
           employee_name: resolved?.name ?? null,
           selected: resolved !== null,
           advance_amount: advanceAmt,
-          advance_installments: 1,
-          advance_start_month: defaultStartMonth,
+          advance_installments: numInstallments,
+          advance_start_month: resolvedStartMonth,
           transfer_amount: transferAmt,
-          transfer_installments: 1,
-          transfer_start_month: defaultStartMonth,
+          transfer_installments: numInstallments,
+          transfer_start_month: resolvedStartMonth,
           renewal_amount: renewalAmt,
-          renewal_installments: 1,
-          renewal_start_month: defaultStartMonth,
+          renewal_installments: numInstallments,
+          renewal_start_month: resolvedStartMonth,
           penalty_amount: penaltyAmt,
-          penalty_installments: 1,
-          penalty_start_month: defaultStartMonth,
+          penalty_installments: numInstallments,
+          penalty_start_month: resolvedStartMonth,
           other_amount: otherAmt,
-          other_installments: 1,
-          other_start_month: defaultStartMonth,
+          other_installments: numInstallments,
+          other_start_month: resolvedStartMonth,
         })
       }
 
