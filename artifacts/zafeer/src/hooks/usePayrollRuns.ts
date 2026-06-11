@@ -494,6 +494,266 @@ export function useDeletePayrollRun() {
   })
 }
 
+// ─── US1: Update Payroll Run Month ───────────────────────────────────────────
+
+export interface UpdatePayrollRunMonthInput {
+  runId: string
+  newMonth: string
+}
+
+export function useUpdatePayrollRunMonth() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: async ({ runId, newMonth }: UpdatePayrollRunMonthInput) => {
+      const { data: run, error: runError } = await supabase
+        .from('payroll_runs')
+        .select('id,scope_type,scope_id,status')
+        .eq('id', runId)
+        .single()
+
+      if (runError) throw runError
+      if (run.status !== 'draft') throw new Error('يمكن تغيير الشهر على مسودة فقط')
+
+      const { data: duplicate } = await supabase
+        .from('payroll_runs')
+        .select('id')
+        .eq('scope_type', run.scope_type)
+        .eq('scope_id', run.scope_id)
+        .eq('payroll_month', newMonth)
+        .neq('id', runId)
+        .maybeSingle()
+
+      if (duplicate) throw new Error('يوجد مسير لهذا الشهر بالفعل')
+
+      const { data: entries, error: entriesError } = await supabase
+        .from('payroll_entries')
+        .select('id,employee_id,gross_amount,deductions_amount')
+        .eq('payroll_run_id', runId)
+
+      if (entriesError) throw entriesError
+
+      const employeeIds = (entries ?? []).map((e) => e.employee_id as string)
+
+      let installmentMap = new Map<string, number>()
+      if (employeeIds.length > 0) {
+        const { data: lines, error: linesError } = await supabase
+          .from('employee_obligation_lines')
+          .select('employee_id,amount_due,amount_paid')
+          .in('employee_id', employeeIds)
+          .eq('due_month', newMonth)
+          .in('line_status', ['unpaid', 'partial'])
+
+        if (linesError) throw linesError
+
+        for (const line of lines ?? []) {
+          const empId = line.employee_id as string
+          const remaining = Math.max(Number(line.amount_due) - Number(line.amount_paid), 0)
+          installmentMap.set(empId, (installmentMap.get(empId) ?? 0) + remaining)
+        }
+      }
+
+      const { error: updateRunError } = await supabase
+        .from('payroll_runs')
+        .update({ payroll_month: newMonth })
+        .eq('id', runId)
+
+      if (updateRunError) throw updateRunError
+
+      await Promise.all(
+        (entries ?? []).map((entry) => {
+          const inst = installmentMap.get(entry.employee_id as string) ?? 0
+          const net = Number(entry.gross_amount) - Number(entry.deductions_amount) - inst
+          return supabase
+            .from('payroll_entries')
+            .update({
+              installment_deducted_amount: String(inst),
+              net_amount: String(net),
+            })
+            .eq('id', entry.id)
+        })
+      )
+    },
+    onSuccess: (_, { runId }) => {
+      queryClient.invalidateQueries({ queryKey: ['payroll-runs'] })
+      queryClient.invalidateQueries({ queryKey: ['payroll-run-entries', runId] })
+      queryClient.invalidateQueries({ queryKey: ['payroll-scope-employees'] })
+      queryClient.invalidateQueries({ queryKey: ['employee-obligations'] })
+      queryClient.invalidateQueries({ queryKey: ['revenue-pnl'] })
+    },
+  })
+}
+
+// ─── US2: Add/Remove Payroll Run Employee ─────────────────────────────────────
+
+export interface AddPayrollRunEmployeeInput {
+  runId: string
+  employeeId: string
+}
+
+export function useAddPayrollRunEmployee() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: async ({ runId, employeeId }: AddPayrollRunEmployeeInput) => {
+      const { data: run, error: runError } = await supabase
+        .from('payroll_runs')
+        .select('id,scope_type,scope_id,status,payroll_month')
+        .eq('id', runId)
+        .single()
+
+      if (runError) throw runError
+      if (run.status !== 'draft') throw new Error('يمكن إضافة موظف على مسودة فقط')
+
+      const { data: employee, error: employeeError } = await supabase
+        .from('employees')
+        .select('id,name,residence_number,salary,company_id,project_id, company:companies(name), project:projects(name)')
+        .eq('id', employeeId)
+        .single()
+
+      if (employeeError) throw employeeError
+
+      const { data: existing } = await supabase
+        .from('payroll_entries')
+        .select('id')
+        .eq('payroll_run_id', runId)
+        .eq('employee_id', employeeId)
+        .maybeSingle()
+
+      if (existing) throw new Error('الموظف موجود في المسير بالفعل')
+
+      const { data: lines, error: linesError } = await supabase
+        .from('employee_obligation_lines')
+        .select('amount_due,amount_paid')
+        .eq('employee_id', employeeId)
+        .eq('due_month', run.payroll_month)
+        .in('line_status', ['unpaid', 'partial'])
+
+      if (linesError) throw linesError
+
+      const installment = (lines ?? []).reduce(
+        (s, l) => s + Math.max(Number(l.amount_due) - Number(l.amount_paid), 0),
+        0
+      )
+
+      const salary = Number((employee as { salary?: number | null }).salary || 0)
+      const dailyRate = salary / 30
+      const gross = salary
+      const net = gross - installment
+
+      const companyName = (employee.company as { name?: string | null } | null)?.name ?? null
+      const projectName = (employee.project as { name?: string | null } | null)?.name ?? null
+
+      const { data: insertedEntry, error: insertError } = await supabase
+        .from('payroll_entries')
+        .insert({
+          payroll_run_id: runId,
+          employee_id: employeeId,
+          employee_name_snapshot: employee.name,
+          residence_number_snapshot: String(employee.residence_number ?? ''),
+          basic_salary_snapshot: String(salary),
+          daily_rate_snapshot: String(dailyRate),
+          attendance_days: '30',
+          paid_leave_days: '0',
+          overtime_amount: '0',
+          deductions_amount: '0',
+          installment_deducted_amount: String(installment),
+          gross_amount: String(gross),
+          net_amount: String(net),
+          entry_status: 'calculated',
+          company_name_snapshot: companyName,
+          project_name_snapshot: projectName,
+          project_id: (employee as { project_id?: string | null }).project_id ?? null,
+        })
+        .select(
+          'id,payroll_run_id,employee_id,residence_number_snapshot,employee_name_snapshot,company_name_snapshot,project_name_snapshot,basic_salary_snapshot,daily_rate_snapshot,attendance_days,paid_leave_days,overtime_amount,overtime_notes,deductions_amount,deductions_notes,installment_deducted_amount,gross_amount,net_amount,entry_status,notes,created_at,updated_at'
+        )
+        .single()
+
+      if (insertError) throw insertError
+
+      const payrollEntry = insertedEntry as PayrollEntry
+      await syncPayrollEntryComponents(
+        payrollEntry,
+        {
+          payroll_run_id: run.id,
+          payroll_run_status: 'draft',
+          payroll_month: run.payroll_month,
+          employee_id: employeeId,
+          residence_number_snapshot: Number(employee.residence_number ?? 0),
+          employee_name_snapshot: employee.name,
+          company_name_snapshot: companyName,
+          project_name_snapshot: projectName,
+          basic_salary_snapshot: salary,
+          daily_rate_snapshot: dailyRate,
+          attendance_days: 30,
+          paid_leave_days: 0,
+          overtime_amount: 0,
+          overtime_notes: null,
+          deductions_amount: 0,
+          deductions_notes: null,
+          installment_deducted_amount: installment,
+          gross_amount: gross,
+          net_amount: net,
+          entry_status: 'calculated',
+          notes: null,
+        } as UpsertPayrollEntryInput,
+        false
+      )
+
+      return payrollEntry
+    },
+    onSuccess: (_, { runId }) => {
+      queryClient.invalidateQueries({ queryKey: ['payroll-runs'] })
+      queryClient.invalidateQueries({ queryKey: ['payroll-run-entries', runId] })
+      queryClient.invalidateQueries({ queryKey: ['payroll-scope-employees'] })
+      queryClient.invalidateQueries({ queryKey: ['employee-obligations'] })
+    },
+  })
+}
+
+export interface RemovePayrollRunEmployeeInput {
+  entryId: string
+  runId: string
+}
+
+export function useRemovePayrollRunEmployee() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: async ({ entryId, runId: _runId }: RemovePayrollRunEmployeeInput) => {
+      await restorePayrollEntryAllocations([entryId])
+
+      const { error: componentsError } = await supabase
+        .from('payroll_entry_components')
+        .delete()
+        .eq('payroll_entry_id', entryId)
+
+      if (componentsError) throw componentsError
+
+      const { error: slipsError } = await supabase
+        .from('payroll_slips')
+        .delete()
+        .eq('payroll_entry_id', entryId)
+
+      if (slipsError) throw slipsError
+
+      const { error: deleteError } = await supabase
+        .from('payroll_entries')
+        .delete()
+        .eq('id', entryId)
+
+      if (deleteError) throw deleteError
+    },
+    onSuccess: (_, { runId }) => {
+      queryClient.invalidateQueries({ queryKey: ['payroll-runs'] })
+      queryClient.invalidateQueries({ queryKey: ['payroll-run-entries', runId] })
+      queryClient.invalidateQueries({ queryKey: ['payroll-scope-employees'] })
+      queryClient.invalidateQueries({ queryKey: ['employee-obligations'] })
+    },
+  })
+}
+
 export async function validatePayrollRun({
   runId,
   operation,
