@@ -22,6 +22,11 @@ import {
   type UpsertPayrollEntryInput,
   type PayrollSlipSummary,
 } from './usePayrollEntries'
+import {
+  EMPTY_PAYROLL_OBLIGATION_BREAKDOWN,
+  type PayrollObligationBreakdown,
+} from '@/utils/payrollObligationBuckets'
+import { getBucketForObligationType } from './usePayrollEntries/usePayrollEntriesCalculations'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -371,7 +376,12 @@ export function useUpdatePayrollRunStatus() {
         )
         await syncPayrollSlipsForRun(run)
       } else {
-        await restorePayrollEntryAllocations(runEntries.map((entry) => entry.id))
+        const revertEntryIds = runEntries.map((entry) => entry.id)
+        await restorePayrollEntryAllocations(revertEntryIds)
+        // Delete stale slips — run no longer finalized
+        if (revertEntryIds.length > 0) {
+          await supabase.from('payroll_slips').delete().in('payroll_entry_id', revertEntryIds)
+        }
       }
 
       const afterSnapshot = await takePayrollSnapshot(runId)
@@ -528,18 +538,24 @@ export function useUpdatePayrollRunMonth() {
 
       const { data: entries, error: entriesError } = await supabase
         .from('payroll_entries')
-        .select('id,employee_id,gross_amount,deductions_amount')
+        .select(
+          'id,payroll_run_id,employee_id,residence_number_snapshot,employee_name_snapshot,company_name_snapshot,project_name_snapshot,basic_salary_snapshot,daily_rate_snapshot,attendance_days,paid_leave_days,overtime_amount,overtime_notes,deductions_amount,deductions_notes,installment_deducted_amount,gross_amount,net_amount,entry_status,notes,created_at,updated_at'
+        )
         .eq('payroll_run_id', runId)
 
       if (entriesError) throw entriesError
 
-      const employeeIds = (entries ?? []).map((e) => e.employee_id as string)
+      const entryList = (entries ?? []) as PayrollEntry[]
+      const employeeIds = entryList.map((e) => e.employee_id)
 
-      let installmentMap = new Map<string, number>()
+      // Build per-employee breakdown by obligation type for newMonth
+      const breakdownMap = new Map<string, PayrollObligationBreakdown>()
+      const installmentMap = new Map<string, number>()
+
       if (employeeIds.length > 0) {
         const { data: lines, error: linesError } = await supabase
           .from('employee_obligation_lines')
-          .select('employee_id,amount_due,amount_paid')
+          .select('employee_id, amount_due, amount_paid, header:employee_obligation_headers!header_id(obligation_type)')
           .in('employee_id', employeeIds)
           .eq('due_month', newMonth)
           .in('line_status', ['unpaid', 'partial'])
@@ -549,6 +565,16 @@ export function useUpdatePayrollRunMonth() {
         for (const line of lines ?? []) {
           const empId = line.employee_id as string
           const remaining = Math.max(Number(line.amount_due) - Number(line.amount_paid), 0)
+          if (remaining <= 0) continue
+
+          const header = line.header as { obligation_type?: string } | null
+          const bucket = getBucketForObligationType(
+            (header?.obligation_type ?? 'other') as Parameters<typeof getBucketForObligationType>[0]
+          )
+
+          const existing = breakdownMap.get(empId) ?? { ...EMPTY_PAYROLL_OBLIGATION_BREAKDOWN }
+          existing[bucket] = (existing[bucket] ?? 0) + remaining
+          breakdownMap.set(empId, existing)
           installmentMap.set(empId, (installmentMap.get(empId) ?? 0) + remaining)
         }
       }
@@ -560,26 +586,75 @@ export function useUpdatePayrollRunMonth() {
 
       if (updateRunError) throw updateRunError
 
+      // Update entries + sync components
       await Promise.all(
-        (entries ?? []).map((entry) => {
-          const inst = installmentMap.get(entry.employee_id as string) ?? 0
+        entryList.map(async (entry) => {
+          const inst = installmentMap.get(entry.employee_id) ?? 0
           const net = Number(entry.gross_amount) - Number(entry.deductions_amount) - inst
-          return supabase
+          const breakdown = breakdownMap.get(entry.employee_id) ?? { ...EMPTY_PAYROLL_OBLIGATION_BREAKDOWN }
+
+          const { error: updateEntryError } = await supabase
             .from('payroll_entries')
             .update({
               installment_deducted_amount: String(inst),
               net_amount: String(net),
             })
             .eq('id', entry.id)
+
+          if (updateEntryError) throw updateEntryError
+
+          const updatedEntry: PayrollEntry = {
+            ...entry,
+            installment_deducted_amount: String(inst) as unknown as number,
+            net_amount: String(net) as unknown as number,
+          }
+
+          await syncPayrollEntryComponents(
+            updatedEntry,
+            {
+              payroll_run_id: runId,
+              payroll_run_status: 'draft',
+              payroll_month: newMonth,
+              employee_id: entry.employee_id,
+              residence_number_snapshot: Number(entry.residence_number_snapshot),
+              employee_name_snapshot: entry.employee_name_snapshot,
+              company_name_snapshot: entry.company_name_snapshot ?? null,
+              project_name_snapshot: entry.project_name_snapshot ?? null,
+              basic_salary_snapshot: Number(entry.basic_salary_snapshot),
+              daily_rate_snapshot: Number(entry.daily_rate_snapshot),
+              attendance_days: Number(entry.attendance_days),
+              paid_leave_days: Number(entry.paid_leave_days),
+              overtime_amount: Number(entry.overtime_amount),
+              overtime_notes: entry.overtime_notes ?? null,
+              deductions_amount: Number(entry.deductions_amount),
+              deductions_notes: entry.deductions_notes ?? null,
+              installment_deducted_amount: inst,
+              deduction_breakdown: breakdown,
+              gross_amount: Number(entry.gross_amount),
+              net_amount: net,
+              entry_status: entry.entry_status,
+              notes: entry.notes ?? null,
+            } as UpsertPayrollEntryInput,
+            false
+          )
         })
       )
+
+      // Delete stale slips — run is draft, slips no longer valid
+      const entryIds = entryList.map((e) => e.id)
+      if (entryIds.length > 0) {
+        await supabase.from('payroll_slips').delete().in('payroll_entry_id', entryIds)
+      }
     },
     onSuccess: (_, { runId }) => {
       queryClient.invalidateQueries({ queryKey: ['payroll-runs'] })
       queryClient.invalidateQueries({ queryKey: ['payroll-run-entries', runId] })
+      queryClient.invalidateQueries({ queryKey: ['payroll-run-slips', runId] })
       queryClient.invalidateQueries({ queryKey: ['payroll-scope-employees'] })
       queryClient.invalidateQueries({ queryKey: ['employee-obligations'] })
+      queryClient.invalidateQueries({ queryKey: ['all-obligations-summary'] })
       queryClient.invalidateQueries({ queryKey: ['revenue-pnl'] })
+      queryClient.invalidateQueries({ queryKey: ['payroll-entries-search'] })
     },
   })
 }

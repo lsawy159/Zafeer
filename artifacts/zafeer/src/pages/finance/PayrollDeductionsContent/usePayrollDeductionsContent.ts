@@ -550,9 +550,15 @@ export function usePayrollDeductionsContent({
   const handleDeleteDetailPlan = async () => {
     if (!deletingDetailPlanId || !obligationDetailEmployeeId) return
     try {
+      const deletingDetailPlan = detailObligationPlans.find((p) => p.id === deletingDetailPlanId)
+      const deletingDetailEmployee = allObligationsSummary.find((r) => r.employee_id === obligationDetailEmployeeId)
       await deleteObligationPlan.mutateAsync({
         planId: deletingDetailPlanId,
         employeeId: obligationDetailEmployeeId,
+        employee_name: deletingDetailEmployee?.employee_name,
+        residence_number: deletingDetailEmployee?.residence_number,
+        obligation_type: deletingDetailPlan?.obligation_type,
+        total_amount: deletingDetailPlan?.total_amount,
       })
       toast.success('تم حذف الالتزام بنجاح')
       setDeletingDetailPlanId(null)

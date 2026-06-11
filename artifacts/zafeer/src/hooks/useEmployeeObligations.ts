@@ -277,7 +277,7 @@ export function useUpdateObligationPlan() {
 export function useDeleteObligationPlan() {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: async ({ planId }: { planId: string; employeeId: string; employee_name?: string; obligation_type?: ObligationType }) => {
+    mutationFn: async ({ planId }: { planId: string; employeeId: string; employee_name?: string; residence_number?: string | number; obligation_type?: ObligationType; total_amount?: number }) => {
       const { error } = await supabase
         .from('employee_obligation_headers')
         .update({ status: 'cancelled' })
@@ -292,14 +292,16 @@ export function useDeleteObligationPlan() {
         .in('line_status', ['unpaid', 'partial'])
       if (linesError) throw linesError
     },
-    onSuccess: async (_, { employeeId, employee_name, obligation_type }) => {
+    onSuccess: async (_, { employeeId, employee_name, residence_number, obligation_type, total_amount }) => {
       try {
         await supabase.from('activity_log').insert({
           entity_type: 'obligation',
           action: 'إلغاء التزام',
           details: {
             employee_name: employee_name ?? '—',
+            residence_number: residence_number ?? '—',
             obligation_type: obligation_type ? getObligationTypeLabel(obligation_type) : '—',
+            amount: total_amount ?? null,
           },
         })
       } catch { /* non-blocking */ }

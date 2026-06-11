@@ -7,6 +7,7 @@ import {
 import { toast } from 'sonner'
 import { useRemovePayrollRunEmployee } from '@/hooks/usePayrollRuns'
 import AddEmployeeToRunModal from '@/components/payroll/AddEmployeeToRunModal'
+import EditPayrollMonthModal from '@/components/payroll/EditPayrollMonthModal'
 import {
   outlineCompactButtonClass,
   primaryCompactButtonClass,
@@ -78,6 +79,7 @@ export default function PDCRunsSection(ctx: Ctx) {
   const removeEmployee = useRemovePayrollRunEmployee()
   const [showAddEmployeeModal, setShowAddEmployeeModal] = useState(false)
   const [removeEntryId, setRemoveEntryId] = useState<string | null>(null)
+  const [showEditMonthModal, setShowEditMonthModal] = useState(false)
 
   const handleRemoveEmployee = async () => {
     if (!removeEntryId || !selectedPayrollRun) return
@@ -163,6 +165,16 @@ export default function PDCRunsSection(ctx: Ctx) {
                 <RefreshCw className="w-4 h-4" />
                 تحديث المسير
               </button>
+              {selectedPayrollRun.status === 'draft' && isAdmin && (
+                <button
+                  type="button"
+                  onClick={() => setShowEditMonthModal(true)}
+                  className="inline-flex items-center gap-1.5 rounded-lg border border-blue-200 bg-blue-50 px-3 py-1.5 text-xs font-medium text-blue-700 shadow-sm transition hover:bg-blue-100"
+                >
+                  <Calendar className="w-4 h-4" />
+                  تعديل الشهر
+                </button>
+              )}
               {selectedPayrollRun.status === 'draft' && isAdmin && (
                 <button
                   type="button"
@@ -1582,7 +1594,16 @@ export default function PDCRunsSection(ctx: Ctx) {
           document.body
         )}
 
-        {selectedPayrollRun && showAddEmployeeModal && (
+        {selectedPayrollRun && showEditMonthModal && (
+        <EditPayrollMonthModal
+          open={showEditMonthModal}
+          runId={selectedPayrollRun.id}
+          currentMonth={selectedPayrollRun.payroll_month}
+          onClose={() => setShowEditMonthModal(false)}
+        />
+      )}
+
+      {selectedPayrollRun && showAddEmployeeModal && (
         <AddEmployeeToRunModal
           open={showAddEmployeeModal}
           runId={selectedPayrollRun.id}
