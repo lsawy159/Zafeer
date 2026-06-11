@@ -1,8 +1,13 @@
 import { createPortal } from 'react-dom'
+import { useState } from 'react'
 import {
   AlertTriangle, BarChart3, Calendar, CheckCircle, CreditCard, Download,
   Eye, FileUp, Loader2, Plus, ReceiptText, RefreshCw, Trash2, Wallet, X,
 } from 'lucide-react'
+import { toast } from 'sonner'
+import { useRemovePayrollRunEmployee } from '@/hooks/usePayrollRuns'
+import AddEmployeeToRunModal from '@/components/payroll/AddEmployeeToRunModal'
+import EditPayrollMonthModal from '@/components/payroll/EditPayrollMonthModal'
 import {
   outlineCompactButtonClass,
   primaryCompactButtonClass,
@@ -71,6 +76,21 @@ export default function PDCRunsSection(ctx: Ctx) {
     payrollRunList,
   } = ctx
 
+  const removeEmployee = useRemovePayrollRunEmployee()
+  const [showAddEmployeeModal, setShowAddEmployeeModal] = useState(false)
+  const [removeEntryId, setRemoveEntryId] = useState<string | null>(null)
+  const [showEditMonthModal, setShowEditMonthModal] = useState(false)
+
+  const handleRemoveEmployee = async () => {
+    if (!removeEntryId || !selectedPayrollRun) return
+    try {
+      await removeEmployee.mutateAsync({ entryId: removeEntryId, runId: selectedPayrollRun.id })
+      toast.success('تم حذف الموظف من المسير')
+      setRemoveEntryId(null)
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'حدث خطأ أثناء الحذف')
+    }
+  }
 
   const renderSelectedPayrollRunDetails = () => {
     if (!selectedPayrollRun) {
@@ -145,6 +165,26 @@ export default function PDCRunsSection(ctx: Ctx) {
                 <RefreshCw className="w-4 h-4" />
                 تحديث المسير
               </button>
+              {selectedPayrollRun.status === 'draft' && isAdmin && (
+                <button
+                  type="button"
+                  onClick={() => setShowEditMonthModal(true)}
+                  className="inline-flex items-center gap-1.5 rounded-lg border border-blue-200 bg-blue-50 px-3 py-1.5 text-xs font-medium text-blue-700 shadow-sm transition hover:bg-blue-100"
+                >
+                  <Calendar className="w-4 h-4" />
+                  تعديل الشهر
+                </button>
+              )}
+              {selectedPayrollRun.status === 'draft' && isAdmin && (
+                <button
+                  type="button"
+                  onClick={() => setShowAddEmployeeModal(true)}
+                  className={primaryCompactButtonClass}
+                >
+                  <Plus className="w-4 h-4" />
+                  إضافة موظف
+                </button>
+              )}
               <button
                 onClick={() => {
                   if (showPayrollEntryForm) {
@@ -817,6 +857,9 @@ export default function PDCRunsSection(ctx: Ctx) {
                   <th className="px-4 py-3 text-right">الحالة</th>
                   <th className="px-4 py-3 text-right">الإجراءات</th>
                   <th className="px-4 py-3 text-right">القسيمة</th>
+                  {selectedPayrollRun.status === 'draft' && isAdmin && (
+                    <th className="px-4 py-3 text-right" />
+                  )}
                 </tr>
               </thead>
               <tbody>
@@ -885,6 +928,18 @@ export default function PDCRunsSection(ctx: Ctx) {
                           </span>
                         )}
                       </td>
+                      {selectedPayrollRun.status === 'draft' && isAdmin && (
+                        <td className="px-4 py-3">
+                          <button
+                            type="button"
+                            onClick={() => setRemoveEntryId(entry.id)}
+                            className="inline-flex items-center justify-center rounded-full border border-red-200 bg-red-50 p-1.5 text-red-600 hover:bg-red-100 transition"
+                            title="حذف الموظف من المسير"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </td>
+                      )}
                     </tr>
                   )
                 })}
@@ -903,6 +958,9 @@ export default function PDCRunsSection(ctx: Ctx) {
                   <td className="px-4 py-3" />
                   <td className="px-4 py-3" />
                   <td className="px-4 py-3" />
+                  {selectedPayrollRun.status === 'draft' && isAdmin && (
+                    <td className="px-4 py-3" />
+                  )}
                 </tr>
               </tfoot>
             </table>
@@ -1536,7 +1594,88 @@ export default function PDCRunsSection(ctx: Ctx) {
           document.body
         )}
 
-        {payrollRunDeleteConfirmOpen && selectedPayrollRun && createPortal(
+        {selectedPayrollRun && showEditMonthModal && (
+        <EditPayrollMonthModal
+          open={showEditMonthModal}
+          runId={selectedPayrollRun.id}
+          currentMonth={selectedPayrollRun.payroll_month}
+          onClose={() => setShowEditMonthModal(false)}
+        />
+      )}
+
+      {selectedPayrollRun && showAddEmployeeModal && (
+        <AddEmployeeToRunModal
+          open={showAddEmployeeModal}
+          runId={selectedPayrollRun.id}
+          payrollMonth={selectedPayrollRun.payroll_month}
+          scopeType={selectedPayrollRun.scope_type}
+          scopeId={selectedPayrollRun.scope_id}
+          existingEmployeeIds={payrollEntries.map((e) => e.employee_id)}
+          onClose={() => setShowAddEmployeeModal(false)}
+        />
+      )}
+
+      {removeEntryId && selectedPayrollRun && createPortal(
+        <div
+          className="fixed inset-0 z-[300] flex items-center justify-center bg-surface-secondary-950/55 p-4 backdrop-blur-sm"
+          onClick={() => { if (!removeEmployee.isPending) setRemoveEntryId(null) }}
+        >
+          <div
+            role="dialog"
+            aria-modal="true"
+            className="w-full max-w-md rounded-2xl border border-border-200 bg-surface shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-start justify-between gap-3 border-b border-border-200 px-5 py-4">
+              <div>
+                <h2 className="text-lg font-bold text-foreground">تأكيد حذف الموظف</h2>
+                <p className="mt-1 text-sm text-foreground-secondary">
+                  هل أنت متأكد من حذف هذا الموظف من المسير؟
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setRemoveEntryId(null)}
+                className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-border-200 text-foreground-tertiary transition hover:bg-surface-secondary-50"
+                disabled={removeEmployee.isPending}
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+            <div className="space-y-3 px-5 py-4">
+              <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">
+                سيتم حذف الموظف من المسير وإعادة التزاماته. لا يمكن التراجع.
+              </div>
+            </div>
+            <div className="flex items-center justify-end gap-2 border-t border-border-200 px-5 py-4">
+              <button
+                type="button"
+                onClick={() => setRemoveEntryId(null)}
+                className={outlineCompactButtonClass}
+                disabled={removeEmployee.isPending}
+              >
+                إلغاء
+              </button>
+              <button
+                type="button"
+                onClick={() => void handleRemoveEmployee()}
+                className={dangerCompactButtonClass}
+                disabled={removeEmployee.isPending}
+              >
+                {removeEmployee.isPending ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Trash2 className="h-4 w-4" />
+                )}
+                حذف
+              </button>
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
+
+      {payrollRunDeleteConfirmOpen && selectedPayrollRun && createPortal(
           <div
             className="fixed inset-0 z-[300] flex items-center justify-center bg-surface-secondary-950/55 p-4 backdrop-blur-sm"
             onClick={() => {

@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { CheckCircle, Loader2, Plus, RefreshCw, Wallet, XCircle } from 'lucide-react'
+import { AlertTriangle, Calendar, CheckCircle, Loader2, Plus, RefreshCw, RotateCcw, Wallet, XCircle } from 'lucide-react'
 import { toast } from 'sonner'
 import {
   useCreatePayrollRun,
@@ -8,6 +8,7 @@ import {
   useUpdatePayrollRunStatus,
   type PayrollRunSummary,
 } from '@/hooks/usePayrollRuns'
+import EditPayrollMonthModal from '@/components/payroll/EditPayrollMonthModal'
 import { useCompanies } from '@/hooks/useCompanies'
 import { useProjects } from '@/hooks/useProjects'
 import { usePermissions } from '@/utils/permissions'
@@ -45,6 +46,8 @@ interface RunCardProps {
   onApprove: () => void
   onCancel: () => void
   onDelete: () => void
+  onEditMonth: () => void
+  onRevertToDraft: () => void
   canEdit: boolean
   isAdmin: boolean
 }
@@ -56,6 +59,8 @@ function RunCard({
   onApprove,
   onCancel,
   onDelete,
+  onEditMonth,
+  onRevertToDraft,
   canEdit,
   isAdmin,
 }: RunCardProps) {
@@ -92,37 +97,59 @@ function RunCard({
         <div>صافي: <span className="font-medium text-foreground">{Number(run.total_net_amount).toLocaleString('en-US', { minimumFractionDigits: 0 })}</span></div>
       </div>
 
-      {(canEdit || isAdmin) && run.status !== 'finalized' && run.status !== 'cancelled' && (
-        <div className="flex flex-wrap gap-2" onClick={(event) => event.stopPropagation()}>
-          {run.status === 'processing' && (
-            <button
-              type="button"
-              onClick={onApprove}
-              className="inline-flex items-center gap-1 rounded-full bg-green-600 px-3 py-1 text-xs font-medium text-white hover:bg-green-700"
-            >
-              <CheckCircle className="h-3.5 w-3.5" />
-              اعتماد
-            </button>
-          )}
+      <div className="flex flex-wrap gap-2" onClick={(event) => event.stopPropagation()}>
+        {isAdmin && run.status === 'draft' && (
           <button
             type="button"
-            onClick={onCancel}
-            className="inline-flex items-center gap-1 rounded-full bg-red-600 px-3 py-1 text-xs font-medium text-white hover:bg-red-700"
+            onClick={onEditMonth}
+            className="inline-flex items-center gap-1 rounded-full border border-blue-200 bg-blue-50 px-3 py-1 text-xs font-medium text-blue-700 hover:bg-blue-100"
           >
-            <XCircle className="h-3.5 w-3.5" />
-            إلغاء
+            <Calendar className="h-3.5 w-3.5" />
+            تعديل الشهر
           </button>
-          {isAdmin && (
+        )}
+        {isAdmin && run.status === 'finalized' && (
+          <button
+            type="button"
+            onClick={onRevertToDraft}
+            className="inline-flex items-center gap-1 rounded-full border border-amber-200 bg-amber-50 px-3 py-1 text-xs font-medium text-amber-700 hover:bg-amber-100"
+          >
+            <RotateCcw className="h-3.5 w-3.5" />
+            إرجاع لمسودة
+          </button>
+        )}
+        {(canEdit || isAdmin) && run.status !== 'finalized' && run.status !== 'cancelled' && (
+          <>
+            {run.status === 'processing' && (
+              <button
+                type="button"
+                onClick={onApprove}
+                className="inline-flex items-center gap-1 rounded-full bg-green-600 px-3 py-1 text-xs font-medium text-white hover:bg-green-700"
+              >
+                <CheckCircle className="h-3.5 w-3.5" />
+                اعتماد
+              </button>
+            )}
             <button
               type="button"
-              onClick={onDelete}
-              className="rounded-full border border-red-200 px-3 py-1 text-xs font-medium text-red-600 hover:bg-red-50"
+              onClick={onCancel}
+              className="inline-flex items-center gap-1 rounded-full bg-red-600 px-3 py-1 text-xs font-medium text-white hover:bg-red-700"
             >
-              حذف
+              <XCircle className="h-3.5 w-3.5" />
+              إلغاء
             </button>
-          )}
-        </div>
-      )}
+            {isAdmin && (
+              <button
+                type="button"
+                onClick={onDelete}
+                className="rounded-full border border-red-200 px-3 py-1 text-xs font-medium text-red-600 hover:bg-red-50"
+              >
+                حذف
+              </button>
+            )}
+          </>
+        )}
+      </div>
     </div>
   )
 }
@@ -269,6 +296,7 @@ export default function PayrollRunsSection() {
   const deleteRun = useDeletePayrollRun()
   const [showCreateDialog, setShowCreateDialog] = useState(false)
   const [selectedRunId, setSelectedRunId] = useState<string | null>(null)
+  const [editMonthRunId, setEditMonthRunId] = useState<string | null>(null)
   const metrics = useMemo(() => {
     const totalGross = runs.reduce((sum, run) => sum + Number(run.total_gross_amount ?? 0), 0)
     const totalNet = runs.reduce((sum, run) => sum + Number(run.total_net_amount ?? 0), 0)
@@ -327,6 +355,33 @@ export default function PayrollRunsSection() {
     }
   }
 
+  const handleRevertToDraft = async (runId: string) => {
+    const run = runs.find((r) => r.id === runId)
+    if (!run) return
+
+    const hasLaterFinalized = runs.some(
+      (r) =>
+        r.id !== runId &&
+        r.scope_type === run.scope_type &&
+        r.scope_id === run.scope_id &&
+        r.status === 'finalized' &&
+        r.payroll_month > run.payroll_month
+    )
+
+    const msg = hasLaterFinalized
+      ? 'هذا المسير يسبق مسيرات معتمدة أخرى. إرجاعه للمسودة سيؤثر على الالتزامات. هل أنت متأكد؟'
+      : 'سيتم إرجاع المسير لمسودة وإعادة التزامات الموظفين. هل أنت متأكد؟'
+
+    if (!window.confirm(msg)) return
+
+    try {
+      await updateStatus.mutateAsync({ runId, status: 'draft' })
+      toast.success('تم إرجاع المسير للمسودة')
+    } catch {
+      toast.error('حدث خطأ أثناء الإرجاع')
+    }
+  }
+
   return (
     <div className="space-y-4" dir="rtl">
       <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
@@ -370,21 +425,37 @@ export default function PayrollRunsSection() {
           لا توجد مسيرات رواتب بعد
         </div>
       ) : (
-        <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
-          {runs.map((run) => (
-            <RunCard
-              key={run.id}
-              run={run}
-              isSelected={selectedRunId === run.id}
-              onSelect={setSelectedRunId}
-              onApprove={() => void handleApprove(run.id)}
-              onCancel={() => void handleCancel(run.id)}
-              onDelete={() => void handleDelete(run.id)}
-              canEdit={canEdit('payroll')}
-              isAdmin={isAdmin}
-            />
-          ))}
-        </div>
+        <>
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
+            {runs.map((run) => (
+              <RunCard
+                key={run.id}
+                run={run}
+                isSelected={selectedRunId === run.id}
+                onSelect={setSelectedRunId}
+                onApprove={() => void handleApprove(run.id)}
+                onCancel={() => void handleCancel(run.id)}
+                onDelete={() => void handleDelete(run.id)}
+                onEditMonth={() => setEditMonthRunId(run.id)}
+                onRevertToDraft={() => void handleRevertToDraft(run.id)}
+                canEdit={canEdit('payroll')}
+                isAdmin={isAdmin}
+              />
+            ))}
+          </div>
+          {editMonthRunId && (() => {
+            const run = runs.find((r) => r.id === editMonthRunId)
+            if (!run) return null
+            return (
+              <EditPayrollMonthModal
+                open={true}
+                runId={run.id}
+                currentMonth={run.payroll_month}
+                onClose={() => setEditMonthRunId(null)}
+              />
+            )
+          })()}
+        </>
       )}
     </div>
   )

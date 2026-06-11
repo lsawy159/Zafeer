@@ -550,11 +550,14 @@ export function useUpsertPayrollEntry() {
 
       const entry = data as PayrollEntry
       await syncPayrollEntryComponents(entry, input, input.payroll_run_status === 'finalized')
+      // Delete stale slip — entry data changed, slip must be regenerated
+      await supabase.from('payroll_slips').delete().eq('payroll_entry_id', entry.id)
       return entry
     },
     onSuccess: (entry, variables) => {
       queryClient.invalidateQueries({ queryKey: ['payroll-runs'] })
       queryClient.invalidateQueries({ queryKey: ['payroll-run-entries', entry.payroll_run_id] })
+      queryClient.invalidateQueries({ queryKey: ['payroll-run-slips', entry.payroll_run_id] })
       queryClient.invalidateQueries({ queryKey: ['payroll-scope-employees'] })
       queryClient.invalidateQueries({ queryKey: ['employee-obligations', variables.employee_id] })
       queryClient.invalidateQueries({ queryKey: ['employees'] })

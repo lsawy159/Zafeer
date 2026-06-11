@@ -478,10 +478,11 @@ export const generateActivityDescription = (log: ActivityLog): string | React.JS
 
   if (entityType === 'obligation') {
     const emp = details.employee_name || '—'
+    const residence = details.residence_number ? ` (${details.residence_number})` : ''
     const type = details.obligation_type || '—'
-    if (log.action.includes('إنشاء')) return `تم إنشاء التزام للموظف "${emp}" — نوع: ${type}${details.amount ? ` — مبلغ: ${details.amount} ريال` : ''}`
-    if (log.action.includes('إلغاء')) return `تم إلغاء التزام للموظف "${emp}" — نوع: ${type}`
-    return `تم تحديث التزام للموظف "${emp}" — نوع: ${type}`
+    if (log.action.includes('إنشاء')) return `تم إنشاء التزام للموظف "${emp}"${residence} — نوع: ${type}${details.amount ? ` — مبلغ: ${details.amount} ريال` : ''}`
+    if (log.action.includes('إلغاء')) return `تم إلغاء التزام للموظف "${emp}"${residence} — نوع: ${type}${details.amount ? ` — مبلغ: ${details.amount} ريال` : ''}`
+    return `تم تحديث التزام للموظف "${emp}"${residence} — نوع: ${type}`
   }
 
   if (entityType === 'project') {

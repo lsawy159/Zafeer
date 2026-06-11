@@ -703,7 +703,15 @@ export function useEmployeeCardLogic({
   const handleDeletePlan = async () => {
     if (!deletingPlanId) return
     try {
-      await deleteObligationPlan.mutateAsync({ planId: deletingPlanId, employeeId: employee.id })
+      const deletingPlan = obligationPlans.find((p) => p.id === deletingPlanId)
+      await deleteObligationPlan.mutateAsync({
+        planId: deletingPlanId,
+        employeeId: employee.id,
+        employee_name: employee.name,
+        residence_number: employee.residence_number,
+        obligation_type: deletingPlan?.obligation_type,
+        total_amount: deletingPlan?.total_amount,
+      })
       toast.success('تم حذف الالتزام بنجاح')
       setDeletingPlanId(null)
     } catch (error) {
