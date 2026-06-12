@@ -22,6 +22,8 @@ import {
   SelectValue,
 } from '@/components/ui/Select'
 import { useUpdateUserProfile } from '@/hooks/useUpdateUserProfile'
+import { supabase } from '@/lib/supabase'
+import { FunctionsHttpError } from '@supabase/supabase-js'
 import { toast } from 'sonner'
 import { logger } from '@/utils/logger'
 
@@ -36,6 +38,13 @@ interface EditUserDialogProps {
 const schema = z.object({
   full_name: z.string().min(1, 'الاسم مطلوب'),
   role: z.enum(['manager', 'user']),
+  new_password: z.string().refine(v => v === '' || v.length >= 8, {
+    message: 'كلمة المرور يجب أن تكون 8 أحرف على الأقل',
+  }),
+  confirm_password: z.string(),
+}).refine(d => d.new_password === d.confirm_password, {
+  message: 'كلمتا المرور غير متطابقتين',
+  path: ['confirm_password'],
 })
 
 type FormData = z.infer<typeof schema>
@@ -59,9 +68,17 @@ export function EditUserDialog({
     formState: { errors, isSubmitting },
   } = useForm<FormData>({
     resolver: zodResolver(schema),
+    defaultValues: {
+      full_name: currentFullName,
+      role: (currentRole === 'manager' ? 'manager' : 'user') as FormData['role'],
+      new_password: '',
+      confirm_password: '',
+    },
     values: {
       full_name: currentFullName,
       role: (currentRole === 'manager' ? 'manager' : 'user') as FormData['role'],
+      new_password: '',
+      confirm_password: '',
     },
   })
 
@@ -82,6 +99,24 @@ export function EditUserDialog({
           role: data.role,
         },
       })
+
+      if (data.new_password) {
+        const { error: pwError } = await supabase.functions.invoke('admin-users', {
+          body: { id: userId, password: data.new_password },
+          headers: { 'x-action': 'reset-password' },
+        })
+        if (pwError) {
+          let message = pwError.message
+          if (pwError instanceof FunctionsHttpError) {
+            try {
+              const body = await pwError.context.json()
+              if (typeof body?.error === 'string') message = body.error
+            } catch { /* keep generic */ }
+          }
+          throw new Error(message)
+        }
+      }
+
       await queryClient.invalidateQueries({ queryKey: ['users'] })
       toast.success('تم التحديث بنجاح')
       handleClose()
@@ -132,6 +167,36 @@ export function EditUserDialog({
             {errors.role && (
               <p className="text-xs text-red-600 text-right">{errors.role.message}</p>
             )}
+          </div>
+
+          <div className="border-t border-border-100 pt-3 space-y-3">
+            <p className="text-xs text-foreground-tertiary text-right">تغيير كلمة المرور (اختياري — اتركها فارغة للإبقاء على الحالية)</p>
+            <div className="space-y-1">
+              <label className="text-sm font-medium text-right block">كلمة المرور الجديدة</label>
+              <Input
+                type="password"
+                placeholder="8 أحرف على الأقل"
+                {...register('new_password')}
+                disabled={isSubmitting}
+                autoComplete="new-password"
+              />
+              {errors.new_password && (
+                <p className="text-xs text-red-600 text-right">{errors.new_password.message}</p>
+              )}
+            </div>
+            <div className="space-y-1">
+              <label className="text-sm font-medium text-right block">تأكيد كلمة المرور</label>
+              <Input
+                type="password"
+                placeholder="أعد كتابة كلمة المرور"
+                {...register('confirm_password')}
+                disabled={isSubmitting}
+                autoComplete="new-password"
+              />
+              {errors.confirm_password && (
+                <p className="text-xs text-red-600 text-right">{errors.confirm_password.message}</p>
+              )}
+            </div>
           </div>
 
           <DialogFooter className="gap-2 pt-2 flex-row-reverse sm:flex-row-reverse">

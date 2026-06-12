@@ -140,7 +140,7 @@ export default function ExtractDetail({ extractId: extractIdProp, onBack }: Prop
   const id = extractIdProp ?? params.id
   const navigate = useNavigate()
   // لو embedded (بداخل تبويب) لا نضيف Layout لأنه موجود بالخارج
-  const W = ({ children }: { children: React.ReactNode }) =>
+  const wrap = (children: React.ReactNode) =>
     onBack ? <>{children}</> : <Layout>{children}</Layout>
   const permissions = usePermissions()
   // helper alias — avoids repeated destructure inside conditional
@@ -158,19 +158,17 @@ export default function ExtractDetail({ extractId: extractIdProp, onBack }: Prop
   if (!id) return null
 
   if (isLoading) {
-    return <W><div className="py-16 text-center text-slate-500">جاري التحميل...</div></W>
+    return wrap(<div className="py-16 text-center text-slate-500">جاري التحميل...</div>)
   }
 
   if (!extract) {
-    return (
-      <W>
-        <div className="py-16 text-center text-slate-500">
-          <p>لم يُعثر على المستخلص</p>
-          <button onClick={() => onBack ? onBack() : navigate('/extracts')} className="mt-2 text-primary text-sm hover:underline">
-            العودة للقائمة
-          </button>
-        </div>
-      </W>
+    return wrap(
+      <div className="py-16 text-center text-slate-500">
+        <p>لم يُعثر على المستخلص</p>
+        <button onClick={() => onBack ? onBack() : navigate('/extracts')} className="mt-2 text-primary text-sm hover:underline">
+          العودة للقائمة
+        </button>
+      </div>
     )
   }
 
@@ -264,8 +262,7 @@ export default function ExtractDetail({ extractId: extractIdProp, onBack }: Prop
     }
   }
 
-  return (
-    <W>
+  return wrap(
     <div className="max-w-4xl mx-auto py-6 px-4 space-y-5" dir="rtl">
       {/* Header */}
       <div className="flex items-start justify-between">
@@ -517,6 +514,5 @@ export default function ExtractDetail({ extractId: extractIdProp, onBack }: Prop
         </DialogContent>
       </Dialog>
     </div>
-    </W>
   )
 }
