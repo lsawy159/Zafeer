@@ -720,58 +720,107 @@ export function usePayrollDeductionsContent({
       return
     }
     setImportingObligations(true)
-    let successCount = 0
-    let errorCount = 0
+
+    const OBLIGATION_TYPE_LABELS: Record<string, string> = {
+      advance: 'سلفة', transfer: 'نقل كفالة', renewal: 'تجديد', penalty: 'غرامة', other: 'التزام آخر',
+    }
+
+    type ObligationTask = {
+      employee_id: string
+      employee_name: string
+      type: 'advance' | 'transfer' | 'renewal' | 'penalty' | 'other'
+      amount: number
+      installment_amounts: number[]
+      start_month: string
+      notes: string | null
+    }
+
+    // جمع كل المهام أولاً بدون تنفيذ
+    const tasks: ObligationTask[] = []
+    let validationErrorCount = 0
 
     for (const row of selectedRows) {
       if (!row.employee_id) continue
-      const typeDefs: Array<{
-        type: 'advance' | 'transfer' | 'renewal' | 'penalty' | 'other'
-        amount: number
-        installments: number
-        start_month: string
-      }> = []
-      if (row.advance_amount > 0)
-        typeDefs.push({ type: 'advance', amount: row.advance_amount, installments: row.advance_installments, start_month: row.advance_start_month })
-      if (row.transfer_amount > 0)
-        typeDefs.push({ type: 'transfer', amount: row.transfer_amount, installments: row.transfer_installments, start_month: row.transfer_start_month })
-      if (row.renewal_amount > 0)
-        typeDefs.push({ type: 'renewal', amount: row.renewal_amount, installments: row.renewal_installments, start_month: row.renewal_start_month })
-      if (row.penalty_amount > 0)
-        typeDefs.push({ type: 'penalty', amount: row.penalty_amount, installments: row.penalty_installments, start_month: row.penalty_start_month })
-      if (row.other_amount > 0)
-        typeDefs.push({ type: 'other', amount: row.other_amount, installments: row.other_installments, start_month: row.other_start_month })
-      if (typeDefs.length === 0) continue
+      const typeDefs = [
+        row.advance_amount > 0 && { type: 'advance' as const, amount: row.advance_amount, installments: row.advance_installments, start_month: row.advance_start_month },
+        row.transfer_amount > 0 && { type: 'transfer' as const, amount: row.transfer_amount, installments: row.transfer_installments, start_month: row.transfer_start_month },
+        row.renewal_amount > 0 && { type: 'renewal' as const, amount: row.renewal_amount, installments: row.renewal_installments, start_month: row.renewal_start_month },
+        row.penalty_amount > 0 && { type: 'penalty' as const, amount: row.penalty_amount, installments: row.penalty_installments, start_month: row.penalty_start_month },
+        row.other_amount > 0 && { type: 'other' as const, amount: row.other_amount, installments: row.other_installments, start_month: row.other_start_month },
+      ].filter(Boolean) as Array<{ type: 'advance' | 'transfer' | 'renewal' | 'penalty' | 'other'; amount: number; installments: number; start_month: string }>
 
       for (const def of typeDefs) {
         if (!def.start_month) {
           toast.warning(`شهر البداية مطلوب للموظف ${row.employee_name ?? row.residence_number} (${def.type})`)
-          errorCount++
+          validationErrorCount++
           continue
         }
-        try {
-          const count = Math.max(1, def.installments)
-          const baseHalalas = Math.floor((def.amount * 100) / count)
-          const installmentAmounts: number[] = Array(count).fill(baseHalalas / 100)
-          const remainder = Math.round(def.amount * 100 - baseHalalas * count)
-          if (remainder !== 0) {
-            installmentAmounts[count - 1] = Math.round((installmentAmounts[count - 1] + remainder / 100) * 100) / 100
-          }
-          const normalizedMonth = def.start_month.length === 7 ? `${def.start_month}-01` : def.start_month
-          await createObligationPlan.mutateAsync({
-            employee_id: row.employee_id!,
-            obligation_type: def.type,
-            total_amount: def.amount,
-            start_month: normalizedMonth,
-            installment_amounts: installmentAmounts,
-            notes: row.notes || null,
-          })
-          successCount++
-        } catch (err) {
-          console.error(`Error importing obligation for ${row.employee_name_from_file}:`, err)
-          errorCount++
+        const count = Math.max(1, def.installments)
+        const baseHalalas = Math.floor((def.amount * 100) / count)
+        const installmentAmounts: number[] = Array(count).fill(baseHalalas / 100) as number[]
+        const remainder = Math.round(def.amount * 100 - baseHalalas * count)
+        if (remainder !== 0) {
+          installmentAmounts[count - 1] = Math.round((installmentAmounts[count - 1] + remainder / 100) * 100) / 100
         }
+        tasks.push({
+          employee_id: row.employee_id!,
+          employee_name: row.employee_name ?? String(row.residence_number),
+          type: def.type,
+          amount: def.amount,
+          installment_amounts: installmentAmounts,
+          start_month: def.start_month.length === 7 ? `${def.start_month}-01` : def.start_month,
+          notes: row.notes || null,
+        })
       }
+    }
+
+    // تنفيذ كل الـ RPC calls بالتوازي — بدل الطابور التسلسلي
+    const rpcResults = await Promise.allSettled(
+      tasks.map((task) =>
+        supabase
+          .rpc('create_employee_obligation_plan', {
+            p_employee_id: task.employee_id,
+            p_obligation_type: task.type,
+            p_title: OBLIGATION_TYPE_LABELS[task.type] ?? task.type,
+            p_total_amount: task.amount,
+            p_currency_code: 'SAR',
+            p_start_month: task.start_month,
+            p_installment_amounts: task.installment_amounts,
+            p_status: 'active',
+            p_notes: task.notes,
+          })
+          .single()
+      )
+    )
+
+    const successCount = rpcResults.filter((r) => r.status === 'fulfilled').length
+    const errorCount = rpcResults.filter((r) => r.status === 'rejected').length + validationErrorCount
+
+    // إدخال سجل النشاط دفعة واحدة للالتزامات الناجحة
+    const successfulTasks = tasks.filter((_, i) => rpcResults[i]?.status === 'fulfilled')
+    if (successfulTasks.length > 0) {
+      try {
+        await supabase.from('activity_log').insert(
+          successfulTasks.map((task) => ({
+            entity_type: 'obligation',
+            action: 'إنشاء التزام',
+            details: {
+              employee_name: task.employee_name,
+              obligation_type: OBLIGATION_TYPE_LABELS[task.type] ?? task.type,
+              amount: task.amount,
+            },
+          }))
+        )
+      } catch { /* non-blocking */ }
+    }
+
+    // تحديث الشاشة مرة واحدة فقط بدل N تحديث
+    const affectedEmployeeIds = [...new Set(successfulTasks.map((t) => t.employee_id))]
+    for (const empId of affectedEmployeeIds) {
+      queryClient.invalidateQueries({ queryKey: ['employee-obligations', empId] })
+    }
+    if (successfulTasks.length > 0) {
+      queryClient.invalidateQueries({ queryKey: ['all-obligations-summary'] })
     }
 
     setImportingObligations(false)
@@ -1193,7 +1242,11 @@ export function usePayrollDeductionsContent({
     setNewPayrollRunRows((current) => current.map((row) => ({ ...row, included: checked })))
   }
 
-  const loadPayrollInsights = async () => {
+  // يمنع كتابة نتائج قديمة فوق نتائج أحدث عند استدعاء متزامن
+  const insightsRequestIdRef = useRef(0)
+
+  const loadPayrollInsights = async ({ silent = false }: { silent?: boolean } = {}) => {
+    const requestId = ++insightsRequestIdRef.current
     try {
       setPayrollInsightsLoading(true)
 
@@ -1339,13 +1392,16 @@ export function usePayrollDeductionsContent({
         }
       )
 
+      // تجاهل النتيجة لو طلب أحدث بدأ بعدنا
+      if (requestId !== insightsRequestIdRef.current) return
       setAllPayrollSearchRows(nextSearchRows)
       setObligationInsightRows(nextObligationRows)
     } catch (error) {
+      if (requestId !== insightsRequestIdRef.current) return
       console.error('Error loading payroll insights:', error)
-      toast.error('تعذر تحديث بحث الاستقطاعات حالياً')
+      if (!silent) toast.error('تعذر تحديث بحث الاستقطاعات حالياً')
     } finally {
-      setPayrollInsightsLoading(false)
+      if (requestId === insightsRequestIdRef.current) setPayrollInsightsLoading(false)
     }
   }
 
@@ -1792,6 +1848,34 @@ export function usePayrollDeductionsContent({
     }
 
     try {
+      // تحذير: موظف مضاف في مسير مسودة آخر لنفس الشهر
+      if (selectedNewPayrollRunRows.length > 0) {
+        const { data: existingDraftRuns } = await supabase
+          .from('payroll_runs')
+          .select('id')
+          .eq('payroll_month', requestedPayrollMonth)
+          .eq('status', 'draft')
+
+        if (existingDraftRuns && existingDraftRuns.length > 0) {
+          const selectedEmpIds = selectedNewPayrollRunRows.map((r) => r.employee_id)
+          const draftRunIds = existingDraftRuns.map((r) => r.id)
+          const { data: conflicts } = await supabase
+            .from('payroll_entries')
+            .select('employee_name_snapshot')
+            .in('employee_id', selectedEmpIds)
+            .in('payroll_run_id', draftRunIds)
+
+          if (conflicts && conflicts.length > 0) {
+            const names = [...new Set(conflicts.map((e) => String(e.employee_name_snapshot || '')))]
+              .filter(Boolean)
+              .join('، ')
+            toast.warning(
+              `⚠️ تنبيه: الموظفون التالون موجودون في مسير مسودة آخر لنفس الشهر: ${names}`
+            )
+          }
+        }
+      }
+
       const createdRun = await createPayrollRun.mutateAsync({
         payroll_month: requestedPayrollMonth,
         scope_type: payrollForm.scope_type,
@@ -2010,7 +2094,7 @@ export function usePayrollDeductionsContent({
         notes: payrollEntryForm.notes.trim() || null,
       })
 
-      await loadPayrollInsights()
+      loadPayrollInsights({ silent: true }).catch((e) => console.error('[insights] refresh failed after entry save:', e))
       toast.success('تم حفظ مدخل الراتب وربطه بالالتزامات المالية')
       setShowPayrollEntryForm(false)
     } catch (error) {
@@ -2059,7 +2143,7 @@ export function usePayrollDeductionsContent({
         entry_count: payrollEntries.length,
       })
 
-      await loadPayrollInsights()
+      loadPayrollInsights({ silent: true }).catch((e) => console.error('[insights] refresh failed after status update:', e))
 
       toast.success(
         status === 'finalized'
@@ -2555,39 +2639,41 @@ tr:last-child td{border-bottom:none}
     try {
       setConfirmingPayrollExcelImport(true)
 
-      for (const row of payrollImportPreviewRows) {
-        await upsertPayrollEntry.mutateAsync({
-          payroll_run_id: selectedPayrollRun.id,
-          payroll_run_status: selectedPayrollRun.status,
-          payroll_month: selectedPayrollRun.payroll_month,
-          employee_id: row.employee_id,
-          residence_number_snapshot: Number(row.residence_number),
-          employee_name_snapshot: row.employee_name,
-          company_name_snapshot: row.company_name ?? null,
-          project_name_snapshot: row.project_name ?? null,
-          basic_salary_snapshot: row.basic_salary_snapshot,
-          daily_rate_snapshot: row.daily_rate_snapshot,
-          attendance_days: row.attendance_days,
-          paid_leave_days: row.paid_leave_days,
-          overtime_amount: row.overtime_amount,
-          overtime_notes: row.overtime_notes || null,
-          deductions_amount: row.penalty_amount + row.other_amount,
-          deductions_notes: row.deductions_notes || null,
-          installment_deducted_amount: row.transfer_renewal_amount + row.advance_amount,
-          deduction_breakdown: {
-            transfer_renewal: row.transfer_renewal_amount,
-            penalty: row.penalty_amount,
-            advance: row.advance_amount,
-            other: row.other_amount,
-          },
-          gross_amount: row.gross_amount,
-          net_amount: row.net_amount,
-          entry_status: 'calculated',
-          notes: row.notes || null,
-        })
-      }
+      await Promise.all(
+        payrollImportPreviewRows.map((row) =>
+          upsertPayrollEntry.mutateAsync({
+            payroll_run_id: selectedPayrollRun.id,
+            payroll_run_status: selectedPayrollRun.status,
+            payroll_month: selectedPayrollRun.payroll_month,
+            employee_id: row.employee_id,
+            residence_number_snapshot: Number(row.residence_number),
+            employee_name_snapshot: row.employee_name,
+            company_name_snapshot: row.company_name ?? null,
+            project_name_snapshot: row.project_name ?? null,
+            basic_salary_snapshot: row.basic_salary_snapshot,
+            daily_rate_snapshot: row.daily_rate_snapshot,
+            attendance_days: row.attendance_days,
+            paid_leave_days: row.paid_leave_days,
+            overtime_amount: row.overtime_amount,
+            overtime_notes: row.overtime_notes || null,
+            deductions_amount: row.penalty_amount + row.other_amount,
+            deductions_notes: row.deductions_notes || null,
+            installment_deducted_amount: row.transfer_renewal_amount + row.advance_amount,
+            deduction_breakdown: {
+              transfer_renewal: row.transfer_renewal_amount,
+              penalty: row.penalty_amount,
+              advance: row.advance_amount,
+              other: row.other_amount,
+            },
+            gross_amount: row.gross_amount,
+            net_amount: row.net_amount,
+            entry_status: 'calculated',
+            notes: row.notes || null,
+          })
+        )
+      )
 
-      await loadPayrollInsights()
+      loadPayrollInsights({ silent: true }).catch((e) => console.error('[insights] refresh failed after excel import:', e))
       toast.success(
         `تم اعتماد ${payrollImportPreviewRows.length} مدخل راتب من ملف Excel وربطه بالالتزامات`
       )
@@ -2798,20 +2884,22 @@ tr:last-child td{border-bottom:none}
     try {
       setConfirmingDaysImport(true)
 
-      for (const row of daysImportPreviewRows) {
-        const { error } = await supabase
-          .from('payroll_entries')
-          .update({
-            attendance_days: row.attendance_days,
-            paid_leave_days: row.paid_leave_days,
-            gross_amount: row.new_gross,
-            net_amount: row.new_net,
-            updated_at: new Date().toISOString(),
-          })
-          .eq('id', row.entry_id)
-
-        if (error) throw error
-      }
+      const dayUpdateResults = await Promise.all(
+        daysImportPreviewRows.map((row) =>
+          supabase
+            .from('payroll_entries')
+            .update({
+              attendance_days: row.attendance_days,
+              paid_leave_days: row.paid_leave_days,
+              gross_amount: row.new_gross,
+              net_amount: row.new_net,
+              updated_at: new Date().toISOString(),
+            })
+            .eq('id', row.entry_id)
+        )
+      )
+      const firstDayUpdateError = dayUpdateResults.find((r) => r.error)?.error
+      if (firstDayUpdateError) throw firstDayUpdateError
 
       await refetchPayrollEntries()
       toast.success(`تم تحديث أيام ${daysImportPreviewRows.length} موظف في المسير بنجاح`)
@@ -2937,6 +3025,23 @@ tr:last-child td{border-bottom:none}
         }
       })
 
+      // كشف تكرار رقم الإقامة — يُرفض الملف فوراً عند وجود تكرار
+      const seenIqamas = new Set<string>()
+      const duplicateIqamas = new Set<string>()
+      for (const row of normalizedRows) {
+        if (row.residence_number) {
+          if (seenIqamas.has(row.residence_number)) duplicateIqamas.add(row.residence_number)
+          else seenIqamas.add(row.residence_number)
+        }
+      }
+      if (duplicateIqamas.size > 0) {
+        setPayrollImportHeaderError(
+          `الملف يحتوي على تكرار في أرقام الإقامة التالية: ${[...duplicateIqamas].join('، ')}`
+        )
+        toast.error('لا يُقبل ملف يحتوي على نفس رقم الإقامة مرتين — يرجى تصحيح الملف وإعادة الرفع')
+        return
+      }
+
       const importErrors: string[] = []
       const previewRows: PayrollExcelPreviewRow[] = []
 
@@ -3051,6 +3156,7 @@ tr:last-child td{border-bottom:none}
   }
 
   const handleRefreshPayrollData = async () => {
+    // هنا المستخدم طلب تحديث صريح — ننتظر ونعرض الأخطاء (مختلف عن التحديثات الخلفية الصامتة)
     await Promise.all([
       refetchPayrollRuns(),
       refetchPayrollEntries(),
@@ -3154,7 +3260,7 @@ tr:last-child td{border-bottom:none}
       setSelectedPayrollSlipEntryId(null)
       setShowPayrollEntryForm(false)
       setPayrollRunDeleteConfirmOpen(false)
-      await loadPayrollInsights()
+      loadPayrollInsights({ silent: true }).catch((e) => console.error('[insights] refresh failed after run delete:', e))
       toast.success('تم حذف المسير بنجاح')
     } catch (error) {
       console.error('Error deleting payroll run:', error)

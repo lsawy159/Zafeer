@@ -85,7 +85,7 @@ export function useNavItems() {
       {
         path: '/reports',
         icon: BarChart3,
-        label: 'التقارير',
+        label: 'تقارير المستندات',
         permission: { section: 'reports' as const, action: 'view' },
         badge: null,
       },

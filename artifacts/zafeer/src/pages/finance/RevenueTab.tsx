@@ -73,8 +73,7 @@ function PnlRow({ row }: { row: RevenuePnlRow }) {
 }
 
 export default function RevenueTab() {
-  const currentMonth = new Date().toISOString().slice(0, 7)
-  const [selectedMonth, setSelectedMonth] = useState(currentMonth)
+  const [selectedMonth, setSelectedMonth] = useState('')
   const [selectedProject, setSelectedProject] = useState('')
 
   const { data: rows = [], isLoading } = useRevenuePnl(selectedMonth || undefined, selectedProject || undefined)

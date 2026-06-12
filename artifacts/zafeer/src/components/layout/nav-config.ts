@@ -93,7 +93,7 @@ export const NAV_ITEMS: NavItem[] = [
   },
   {
     id: 'reports',
-    labelAr: 'التقارير والإحصائيات',
+    labelAr: 'تقارير المستندات',
     labelEn: 'Reports & Statistics',
     icon: BarChart3,
     to: '/reports',

@@ -451,7 +451,7 @@ export default function Reports() {
     <Layout>
       <div className="app-page app-tech-grid">
         <PageHeader
-          title="التقارير والإحصائيات"
+          title="تقارير المستندات"
           description={`عدد النتائج: ${filteredItems.length}`}
           className="mb-6"
           actions={
