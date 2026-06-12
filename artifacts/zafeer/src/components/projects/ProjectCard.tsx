@@ -1,4 +1,4 @@
-import { FolderKanban, Edit2, Trash2, Users, DollarSign } from 'lucide-react'
+﻿import { FolderKanban, Edit2, Trash2, Users, DollarSign } from 'lucide-react'
 import { Project } from '@/lib/supabase'
 import { usePermissions } from '@/utils/permissions'
 
@@ -101,7 +101,7 @@ export default function ProjectCard({ project, onEdit, onDelete, onView }: Proje
               إجمالي الرواتب:
             </span>
             <span className="font-bold text-neutral-900">
-              {project.total_salaries.toLocaleString('ar-SA')} ريال
+              {project.total_salaries.toLocaleString('en-US')} ريال
             </span>
           </div>
         )}

@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+﻿import { useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Plus, FileText, Copy, Trash2 } from 'lucide-react'
 import { useExtracts, useDuplicateExtract, useDeleteExtract } from '@/hooks/useExtracts'
@@ -57,8 +57,8 @@ function ExtractsContent({ embedded = false }: ExtractsContentProps = {}) {
     return [
       {
         label: 'إجمالي المستخلصات',
-        value: extracts.length.toLocaleString('ar-SA'),
-        helper: `${exported.toLocaleString('ar-SA')} مصدّر / ${drafts.toLocaleString('ar-SA')} مسودة`,
+        value: extracts.length.toLocaleString('en-US'),
+        helper: `${exported.toLocaleString('en-US')} مصدّر / ${drafts.toLocaleString('en-US')} مسودة`,
       },
       {
         label: 'قيمة الفواتير',
@@ -67,7 +67,7 @@ function ExtractsContent({ embedded = false }: ExtractsContentProps = {}) {
       },
       {
         label: 'إجمالي الموظفين',
-        value: employees.toLocaleString('ar-SA'),
+        value: employees.toLocaleString('en-US'),
         helper: 'مجموع الموظفين داخل المستخلصات الحالية',
       },
     ]
@@ -182,7 +182,7 @@ function ExtractsContent({ embedded = false }: ExtractsContentProps = {}) {
                         {extract.employee_count}
                       </td>
                       <td className="py-3 px-4 text-slate-800 font-mono">
-                        {Number(extract.total_amount).toLocaleString('ar-SA', { minimumFractionDigits: 2 })}
+                        {Number(extract.total_amount).toLocaleString('en-US', { minimumFractionDigits: 2 })}
                       </td>
                       <td className="py-3 px-4 text-center">
                         <StatusBadge status={extract.status} />

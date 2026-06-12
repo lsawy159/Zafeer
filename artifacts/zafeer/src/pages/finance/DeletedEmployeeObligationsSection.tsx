@@ -1,4 +1,4 @@
-import { useState } from 'react'
+﻿import { useState } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { AlertTriangle, ChevronDown, ChevronUp, Trash2, UserX } from 'lucide-react'
 import { toast } from 'sonner'
@@ -18,7 +18,7 @@ function getObligationTypeLabel(type: string): string {
 }
 
 function formatAmount(amount: number, currency: string): string {
-  return `${Number(amount).toLocaleString('ar-SA', { minimumFractionDigits: 0, maximumFractionDigits: 2 })} ${currency || 'ريال'}`
+  return `${Number(amount).toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 2 })} ${currency || 'ريال'}`
 }
 
 function DeleteObligationConfirmDialog({

@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react'
+﻿import React, { useState, useRef } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import Layout from '@/components/layout/Layout'
 import { toast } from 'sonner'
@@ -344,7 +344,7 @@ export default function ExtractDetail({ extractId: extractIdProp, onBack }: Prop
         </div>
         <div className="bg-white rounded-lg border border-slate-200 p-3 text-center">
           <div className="text-lg font-bold text-primary font-mono">
-            {Number(extract.total_amount).toLocaleString('ar-SA', { minimumFractionDigits: 2 })}
+            {Number(extract.total_amount).toLocaleString('en-US', { minimumFractionDigits: 2 })}
           </div>
           <div className="text-xs text-slate-500 mt-0.5">ريال إجمالي</div>
         </div>
@@ -394,7 +394,7 @@ export default function ExtractDetail({ extractId: extractIdProp, onBack }: Prop
                   </td>
                   <td className="py-2.5 px-3 text-slate-600">{line.profession_snapshot}</td>
                   <td className="py-2.5 px-3 text-center font-mono text-slate-600 text-xs">
-                    {Number(line.monthly_rate_snapshot).toLocaleString('ar-SA')}
+                    {Number(line.monthly_rate_snapshot).toLocaleString('en-US')}
                   </td>
                   <td className="py-2.5 px-3">
                     {canEdit ? (
@@ -408,7 +408,7 @@ export default function ExtractDetail({ extractId: extractIdProp, onBack }: Prop
                     )}
                   </td>
                   <td className="py-2.5 px-3 font-mono text-slate-800">
-                    {Number(line.amount).toLocaleString('ar-SA', { minimumFractionDigits: 2 })}
+                    {Number(line.amount).toLocaleString('en-US', { minimumFractionDigits: 2 })}
                   </td>
                   {canDelete && (
                     <td className="py-2.5 px-2">
@@ -437,7 +437,7 @@ export default function ExtractDetail({ extractId: extractIdProp, onBack }: Prop
                     {lines.reduce((s, l) => s + l.attendance_days, 0)} يوم
                   </td>
                   <td className="py-2.5 px-3 font-mono text-primary">
-                    {Number(extract.total_amount).toLocaleString('ar-SA', { minimumFractionDigits: 2 })} ريال
+                    {Number(extract.total_amount).toLocaleString('en-US', { minimumFractionDigits: 2 })} ريال
                   </td>
                   {canDelete && <td />}
                 </tr>

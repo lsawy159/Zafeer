@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+﻿import { useState, useEffect } from 'react'
 import { supabase, Project } from '@/lib/supabase'
 import { Users, DollarSign, TrendingUp, Download } from 'lucide-react'
 import { toast } from 'sonner'
@@ -211,10 +211,10 @@ export default function ProjectStatistics() {
                     {stat.employee_count}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-neutral-900">
-                    {stat.total_salaries.toLocaleString('ar-SA')} ريال
+                    {stat.total_salaries.toLocaleString('en-US')} ريال
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-neutral-900">
-                    {Math.round(stat.average_salary).toLocaleString('ar-SA')} ريال
+                    {Math.round(stat.average_salary).toLocaleString('en-US')} ريال
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-neutral-500">
                     <details className="cursor-pointer">
@@ -265,7 +265,7 @@ export default function ProjectStatistics() {
                 <td className="px-6 py-3 text-sm font-bold text-neutral-900">
                   {statistics
                     .reduce((sum, stat) => sum + stat.total_salaries, 0)
-                    .toLocaleString('ar-SA')}{' '}
+                    .toLocaleString('en-US')}{' '}
                   ريال
                 </td>
                 <td className="px-6 py-3 text-sm font-bold text-neutral-900">
@@ -273,7 +273,7 @@ export default function ProjectStatistics() {
                     ? Math.round(
                         statistics.reduce((sum, stat) => sum + stat.total_salaries, 0) /
                           statistics.reduce((sum, stat) => sum + stat.employee_count, 0)
-                      ).toLocaleString('ar-SA')
+                      ).toLocaleString('en-US')
                     : 0}{' '}
                   ريال
                 </td>

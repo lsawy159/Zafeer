@@ -1,4 +1,4 @@
-import { useState } from 'react'
+﻿import { useState } from 'react'
 import { Mail, RefreshCw, Send, X } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { Badge } from '@/components/ui/Badge'
@@ -17,7 +17,7 @@ function formatBackupType(type: string): string {
 }
 
 function formatBackupSize(bytes: number): string {
-  return `${bytes.toLocaleString('ar-SA')} بايت`
+  return `${bytes.toLocaleString('en-US')} بايت`
 }
 
 type Ctx = ReturnType<typeof useEmailSettings>

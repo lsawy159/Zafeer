@@ -1,4 +1,4 @@
-import { CheckCircle2, XCircle, AlertTriangle } from 'lucide-react'
+﻿import { CheckCircle2, XCircle, AlertTriangle } from 'lucide-react'
 import type { MatchedEmployee } from '@/utils/extractCalculations'
 
 interface AttendanceMatchSummaryProps {
@@ -76,7 +76,7 @@ export default function AttendanceMatchSummary({
                   <td className="py-1.5 px-2 text-slate-700">{r.employeeName}</td>
                   <td className="py-1.5 px-2 text-center text-slate-600">{r.attendanceDays}</td>
                   <td className="py-1.5 px-2 text-slate-700 font-mono">
-                    {r.amount.toLocaleString('ar-SA', { minimumFractionDigits: 2 })}
+                    {r.amount.toLocaleString('en-US', { minimumFractionDigits: 2 })}
                   </td>
                 </tr>
               ))}

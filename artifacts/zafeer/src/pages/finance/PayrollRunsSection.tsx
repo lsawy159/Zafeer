@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+﻿import { useMemo, useState } from 'react'
 import { AlertTriangle, Calendar, CheckCircle, Loader2, Plus, RefreshCw, RotateCcw, Wallet, XCircle } from 'lucide-react'
 import { toast } from 'sonner'
 import {
@@ -307,7 +307,7 @@ export default function PayrollRunsSection() {
       {
         label: 'مسيرات الرواتب',
         value: runs.length,
-        helper: `${finalized.toLocaleString('ar-SA')} معتمد`,
+        helper: `${finalized.toLocaleString('en-US')} معتمد`,
         icon: <Wallet className="h-5 w-5" />,
       },
       {
