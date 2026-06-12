@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react'
+import React, { useState, useRef } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import Layout from '@/components/layout/Layout'
 import { toast } from 'sonner'
@@ -139,6 +139,9 @@ export default function ExtractDetail({ extractId: extractIdProp, onBack }: Prop
   const params = useParams<{ id: string }>()
   const id = extractIdProp ?? params.id
   const navigate = useNavigate()
+  // لو embedded (بداخل تبويب) لا نضيف Layout لأنه موجود بالخارج
+  const W = ({ children }: { children: React.ReactNode }) =>
+    onBack ? <>{children}</> : <Layout>{children}</Layout>
   const permissions = usePermissions()
   // helper alias — avoids repeated destructure inside conditional
   const [showAddModal, setShowAddModal] = useState(false)
@@ -155,19 +158,19 @@ export default function ExtractDetail({ extractId: extractIdProp, onBack }: Prop
   if (!id) return null
 
   if (isLoading) {
-    return <Layout><div className="py-16 text-center text-slate-500">جاري التحميل...</div></Layout>
+    return <W><div className="py-16 text-center text-slate-500">جاري التحميل...</div></W>
   }
 
   if (!extract) {
     return (
-      <Layout>
+      <W>
         <div className="py-16 text-center text-slate-500">
           <p>لم يُعثر على المستخلص</p>
           <button onClick={() => onBack ? onBack() : navigate('/extracts')} className="mt-2 text-primary text-sm hover:underline">
             العودة للقائمة
           </button>
         </div>
-      </Layout>
+      </W>
     )
   }
 
@@ -262,7 +265,7 @@ export default function ExtractDetail({ extractId: extractIdProp, onBack }: Prop
   }
 
   return (
-    <Layout>
+    <W>
     <div className="max-w-4xl mx-auto py-6 px-4 space-y-5" dir="rtl">
       {/* Header */}
       <div className="flex items-start justify-between">
@@ -514,6 +517,6 @@ export default function ExtractDetail({ extractId: extractIdProp, onBack }: Prop
         </DialogContent>
       </Dialog>
     </div>
-    </Layout>
+    </W>
   )
 }

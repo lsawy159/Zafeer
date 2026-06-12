@@ -17,6 +17,8 @@ interface PaidObligation {
   title: string
   total_amount: number
   status: string
+  employee: { name: string; residence_number: string | number } | null
+  lines: { due_month: string }[]
 }
 
 function useCashPositionData() {
@@ -61,8 +63,12 @@ function usePaidObligations() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('employee_obligation_headers')
-        .select('id, employee_id, title, total_amount, status')
-        .eq('status', 'paid')
+        .select(`
+          id, employee_id, title, total_amount, status,
+          employee:employees(name, residence_number),
+          lines:employee_obligation_lines(due_month)
+        `)
+        .eq('status', 'completed')
         .order('title', { ascending: true })
 
       if (error) throw error
@@ -81,7 +87,7 @@ function useDeletePaidObligation() {
         .from('employee_obligation_headers')
         .delete()
         .eq('id', headerId)
-        .eq('status', 'paid') // حماية إضافية
+        .eq('status', 'completed') // حماية إضافية
       if (error) throw error
     },
     onSuccess: () => {
@@ -127,13 +133,29 @@ function PaidObligationsPopout({ onClose }: { onClose: () => void }) {
           <p className="text-center text-sm text-foreground-tertiary py-6">لا توجد التزامات مسددة</p>
         ) : (
           <div className="space-y-2">
-            {obligations.map((ob) => (
-              <div key={ob.id} className="flex items-center justify-between rounded-xl border border-border-100 bg-surface-secondary-50 px-3 py-2">
-                <div>
-                  <p className="text-sm font-medium text-foreground">{ob.title}</p>
-                  <p className="text-xs text-foreground-tertiary">
-                    {Number(ob.total_amount).toLocaleString('en-US', { minimumFractionDigits: 2 })} ر.س
-                  </p>
+            {obligations.map((ob) => {
+              const lastMonth = ob.lines.length > 0
+                ? ob.lines.map(l => l.due_month).sort().at(-1)
+                : null
+              const lastMonthLabel = lastMonth
+                ? new Date(lastMonth).toLocaleDateString('ar-SA', { year: 'numeric', month: 'long' })
+                : null
+              return (
+              <div key={ob.id} className="flex items-center justify-between rounded-xl border border-gray-200 bg-gray-50 px-3 py-2 gap-3">
+                <div className="min-w-0">
+                  <p className="text-sm font-medium text-foreground">{ob.employee?.name ?? '—'}</p>
+                  <p className="text-xs text-foreground-secondary">{ob.title}</p>
+                  <div className="flex flex-wrap gap-x-3 mt-0.5">
+                    {ob.employee?.residence_number && (
+                      <p className="text-xs text-foreground-tertiary">إقامة: {ob.employee.residence_number}</p>
+                    )}
+                    {lastMonthLabel && (
+                      <p className="text-xs text-foreground-tertiary">آخر قسط: {lastMonthLabel}</p>
+                    )}
+                    <p className="text-xs text-foreground-tertiary">
+                      {Number(ob.total_amount).toLocaleString('en-US', { minimumFractionDigits: 2 })} ر.س
+                    </p>
+                  </div>
                 </div>
                 {confirmId === ob.id ? (
                   <div className="flex gap-2">
@@ -160,7 +182,7 @@ function PaidObligationsPopout({ onClose }: { onClose: () => void }) {
                   </button>
                 )}
               </div>
-            ))}
+            )})}
           </div>
         )}
       </div>

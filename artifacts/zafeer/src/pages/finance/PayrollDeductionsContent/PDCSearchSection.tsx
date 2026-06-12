@@ -45,7 +45,7 @@ export default function PDCSearchSection(ctx: Ctx) {
         },
       ]} />
 
-      <div className="rounded-2xl border border-border-200 bg-surface p-4 space-y-4">
+      <div className="rounded-2xl border border-gray-200 bg-surface p-4 space-y-4">
         <div>
           <h2 className="text-xl font-bold text-gray-900">البحث التفاعلي في الاستقطاعات</h2>
           <p className="text-sm text-gray-600">
@@ -129,21 +129,21 @@ export default function PDCSearchSection(ctx: Ctx) {
         </div>
 
         {payrollInsightsLoading ? (
-          <div className="rounded-xl border border-border-200 bg-surface-secondary-50 px-4 py-8 text-center text-sm text-foreground-tertiary">
+          <div className="rounded-xl border border-gray-200 bg-gray-50 px-4 py-8 text-center text-sm text-foreground-tertiary">
             جاري تحميل بيانات البحث...
           </div>
         ) : filteredPayrollSearchRows.length === 0 ? (
-          <div className="rounded-xl border border-border-200 bg-surface-secondary-50 px-4 py-8 text-center text-sm text-foreground-tertiary">
+          <div className="rounded-xl border border-gray-200 bg-gray-50 px-4 py-8 text-center text-sm text-foreground-tertiary">
             لا توجد نتائج مطابقة للفلاتر الحالية.
           </div>
         ) : (
           <div
             ref={payrollTableContainerRef}
-            className="overflow-auto rounded-xl border border-border-200"
+            className="overflow-auto rounded-xl border border-gray-200"
             style={{ maxHeight: 520 }}
           >
             <table className="w-full text-sm">
-              <thead className="sticky top-0 z-10 bg-surface-secondary-50">
+              <thead className="sticky top-0 z-10 bg-white dark:bg-card border-b border-neutral-200 dark:border-neutral-800">
                 <tr>
                   <th className="px-4 py-3 text-right">الموظف</th>
                   <th className="px-4 py-3 text-right">الإقامة</th>
@@ -168,7 +168,7 @@ export default function PDCSearchSection(ctx: Ctx) {
                 {payrollRowVirtualizer.getVirtualItems().map((virtualRow) => {
                   const row = filteredPayrollSearchRows[virtualRow.index]
                   return (
-                    <tr key={row.id} className="border-t hover:bg-surface-secondary-50">
+                    <tr key={row.id} className="border-t hover:bg-gray-50">
                       <td className="px-4 py-3 font-medium text-foreground">
                         {row.employee_name_snapshot}
                       </td>

@@ -843,7 +843,7 @@ export default function PDCRunsSection(ctx: Ctx) {
           <div className="overflow-hidden rounded-[24px] border border-border-200 bg-surface shadow-sm">
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
-              <thead className="bg-surface-secondary-50/90">
+              <thead className="bg-gray-50">
                 <tr>
                   <th className="px-4 py-3 text-right">الموظف</th>
                   <th className="px-4 py-3 text-right">طريقة الصرف</th>
@@ -923,7 +923,7 @@ export default function PDCRunsSection(ctx: Ctx) {
                             عرض القسيمة
                           </button>
                         ) : (
-                          <span className="px-2 py-1 rounded-full text-xs border bg-gray-100 text-gray-600 border-border-200">
+                          <span className="whitespace-nowrap px-2 py-1 rounded-full text-xs border bg-gray-100 text-gray-600 border-gray-200">
                             غير مولدة
                           </span>
                         )}
@@ -945,7 +945,7 @@ export default function PDCRunsSection(ctx: Ctx) {
                 })}
               </tbody>
               <tfoot>
-                <tr className="border-t-2 border-border-200 bg-surface-secondary-50 font-semibold text-sm">
+                <tr className="border-t-2 border-gray-200 bg-gray-50 font-semibold text-sm">
                   <td className="px-4 py-3 text-foreground">المجموع</td>
                   <td className="px-4 py-3" />
                   <td className="px-4 py-3" />
