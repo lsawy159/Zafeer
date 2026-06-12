@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Excel Alert Generator
  * Converts daily_excel_logs into a consolidated XLSX file with multiple sheets
  * One sheet per alert type for easy organization
@@ -199,7 +199,7 @@ export async function generateAlertExcelWorkbook(): Promise<WorkBook | null> {
     Object.entries(alertsByType).forEach(([alertType, records]) => {
       const dedupedRecords = dedupeRecordsByEntity(records)
       const sheetData = dedupedRecords.map((record) => ({
-        التاريخ: new Date(record.created_at).toLocaleString('ar-SA', {
+        التاريخ: new Date(record.created_at).toLocaleString('en-US', {
           timeZone: 'Asia/Riyadh',
         }),
         الأولوية: getPriorityArabic(record.priority),

@@ -72,7 +72,7 @@ function usePaidObligations() {
         .order('title', { ascending: true })
 
       if (error) throw error
-      return (data ?? []) as PaidObligation[]
+      return (data ?? []) as unknown as PaidObligation[]
     },
     staleTime: 60_000,
     enabled: false, // يُحمَّل عند الطلب فقط

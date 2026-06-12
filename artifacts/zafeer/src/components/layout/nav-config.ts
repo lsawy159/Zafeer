@@ -10,7 +10,6 @@ import {
   Upload,
   Bell,
   Settings,
-  Shield,
   Sliders,
 } from 'lucide-react'
 import type { ComponentType } from 'react'
@@ -148,16 +147,6 @@ export const NAV_ITEMS: NavItem[] = [
     requiredPermission: 'manage_system',
     group: 'admin',
     order: 3,
-  },
-  {
-    id: 'security-management',
-    labelAr: 'إدارة الأمان',
-    labelEn: 'Security Management',
-    icon: Shield,
-    to: '/security-management',
-    requiredPermission: 'manage_security',
-    group: 'admin',
-    order: 4,
   },
 ]
 

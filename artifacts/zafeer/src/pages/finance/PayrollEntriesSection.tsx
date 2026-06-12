@@ -117,6 +117,12 @@ export default function PayrollEntriesSection() {
       </div>
 
       {/* Table */}
+      {entries.length === 300 && (
+        <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-2.5 text-sm text-amber-800" dir="rtl">
+          ⚠️ يتم عرض أول 300 نتيجة فقط. استخدم الفلاتر (الشهر / المشروع) لتضييق النتائج وضمان رؤية البيانات الكاملة.
+        </div>
+      )}
+
       {isLoading ? (
         <div className="flex justify-center py-8">
           <Loader2 className="h-6 w-6 animate-spin text-primary" />

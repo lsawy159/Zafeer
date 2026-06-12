@@ -1,4 +1,4 @@
-import {
+﻿import {
   createContext,
   useContext,
   useEffect,
@@ -576,7 +576,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                 : null
             const lockedUntil =
               typeof lockedUntilRaw === 'string' && lockedUntilRaw.length > 0
-                ? new Date(lockedUntilRaw).toLocaleString('ar-SA')
+                ? new Date(lockedUntilRaw).toLocaleString('en-US')
                 : null
 
             const lockoutMessage = lockedUntil
@@ -626,7 +626,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                   : null
               const lockedUntil =
                 typeof lockedUntilRaw === 'string' && lockedUntilRaw.length > 0
-                  ? new Date(lockedUntilRaw).toLocaleString('ar-SA')
+                  ? new Date(lockedUntilRaw).toLocaleString('en-US')
                   : null
               const lockMessage = lockedUntil
                 ? `تم قفل الحساب مؤقتاً بسبب تكرار محاولات الدخول. حاول مرة أخرى بعد ${lockedUntil}.`

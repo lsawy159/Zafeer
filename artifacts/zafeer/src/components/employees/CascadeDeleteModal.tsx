@@ -1,4 +1,4 @@
-import { AlertTriangle, Trash2, FileText } from 'lucide-react'
+﻿import { AlertTriangle, Trash2, FileText } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 
 export interface ObligationHeaderInfo {
@@ -59,7 +59,7 @@ function getStatusLabel(status: string): { label: string; className: string } {
 }
 
 function formatAmount(amount: number, currency: string): string {
-  return `${Number(amount).toLocaleString('ar-SA', { minimumFractionDigits: 0, maximumFractionDigits: 2 })} ${currency || 'ريال'}`
+  return `${Number(amount).toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 2 })} ${currency || 'ريال'}`
 }
 
 export default function CascadeDeleteModal({

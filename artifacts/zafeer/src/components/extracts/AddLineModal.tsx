@@ -1,4 +1,4 @@
-import { useState } from 'react'
+﻿import { useState } from 'react'
 import { toast } from 'sonner'
 import { AlertTriangle, X } from 'lucide-react'
 import { Input } from '@/components/ui/Input'
@@ -116,7 +116,7 @@ export default function AddLineModal({
               <div className="flex justify-between">
                 <span className="text-slate-500">السعر الشهري:</span>
                 {selectedRate ? (
-                  <span className="font-mono">{selectedRate.toLocaleString('ar-SA')} ريال</span>
+                  <span className="font-mono">{selectedRate.toLocaleString('en-US')} ريال</span>
                 ) : (
                   <span className="text-red-600 flex items-center gap-1">
                     <AlertTriangle className="h-3.5 w-3.5" />

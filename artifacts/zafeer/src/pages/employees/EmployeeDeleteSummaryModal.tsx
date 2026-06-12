@@ -1,4 +1,4 @@
-import { useState } from 'react'
+﻿import { useState } from 'react'
 import { AlertTriangle, FileText, Lock, Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { type ObligationHeaderInfo } from '@/components/employees/CascadeDeleteModal'
@@ -51,7 +51,7 @@ function getStatusLabel(status: string): { label: string; className: string } {
 }
 
 function formatAmount(amount: number, currency: string): string {
-  return `${Number(amount).toLocaleString('ar-SA', { minimumFractionDigits: 0, maximumFractionDigits: 2 })} ${currency || 'ريال'}`
+  return `${Number(amount).toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 2 })} ${currency || 'ريال'}`
 }
 
 function ObligationsList({ obligations }: { obligations: ObligationHeaderInfo[] }) {
@@ -144,13 +144,13 @@ export function EmployeeDeleteSummaryModal(props: EmployeeDeleteSummaryModalProp
                   <div className="flex flex-wrap gap-3">
                     {payrollCount > 0 && (
                       <div className="flex items-center gap-2 bg-white rounded-lg px-3 py-2 border border-green-200">
-                        <span className="text-lg font-bold text-green-700">{payrollCount.toLocaleString('ar-SA')}</span>
+                        <span className="text-lg font-bold text-green-700">{payrollCount.toLocaleString('en-US')}</span>
                         <span className="text-sm text-green-700">مسيرة راتب</span>
                       </div>
                     )}
                     {extractCount > 0 && (
                       <div className="flex items-center gap-2 bg-white rounded-lg px-3 py-2 border border-green-200">
-                        <span className="text-lg font-bold text-green-700">{extractCount.toLocaleString('ar-SA')}</span>
+                        <span className="text-lg font-bold text-green-700">{extractCount.toLocaleString('en-US')}</span>
                         <span className="text-sm text-green-700">مستخلص</span>
                       </div>
                     )}

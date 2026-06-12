@@ -1,4 +1,4 @@
-import { useState } from 'react'
+﻿import { useState } from 'react'
 import { toast } from 'sonner'
 import { Trash2, Plus, AlertTriangle } from 'lucide-react'
 import { Input } from '@/components/ui/Input'
@@ -162,7 +162,7 @@ export default function StepPreviewExport({
                   <td className="py-1.5 px-2 text-slate-700">{row.employeeName}</td>
                   <td className="py-1.5 px-2 text-slate-500">{row.profession || '—'}</td>
                   <td className="py-1.5 px-2 text-center font-mono text-slate-600">
-                    {row.monthlyRate.toLocaleString('ar-SA')}
+                    {row.monthlyRate.toLocaleString('en-US')}
                   </td>
                   <td className="py-1.5 px-2 text-center">
                     <Input
@@ -175,7 +175,7 @@ export default function StepPreviewExport({
                     />
                   </td>
                   <td className={`py-1.5 px-2 font-mono ${daysInvalid ? 'text-red-600' : 'text-slate-700'}`}>
-                    {daysInvalid ? '—' : row.amount.toLocaleString('ar-SA', { minimumFractionDigits: 2 })}
+                    {daysInvalid ? '—' : row.amount.toLocaleString('en-US', { minimumFractionDigits: 2 })}
                   </td>
                   <td className="py-1.5 px-1">
                     <button
@@ -205,7 +205,7 @@ export default function StepPreviewExport({
                   {rows.reduce((s, r) => s + r.attendanceDays, 0)} يوم
                 </td>
                 <td className="py-2 px-2 font-mono text-slate-800">
-                  {totalAmount.toLocaleString('ar-SA', { minimumFractionDigits: 2 })} ريال
+                  {totalAmount.toLocaleString('en-US', { minimumFractionDigits: 2 })} ريال
                 </td>
                 <td />
               </tr>
@@ -262,7 +262,7 @@ export default function StepPreviewExport({
               {' | '}
               السعر: {' '}
               {selectedRate ? (
-                <span className="text-slate-700 font-mono">{selectedRate.toLocaleString('ar-SA')} ريال/شهر</span>
+                <span className="text-slate-700 font-mono">{selectedRate.toLocaleString('en-US')} ريال/شهر</span>
               ) : (
                 <span className="text-red-600 flex items-center gap-1 inline-flex">
                   <AlertTriangle className="h-3 w-3" />بلا سعر — لن يمكن الإضافة

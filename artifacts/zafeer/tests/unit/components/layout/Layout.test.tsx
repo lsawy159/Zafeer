@@ -144,7 +144,7 @@ describe('Layout payroll navigation visibility', () => {
       </QueryClientProvider>
     )
 
-    expect(screen.getAllByText('التقارير').length).toBeGreaterThan(0)
+    expect(screen.getAllByText('تقارير المستندات').length).toBeGreaterThan(0)
     expect(screen.queryByText('الرواتب والاستقطاعات')).not.toBeInTheDocument()
     expect(screen.queryByText('المالية')).not.toBeInTheDocument()
   })

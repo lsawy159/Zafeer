@@ -1,4 +1,4 @@
-import { useState } from 'react'
+﻿import { useState } from 'react'
 import { AlertCircle, FileText, Lock, Trash2 } from 'lucide-react'
 import { Employee, Company } from '@/lib/supabase'
 import { Button } from '@/components/ui/Button'
@@ -15,7 +15,7 @@ function getObligationTypeLabel(type: string): string {
 }
 
 function formatAmount(amount: number, currency: string): string {
-  return `${Number(amount).toLocaleString('ar-SA', { minimumFractionDigits: 0, maximumFractionDigits: 2 })} ${currency || 'ريال'}`
+  return `${Number(amount).toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 2 })} ${currency || 'ريال'}`
 }
 
 export function BulkDeleteModal({
@@ -94,13 +94,13 @@ export function BulkDeleteModal({
                   <div className="flex flex-wrap gap-3">
                     {(preview?.totalPayrollEntries ?? 0) > 0 && (
                       <div className="flex items-center gap-2 bg-white rounded-lg px-3 py-2 border border-green-200">
-                        <span className="text-lg font-bold text-green-700">{preview!.totalPayrollEntries.toLocaleString('ar-SA')}</span>
+                        <span className="text-lg font-bold text-green-700">{preview!.totalPayrollEntries.toLocaleString('en-US')}</span>
                         <span className="text-sm text-green-700">مسيرة راتب</span>
                       </div>
                     )}
                     {(preview?.totalExtractLines ?? 0) > 0 && (
                       <div className="flex items-center gap-2 bg-white rounded-lg px-3 py-2 border border-green-200">
-                        <span className="text-lg font-bold text-green-700">{preview!.totalExtractLines.toLocaleString('ar-SA')}</span>
+                        <span className="text-lg font-bold text-green-700">{preview!.totalExtractLines.toLocaleString('en-US')}</span>
                         <span className="text-sm text-green-700">مستخلص</span>
                       </div>
                     )}

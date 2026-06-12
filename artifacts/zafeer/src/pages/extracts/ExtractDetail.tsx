@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react'
+﻿import React, { useState, useRef } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import Layout from '@/components/layout/Layout'
 import { toast } from 'sonner'
@@ -140,7 +140,7 @@ export default function ExtractDetail({ extractId: extractIdProp, onBack }: Prop
   const id = extractIdProp ?? params.id
   const navigate = useNavigate()
   // لو embedded (بداخل تبويب) لا نضيف Layout لأنه موجود بالخارج
-  const W = ({ children }: { children: React.ReactNode }) =>
+  const wrap = (children: React.ReactNode) =>
     onBack ? <>{children}</> : <Layout>{children}</Layout>
   const permissions = usePermissions()
   // helper alias — avoids repeated destructure inside conditional
@@ -158,19 +158,17 @@ export default function ExtractDetail({ extractId: extractIdProp, onBack }: Prop
   if (!id) return null
 
   if (isLoading) {
-    return <W><div className="py-16 text-center text-slate-500">جاري التحميل...</div></W>
+    return wrap(<div className="py-16 text-center text-slate-500">جاري التحميل...</div>)
   }
 
   if (!extract) {
-    return (
-      <W>
-        <div className="py-16 text-center text-slate-500">
-          <p>لم يُعثر على المستخلص</p>
-          <button onClick={() => onBack ? onBack() : navigate('/extracts')} className="mt-2 text-primary text-sm hover:underline">
-            العودة للقائمة
-          </button>
-        </div>
-      </W>
+    return wrap(
+      <div className="py-16 text-center text-slate-500">
+        <p>لم يُعثر على المستخلص</p>
+        <button onClick={() => onBack ? onBack() : navigate('/extracts')} className="mt-2 text-primary text-sm hover:underline">
+          العودة للقائمة
+        </button>
+      </div>
     )
   }
 
@@ -264,8 +262,7 @@ export default function ExtractDetail({ extractId: extractIdProp, onBack }: Prop
     }
   }
 
-  return (
-    <W>
+  return wrap(
     <div className="max-w-4xl mx-auto py-6 px-4 space-y-5" dir="rtl">
       {/* Header */}
       <div className="flex items-start justify-between">
@@ -344,7 +341,7 @@ export default function ExtractDetail({ extractId: extractIdProp, onBack }: Prop
         </div>
         <div className="bg-white rounded-lg border border-slate-200 p-3 text-center">
           <div className="text-lg font-bold text-primary font-mono">
-            {Number(extract.total_amount).toLocaleString('ar-SA', { minimumFractionDigits: 2 })}
+            {Number(extract.total_amount).toLocaleString('en-US', { minimumFractionDigits: 2 })}
           </div>
           <div className="text-xs text-slate-500 mt-0.5">ريال إجمالي</div>
         </div>
@@ -394,7 +391,7 @@ export default function ExtractDetail({ extractId: extractIdProp, onBack }: Prop
                   </td>
                   <td className="py-2.5 px-3 text-slate-600">{line.profession_snapshot}</td>
                   <td className="py-2.5 px-3 text-center font-mono text-slate-600 text-xs">
-                    {Number(line.monthly_rate_snapshot).toLocaleString('ar-SA')}
+                    {Number(line.monthly_rate_snapshot).toLocaleString('en-US')}
                   </td>
                   <td className="py-2.5 px-3">
                     {canEdit ? (
@@ -408,7 +405,7 @@ export default function ExtractDetail({ extractId: extractIdProp, onBack }: Prop
                     )}
                   </td>
                   <td className="py-2.5 px-3 font-mono text-slate-800">
-                    {Number(line.amount).toLocaleString('ar-SA', { minimumFractionDigits: 2 })}
+                    {Number(line.amount).toLocaleString('en-US', { minimumFractionDigits: 2 })}
                   </td>
                   {canDelete && (
                     <td className="py-2.5 px-2">
@@ -437,7 +434,7 @@ export default function ExtractDetail({ extractId: extractIdProp, onBack }: Prop
                     {lines.reduce((s, l) => s + l.attendance_days, 0)} يوم
                   </td>
                   <td className="py-2.5 px-3 font-mono text-primary">
-                    {Number(extract.total_amount).toLocaleString('ar-SA', { minimumFractionDigits: 2 })} ريال
+                    {Number(extract.total_amount).toLocaleString('en-US', { minimumFractionDigits: 2 })} ريال
                   </td>
                   {canDelete && <td />}
                 </tr>
@@ -517,6 +514,5 @@ export default function ExtractDetail({ extractId: extractIdProp, onBack }: Prop
         </DialogContent>
       </Dialog>
     </div>
-    </W>
   )
 }

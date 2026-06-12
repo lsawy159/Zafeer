@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+﻿import { useState, useEffect, useCallback } from 'react'
 import { createPortal } from 'react-dom'
 import { useModalScrollLock } from '@/hooks/useModalScrollLock'
 import { supabase, Project, Employee, Company, EmployeeWithRelations } from '@/lib/supabase'
@@ -169,7 +169,7 @@ export default function ProjectDetailModal({
                   </span>
                   <span className="text-blue-100 text-sm">{computedEmployeeCount} موظف</span>
                   <span className="text-blue-100 text-sm">
-                    {computedTotalSalaries.toLocaleString('ar-SA')} ريال
+                    {computedTotalSalaries.toLocaleString('en-US')} ريال
                   </span>
                 </div>
               </div>
@@ -225,7 +225,7 @@ export default function ProjectDetailModal({
                   <span className="text-sm font-medium text-neutral-700">إجمالي الرواتب</span>
                 </div>
                 <p className="text-2xl font-bold text-neutral-900">
-                  {computedTotalSalaries.toLocaleString('ar-SA')} ريال
+                  {computedTotalSalaries.toLocaleString('en-US')} ريال
                 </p>
               </div>
               <div className="bg-neutral-50 p-4 rounded-lg">
@@ -296,7 +296,7 @@ export default function ProjectDetailModal({
                         <div className="flex justify-between text-xs">
                           <span className="text-neutral-500">الراتب:</span>
                           <span className="font-medium text-neutral-700">
-                            {employee.salary.toLocaleString('ar-SA')} ريال
+                            {employee.salary.toLocaleString('en-US')} ريال
                           </span>
                         </div>
                       )}

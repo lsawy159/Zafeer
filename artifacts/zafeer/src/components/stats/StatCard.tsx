@@ -1,4 +1,4 @@
-import { type ReactNode } from 'react'
+﻿import { type ReactNode } from 'react'
 
 interface StatCardProps {
   label: string
@@ -62,7 +62,7 @@ export default function StatCard({ label, count, color, onClick, icon, badge, lo
         )}
       </div>
       <div className={`text-2xl font-bold mt-1 ${countColorMap[color]}`}>
-        {count.toLocaleString('ar-SA')}
+        {count.toLocaleString('en-US')}
       </div>
     </div>
   )

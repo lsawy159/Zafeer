@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback } from 'react'
+﻿import { useState, useRef, useCallback } from 'react'
 import { createPortal } from 'react-dom'
 import { useVirtualizer } from '@tanstack/react-virtual'
 import { X, Building2, User, Calendar, AlertCircle } from 'lucide-react'
@@ -111,7 +111,7 @@ export default function StatsDetailModal({
               }
               <h2 className="font-semibold text-gray-800 text-sm">{title}</h2>
               <span className="text-xs bg-gray-100 text-gray-600 rounded-full px-2 py-0.5">
-                {count.toLocaleString('ar-SA')}
+                {count.toLocaleString('en-US')}
               </span>
             </div>
             <button

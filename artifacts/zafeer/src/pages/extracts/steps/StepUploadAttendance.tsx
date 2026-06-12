@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react'
+﻿import { useState, useRef } from 'react'
 import { toast } from 'sonner'
 import { Upload, Download, AlertTriangle, Table } from 'lucide-react'
 import { saveAs } from 'file-saver'
@@ -285,7 +285,7 @@ export default function StepUploadAttendance({
                           />
                           {amount !== null && (
                             <span className="text-xs font-mono text-slate-500">
-                              {amount.toLocaleString('ar-SA', { minimumFractionDigits: 0 })} ريال
+                              {amount.toLocaleString('en-US', { minimumFractionDigits: 0 })} ريال
                             </span>
                           )}
                         </div>
