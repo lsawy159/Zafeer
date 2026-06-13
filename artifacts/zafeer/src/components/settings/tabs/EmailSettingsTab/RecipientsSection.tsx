@@ -45,6 +45,7 @@ interface Props {
   handleDeleteRecipient: Ctx['handleDeleteRecipient']
   handleRecipientPermissionChange: Ctx['handleRecipientPermissionChange']
   resetAddRecipientForm: Ctx['resetAddRecipientForm']
+  canEdit: boolean
 }
 
 export function RecipientsSection({
@@ -59,6 +60,7 @@ export function RecipientsSection({
   isBusy,
   handleAddRecipient, handleDeleteRecipient, handleRecipientPermissionChange,
   resetAddRecipientForm,
+  canEdit,
 }: Props) {
   return (
     <section className="rounded-2xl border border-border bg-surface p-5 shadow-sm">
@@ -74,16 +76,18 @@ export function RecipientsSection({
             </p>
           </div>
         </div>
-        <Button
-          type="button"
-          variant="secondary"
-          size="sm"
-          onClick={() => setShowAddRecipientForm((prev) => !prev)}
-          disabled={isBusy}
-        >
-          <Plus className="h-4 w-4" />
-          {showAddRecipientForm ? 'إغلاق' : 'إضافة مستلم'}
-        </Button>
+        {canEdit && (
+          <Button
+            type="button"
+            variant="secondary"
+            size="sm"
+            onClick={() => setShowAddRecipientForm((prev) => !prev)}
+            disabled={isBusy}
+          >
+            <Plus className="h-4 w-4" />
+            {showAddRecipientForm ? 'إغلاق' : 'إضافة مستلم'}
+          </Button>
+        )}
       </div>
 
       {isLoadingRecipients ? (
@@ -149,7 +153,7 @@ export function RecipientsSection({
               </div>
               <div className="flex items-center justify-end gap-2">
                 <Button type="button" variant="secondary" size="sm" onClick={resetAddRecipientForm}>إلغاء</Button>
-                <Button type="button" size="sm" onClick={handleAddRecipient} disabled={isBusy}>
+                <Button type="button" size="sm" onClick={handleAddRecipient} disabled={isBusy || !canEdit}>
                   {isSavingRecipients ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
                   إضافة
                 </Button>
@@ -170,25 +174,27 @@ export function RecipientsSection({
                     <div>
                       <p className="font-medium text-foreground" dir="ltr">{recipient.email}</p>
                       <p className="text-xs text-foreground-tertiary">
-                        تمت الإضافة: {new Date(recipient.added_at).toLocaleDateString('ar-SA')}
+                        تمت الإضافة: {new Date(recipient.added_at).toLocaleDateString('ar-EG')}
                       </p>
                     </div>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      onClick={() => void handleDeleteRecipient(recipient.id)}
-                      disabled={isBusy}
-                    >
-                      <Trash2 className="h-4 w-4" />
-                      حذف
-                    </Button>
+                    {canEdit && (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => void handleDeleteRecipient(recipient.id)}
+                        disabled={isBusy}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                        حذف
+                      </Button>
+                    )}
                   </div>
                   <div className="grid grid-cols-1 gap-3 lg:grid-cols-3">
                     <RecipientPermissionToggle
                       label="تنبيهات انتهاء الصلاحية"
                       checked={recipient.expiryAlerts}
-                      disabled={isBusy}
+                      disabled={isBusy || !canEdit}
                       onCheckedChange={(checked) =>
                         void handleRecipientPermissionChange(recipient.id, 'expiryAlerts', checked)
                       }
@@ -196,7 +202,7 @@ export function RecipientsSection({
                     <RecipientPermissionToggle
                       label="النسخ الاحتياطية"
                       checked={recipient.backupNotifications}
-                      disabled={isBusy}
+                      disabled={isBusy || !canEdit}
                       onCheckedChange={(checked) =>
                         void handleRecipientPermissionChange(recipient.id, 'backupNotifications', checked)
                       }
@@ -204,7 +210,7 @@ export function RecipientsSection({
                     <RecipientPermissionToggle
                       label="الملخص اليومي"
                       checked={recipient.dailyDigest}
-                      disabled={isBusy}
+                      disabled={isBusy || !canEdit}
                       onCheckedChange={(checked) =>
                         void handleRecipientPermissionChange(recipient.id, 'dailyDigest', checked)
                       }

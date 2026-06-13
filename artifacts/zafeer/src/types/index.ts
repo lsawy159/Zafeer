@@ -46,8 +46,6 @@ export type PermissionKey =
   | 'importExport.import'
   | 'importExport.export'
   | 'users.view'
-  | 'users.create'
-  | 'users.edit'
   | 'adminSettings.view'
   | 'adminSettings.edit'
   | 'backupSettings.view'

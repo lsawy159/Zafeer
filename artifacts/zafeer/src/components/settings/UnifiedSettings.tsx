@@ -3,9 +3,12 @@ import { useUnifiedSettings } from './UnifiedSettings/useUnifiedSettings'
 import { DEFAULT_SETTINGS } from './UnifiedSettings/unifiedSettingsConfig'
 import { EmployeeThresholdsSection } from './UnifiedSettings/EmployeeThresholdsSection'
 import { CompanyThresholdsSection } from './UnifiedSettings/CompanyThresholdsSection'
+import { usePermissions } from '@/utils/permissions'
 
-export default function UnifiedSettings({ isReadOnly = false }: { isReadOnly?: boolean }) {
-  const ctx = useUnifiedSettings({ isReadOnly })
+export default function UnifiedSettings({ isReadOnly }: { isReadOnly?: boolean } = {}) {
+  const { canEdit } = usePermissions()
+  const resolvedReadOnly = isReadOnly ?? !canEdit('alertsSettings')
+  const ctx = useUnifiedSettings({ isReadOnly: resolvedReadOnly })
   const {
     settings, setSettings,
     loading, saving,
@@ -74,7 +77,7 @@ export default function UnifiedSettings({ isReadOnly = false }: { isReadOnly?: b
           settings={settings}
           setSettings={setSettings}
           employeePreviews={employeePreviews}
-          isReadOnly={isReadOnly}
+          isReadOnly={resolvedReadOnly}
         />
       )}
 
@@ -83,7 +86,7 @@ export default function UnifiedSettings({ isReadOnly = false }: { isReadOnly?: b
           settings={settings}
           setSettings={setSettings}
           companyPreviews={companyPreviews}
-          isReadOnly={isReadOnly}
+          isReadOnly={resolvedReadOnly}
         />
       )}
 
@@ -115,7 +118,7 @@ export default function UnifiedSettings({ isReadOnly = false }: { isReadOnly?: b
               <input
                 type="checkbox"
                 checked={expiredSettings[key]}
-                disabled={isReadOnly}
+                disabled={resolvedReadOnly}
                 onChange={(event) => handleExpiredInclusionChange(key, event.target.checked)}
                 className="h-4 w-4 rounded border-neutral-300 text-primary focus:ring-primary"
               />
@@ -126,7 +129,7 @@ export default function UnifiedSettings({ isReadOnly = false }: { isReadOnly?: b
       </div>
 
       {/* أزرار الحفظ */}
-      {!isReadOnly && (
+      {!resolvedReadOnly && (
         <div className="flex items-center justify-end gap-2.5 bg-white rounded-lg shadow-sm border border-neutral-200 p-3">
           <button
             onClick={() => setSettings(DEFAULT_SETTINGS)}
@@ -146,7 +149,7 @@ export default function UnifiedSettings({ isReadOnly = false }: { isReadOnly?: b
         </div>
       )}
 
-      {isReadOnly && (
+      {resolvedReadOnly && (
         <div className="app-info-block rounded-lg p-3">
           <div className="flex items-start gap-2.5">
             <Eye className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />

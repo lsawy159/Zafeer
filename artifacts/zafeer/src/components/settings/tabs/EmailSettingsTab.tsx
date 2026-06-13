@@ -5,7 +5,10 @@ import { useEmailSettings } from './EmailSettingsTab/useEmailSettings'
 import { SMTPSection } from './EmailSettingsTab/SMTPSection'
 import { RecipientsSection } from './EmailSettingsTab/RecipientsSection'
 import { BackupEmailSection } from './EmailSettingsTab/BackupEmailSection'
+import { usePermissions } from '@/utils/permissions'
 export function EmailSettingsTab() {
+  const { canEdit } = usePermissions()
+  const canEditEmail = canEdit('emailSettings')
   const ctx = useEmailSettings()
   const {
     adminEmail, setAdminEmail,
@@ -53,6 +56,7 @@ export function EmailSettingsTab() {
         isLoadingEmailSettings={isLoadingEmailSettings}
         isSavingEmailSettings={isSavingEmailSettings}
         saveEmailSettings={saveEmailSettings}
+        canEdit={canEditEmail}
       />
 
       {/* تضمين المنتهي */}
@@ -84,7 +88,8 @@ export function EmailSettingsTab() {
                 type="checkbox"
                 checked={expiredSettings[key]}
                 onChange={(event) => handleExpiredInclusionChange(key, event.target.checked)}
-                className="h-4 w-4 rounded border-border text-primary focus:ring-primary"
+                disabled={!canEditEmail}
+                className="h-4 w-4 rounded border-border text-primary focus:ring-primary disabled:cursor-not-allowed disabled:opacity-50"
               />
             </label>
           ))}
@@ -112,6 +117,7 @@ export function EmailSettingsTab() {
         handleDeleteRecipient={handleDeleteRecipient}
         handleRecipientPermissionChange={handleRecipientPermissionChange}
         resetAddRecipientForm={resetAddRecipientForm}
+        canEdit={canEditEmail}
       />
 
       {/* إرسال تقرير التنبيهات */}
@@ -126,7 +132,7 @@ export function EmailSettingsTab() {
               <p className="text-xs text-foreground-tertiary">يولد CSV ويرسله إلى المسؤول مباشرة</p>
             </div>
           </div>
-          <Button type="button" onClick={handleSendCsvReport} disabled={csvSending} size="sm">
+          <Button type="button" onClick={handleSendCsvReport} disabled={csvSending || !canEditEmail} size="sm">
             {csvSending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
             إرسال الآن
           </Button>
@@ -150,7 +156,7 @@ export function EmailSettingsTab() {
           backupId={backupEmailModalTarget.id}
           backupDate={
             backupEmailModalTarget.completed_at
-              ? new Date(backupEmailModalTarget.completed_at).toLocaleDateString('ar-SA')
+              ? new Date(backupEmailModalTarget.completed_at).toLocaleDateString('ar-EG')
               : undefined
           }
           onClose={() => setBackupEmailModalTarget(null)}

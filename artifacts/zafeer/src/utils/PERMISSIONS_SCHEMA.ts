@@ -78,11 +78,11 @@ export const PERMISSION_SECTIONS = {
       'صفحة ملفات Excel فقط. صلاحيتها لا تعني إدارة إجراءات النقل نفسها، بل استيرادها وتصديرها كملفات.',
     actions: ['view', 'import', 'export'] as const,
   },
-  // [active] — users.{view,create,edit}; users.delete: [orphaned] removed — no frontend delete path for public.users
+  // [active] — users.view only; create/edit are admin-only (enforced via role check in Permissions.tsx)
   users: {
     label: 'المستخدمين',
-    description: 'الوصول إلى شاشة إدارة المستخدمين وصلاحياتهم.',
-    actions: ['view', 'create', 'edit'] as const,
+    description: 'الوصول إلى شاشة إدارة المستخدمين وصلاحياتهم. الإضافة والتعديل للمدير فقط.',
+    actions: ['view'] as const,
   },
   // [active] — extracts.{view,create,edit,delete,export}; served via /finance redirect
   extracts: {

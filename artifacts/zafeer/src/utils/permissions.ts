@@ -10,7 +10,7 @@ import {
 export interface PermissionMatrix {
   employees: { view: boolean; create: boolean; edit: boolean; delete: boolean }
   companies: { view: boolean; create: boolean; edit: boolean; delete: boolean }
-  users: { view: boolean; create: boolean; edit: boolean }
+  users: { view: boolean }
   adminSettings: { view: boolean; edit: boolean }
   backupSettings: { view: boolean; edit: boolean }
   sessionsManagement: { view: boolean; delete: boolean }

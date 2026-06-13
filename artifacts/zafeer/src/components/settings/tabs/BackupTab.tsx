@@ -1,6 +1,7 @@
 import React, { useState } from 'react'
 import { useMutation, useQuery } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
+import { usePermissions } from '@/utils/permissions'
 import { Button } from '@/components/ui/Button'
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner'
 import { EmptyState } from '@/components/ui/EmptyState'
@@ -47,7 +48,7 @@ const DAY_LABELS = ['الأحد', 'الاثنين', 'الثلاثاء', 'الأ�
 function formatNextRun(iso: string | null): string {
   if (!iso) return 'غير محدد'
   try {
-    return new Intl.DateTimeFormat('ar-SA', {
+    return new Intl.DateTimeFormat('ar-EG', {
       dateStyle: 'medium',
       timeStyle: 'short',
       hour12: true,
@@ -62,9 +63,10 @@ function formatNextRun(iso: string | null): string {
 interface ScheduleFormProps {
   initial: BackupSettings
   onSaved: () => void
+  canEdit: boolean
 }
 
-function ScheduleForm({ initial, onSaved }: ScheduleFormProps) {
+function ScheduleForm({ initial, onSaved, canEdit }: ScheduleFormProps) {
   const [form, setForm] = useState<BackupSettings>(initial)
   const [dirty, setDirty] = useState(false)
   const [saveStarted, setSaveStarted] = useState(false)
@@ -263,7 +265,7 @@ function ScheduleForm({ initial, onSaved }: ScheduleFormProps) {
         </div>
       )}
 
-      {dirty && (
+      {dirty && canEdit && (
         <div className="flex justify-end">
           <Button
             onClick={() => {
@@ -332,6 +334,8 @@ const RESTORE_STATUS_AR: Record<string, string> = {
 }
 
 export function BackupTab(): React.JSX.Element {
+  const { canEdit } = usePermissions()
+  const canEditBackup = canEdit('backupSettings')
   const [csvDownloadingId, setCsvDownloadingId] = useState<string | null>(null)
   const [manualBackupStarted, setManualBackupStarted] = useState(false)
   const [showHistory, setShowHistory] = useState(false)
@@ -431,6 +435,7 @@ export function BackupTab(): React.JSX.Element {
       ) : settings ? (
         <ScheduleForm
           initial={settings}
+          canEdit={canEditBackup}
           onSaved={() => {
             refetchSettings()
             refetchHistory()
@@ -487,7 +492,7 @@ export function BackupTab(): React.JSX.Element {
               setManualBackupStarted(true)
               triggerMutation.mutate()
             }}
-            disabled={triggerMutation.isPending || manualBackupStarted}
+            disabled={triggerMutation.isPending || manualBackupStarted || !canEditBackup}
             className="flex items-center gap-2 min-w-[150px]"
             aria-label={triggerMutation.isPending ? 'جاري إنشاء النسخة' : 'إنشاء نسخة احتياطية الآن'}
           >
