@@ -8,6 +8,7 @@ type UpdateUserVariables = {
     full_name?: string
     role?: User['role']
     is_active?: boolean
+    email?: string
   }
 }
 

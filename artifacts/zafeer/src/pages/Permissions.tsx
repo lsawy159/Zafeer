@@ -73,6 +73,7 @@ export function PermissionsPanel({ embedded = true }: PermissionsPanelProps) {
   const [editUserName, setEditUserName] = useState('')
   const [editUserFullName, setEditUserFullName] = useState('')
   const [editUserRole, setEditUserRole] = useState('')
+  const [editUserEmail, setEditUserEmail] = useState('')
 
   const usersQuery = useQuery({
     queryKey: ['users', 'permissions'],
@@ -216,6 +217,7 @@ export function PermissionsPanel({ embedded = true }: PermissionsPanelProps) {
                                 setEditUserName(user.full_name || user.username || '')
                                 setEditUserFullName(user.full_name || '')
                                 setEditUserRole(user.role || 'user')
+                                setEditUserEmail(user.email || '')
                               }}
                               disabled={user.id === currentUser?.id}
                               className="inline-flex items-center gap-2 rounded-lg border border-border-200 px-3 py-1.5 text-xs font-semibold text-foreground transition hover:bg-surface-secondary-50 disabled:cursor-not-allowed disabled:opacity-40"
@@ -364,6 +366,7 @@ export function PermissionsPanel({ embedded = true }: PermissionsPanelProps) {
         userName={editUserName}
         currentFullName={editUserFullName}
         currentRole={editUserRole}
+        currentEmail={editUserEmail}
         onClose={() => setEditUserId(null)}
       />
     </PermissionGuard>
