@@ -4,7 +4,6 @@ import {
   Shield,
   Clock,
   Database as DatabaseIcon,
-  Bell,
   BarChart3,
   Users,
   AlertTriangle,
@@ -25,7 +24,6 @@ export type TabType =
   | 'sessions'
   | 'audit'
   | 'permissions'
-  | 'advanced-notifications'
   | 'email-settings'
   | 'alert-settings'
   | 'backup'
@@ -36,38 +34,10 @@ export const ALLOWED_TABS: TabType[] = [
   'sessions',
   'audit',
   'permissions',
-  'advanced-notifications',
   'email-settings',
   'alert-settings',
   'backup',
   'activity-logs',
-]
-
-export const LEGACY_SYSTEM_SETTINGS_KEYS = [
-  'system_timezone',
-  'system_language',
-  'system_currency',
-  'date_format',
-  'working_hours_start',
-  'working_hours_end',
-]
-
-export const NOTIFICATIONS_SETTINGS: GeneralSetting[] = [
-  {
-    setting_key: 'notification_frequency',
-    setting_value: 'immediate',
-    category: 'notifications',
-    description: 'تكرار الإشعارات',
-    setting_type: 'select',
-    options: ['immediate', 'hourly', 'daily', 'weekly'],
-  },
-  {
-    setting_key: 'urgent_notifications',
-    setting_value: true,
-    category: 'notifications',
-    description: 'تفعيل الإشعارات العاجلة',
-    setting_type: 'boolean',
-  },
 ]
 
 export function buildSettingsCategories(
@@ -115,14 +85,6 @@ export function buildSettingsCategories(
       description: 'تحديد صلاحيات كل مستخدم وتعيين الأدوار (مدير / مسؤول / مستخدم) والتحكم في ما يستطيع رؤيته وتعديله.',
       icon: Shield,
       component: PermissionsPanel,
-    },
-    {
-      key: 'advanced-notifications',
-      label: 'إعدادات الإشعارات المتقدمة',
-      description:
-        'التحكم في تكرار الإشعارات داخل التطبيق وتفعيل الإشعارات العاجلة.',
-      icon: Bell,
-      settings: NOTIFICATIONS_SETTINGS,
     },
     {
       key: 'email-settings',

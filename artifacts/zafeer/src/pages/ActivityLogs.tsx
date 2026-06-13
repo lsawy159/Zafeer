@@ -37,6 +37,14 @@ type EntityFilter = EntityFilterValue[]
 type DateFilter = 'all' | 'today' | 'week' | 'month'
 type ActivitySortField = 'created_at' | 'action' | 'entity_type'
 type SortDirection = 'asc' | 'desc'
+type ActivityLogUser = Pick<User, 'id' | 'email' | 'full_name' | 'username'>
+
+function getLocalMidnight(daysAgo = 0): Date {
+  const d = new Date()
+  d.setHours(0, 0, 0, 0)
+  if (daysAgo) d.setDate(d.getDate() - daysAgo)
+  return d
+}
 
 function compareActivityLogs(
   left: ActivityLog,
@@ -112,7 +120,8 @@ export default function ActivityLogs({ embedded = false }: { embedded?: boolean 
 
   const [logs, setLogs] = useState<ActivityLog[]>([])
   const [loading, setLoading] = useState(true)
-  const [usersMap, setUsersMap] = useState<Map<string, User>>(new Map())
+  const [totalDbCount, setTotalDbCount] = useState<number | null>(null)
+  const [usersMap, setUsersMap] = useState<Map<string, ActivityLogUser>>(new Map())
   const [searchTerm, setSearchTerm] = useState('')
   const [actionFilter, setActionFilter] = useState<ActionFilter>([])
   const [entityFilter, setEntityFilter] = useState<EntityFilter>([])
@@ -124,6 +133,7 @@ export default function ActivityLogs({ embedded = false }: { embedded?: boolean 
   const [showDeleteModal, setShowDeleteModal] = useState(false)
   const [deleteAllMode, setDeleteAllMode] = useState(false)
   const [deleteFromDatabase, setDeleteFromDatabase] = useState(false)
+  const [deleteConfirmWord, setDeleteConfirmWord] = useState('')
   const [deleting, setDeleting] = useState(false)
   const [currentPage, setCurrentPage] = useState(1)
   const [itemsPerPage, setItemsPerPage] = useState(20)
@@ -132,15 +142,14 @@ export default function ActivityLogs({ embedded = false }: { embedded?: boolean 
     loadLogs()
   }, [])
 
-  // Debounce search term to reduce re-computation
   const debouncedSearchTerm = useDebouncedValue(searchTerm, 300)
 
-  // Reset to first page when filters change
+  // Reset page + clear selection when filters change
   useEffect(() => {
     setCurrentPage(1)
+    setSelectedLogIds(new Set())
   }, [debouncedSearchTerm, actionFilter, entityFilter, dateFilter, sortField, sortDirection])
 
-  // إغلاق بطاقة التفاصيل عند الضغط على Escape
   useEffect(() => {
     const handleEscape = (event: KeyboardEvent) => {
       if (event.key === 'Escape' && selectedLog) {
@@ -153,7 +162,6 @@ export default function ActivityLogs({ embedded = false }: { embedded?: boolean 
     }
   }, [selectedLog])
 
-  // التحقق من صلاحية العرض بدون إرجاع مبكر لتعزيز ترتيب الـ Hooks
   const unauthorized = !canView('activityLogs')
 
   async function loadLogs() {
@@ -170,7 +178,12 @@ export default function ActivityLogs({ embedded = false }: { embedded?: boolean 
       if (error) throw error
       setLogs(data || [])
 
-      // جلب بيانات المستخدمين
+      // عدد السجلات الكلي في قاعدة البيانات (بدون limit)
+      const { count } = await supabase
+        .from('activity_log')
+        .select('id', { count: 'exact', head: true })
+      if (count != null) setTotalDbCount(count)
+
       const userIds = new Set<string>()
       data?.forEach((log) => {
         if (log.user_id) {
@@ -187,17 +200,13 @@ export default function ActivityLogs({ embedded = false }: { embedded?: boolean 
         if (usersError) {
           console.error('Error loading users:', usersError)
         } else if (usersData) {
-          const users = new Map<string, User>()
-          usersData.forEach((user) => {
-            users.set(user.id, {
-              id: user.id,
-              username: user.username || user.email.split('@')[0],
-              email: user.email,
-              full_name: user.full_name,
-              role: 'user' as const,
-              permissions: {},
-              is_active: true,
-              created_at: new Date().toISOString(),
+          const users = new Map<string, ActivityLogUser>()
+          usersData.forEach((u) => {
+            users.set(u.id, {
+              id: u.id,
+              username: u.username || u.email.split('@')[0],
+              email: u.email,
+              full_name: u.full_name,
             })
           })
           setUsersMap(users)
@@ -214,7 +223,6 @@ export default function ActivityLogs({ embedded = false }: { embedded?: boolean 
   const filteredLogs = useMemo(
     () =>
       logs.filter((log) => {
-        // فلتر البحث
         if (debouncedSearchTerm) {
           const search = debouncedSearchTerm.toLowerCase()
           const matchesAction = log.action.toLowerCase().includes(search)
@@ -223,27 +231,20 @@ export default function ActivityLogs({ embedded = false }: { embedded?: boolean 
           if (!matchesAction && !matchesEntity && !matchesDetails) return false
         }
 
-        // فلتر العملية - تحسين المطابقة
         if (!matchesActionFilter(log.action, actionFilter)) return false
         if (!matchesEntityFilter(log.entity_type, entityFilter)) return false
 
         if (dateFilter !== 'all') {
           if (dateFilter === 'today') {
-            if (new Date(log.created_at).toDateString() !== new Date().toDateString()) return false
+            if (new Date(log.created_at) < getLocalMidnight()) return false
           }
 
           if (dateFilter === 'week') {
-            const now = new Date()
-            const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate())
-            const weekAgo = new Date(todayStart.getTime() - 7 * 24 * 60 * 60 * 1000)
-            if (new Date(log.created_at) < weekAgo) return false
+            if (new Date(log.created_at) < getLocalMidnight(7)) return false
           }
 
           if (dateFilter === 'month') {
-            const now = new Date()
-            const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate())
-            const monthAgo = new Date(todayStart.getTime() - 30 * 24 * 60 * 60 * 1000)
-            if (new Date(log.created_at) < monthAgo) return false
+            if (new Date(log.created_at) < getLocalMidnight(30)) return false
           }
         }
 
@@ -252,17 +253,16 @@ export default function ActivityLogs({ embedded = false }: { embedded?: boolean 
     [logs, debouncedSearchTerm, actionFilter, entityFilter, dateFilter, sortField, sortDirection]
   )
 
-  // حساب الإحصائيات (باستخدام filteredLogs) مع حساب التواريخ داخل useMemo
   const todayLogs = useMemo(() => {
-    const today = new Date().toDateString()
-    return filteredLogs.filter((log) => new Date(log.created_at).toDateString() === today)
+    const midnight = getLocalMidnight()
+    return filteredLogs.filter((log) => new Date(log.created_at) >= midnight)
   }, [filteredLogs])
+
   const weekLogs = useMemo(() => {
-    const now = new Date()
-    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate())
-    const weekAgo = new Date(today.getTime() - 7 * 24 * 60 * 60 * 1000)
+    const weekAgo = getLocalMidnight(7)
     return filteredLogs.filter((log) => new Date(log.created_at) >= weekAgo)
   }, [filteredLogs])
+
   const employeeLogs = useMemo(
     () => filteredLogs.filter((log) => log.entity_type?.toLowerCase() === 'employee'),
     [filteredLogs]
@@ -306,13 +306,18 @@ export default function ActivityLogs({ embedded = false }: { embedded?: boolean 
     [filteredLogs]
   )
 
-  // Pagination calculations
+  const filteredTotal = filteredLogs.length
+  const computedTotalPages = Math.ceil(filteredTotal / itemsPerPage)
+
+  // Clamp currentPage when filtered results shrink
+  useEffect(() => {
+    if (computedTotalPages > 0 && currentPage > computedTotalPages) {
+      setCurrentPage(computedTotalPages)
+    }
+  }, [computedTotalPages, currentPage])
+
   const startIndex = (currentPage - 1) * itemsPerPage
-  const endIndex = Math.min(startIndex + itemsPerPage, filteredLogs.length)
-  const totalPages = useMemo(
-    () => Math.ceil(filteredLogs.length / itemsPerPage),
-    [filteredLogs, itemsPerPage]
-  )
+  const endIndex = Math.min(startIndex + itemsPerPage, filteredTotal)
   const paginatedLogs = useMemo(
     () => filteredLogs.slice(startIndex, endIndex),
     [filteredLogs, startIndex, endIndex]
@@ -322,19 +327,16 @@ export default function ActivityLogs({ embedded = false }: { embedded?: boolean 
     paginatedLogs.length > 0 && paginatedLogs.every((log) => selectedLogIds.has(log.id))
   const someSelected = paginatedLogs.some((log) => selectedLogIds.has(log.id)) && !allSelected
 
-  // دوال التحديد والحذف
   const handleSelectAll = useCallback(() => {
     const pageSlice = filteredLogs.slice(startIndex, endIndex)
     if (
       selectedLogIds.size === pageSlice.length &&
       pageSlice.every((log) => selectedLogIds.has(log.id))
     ) {
-      // إلغاء تحديد جميع العناصر في الصفحة الحالية
       const newSelected = new Set(selectedLogIds)
       pageSlice.forEach((log) => newSelected.delete(log.id))
       setSelectedLogIds(newSelected)
     } else {
-      // تحديد جميع العناصر في الصفحة الحالية
       const newSelected = new Set(selectedLogIds)
       pageSlice.forEach((log) => newSelected.add(log.id))
       setSelectedLogIds(newSelected)
@@ -360,7 +362,8 @@ export default function ActivityLogs({ embedded = false }: { embedded?: boolean 
       return
     }
     setDeleteAllMode(false)
-    setDeleteFromDatabase(false) // افتراضي: حذف من العرض فقط
+    setDeleteFromDatabase(false)
+    setDeleteConfirmWord('')
     setShowDeleteModal(true)
   }, [selectedLogIds])
 
@@ -370,16 +373,14 @@ export default function ActivityLogs({ embedded = false }: { embedded?: boolean 
       return
     }
     setDeleteAllMode(true)
-    setDeleteFromDatabase(false) // افتراضي: حذف المعروض فقط
+    setDeleteFromDatabase(false)
+    setDeleteConfirmWord('')
     setShowDeleteModal(true)
   }, [filteredLogs])
 
-  // دالة لحذف جميع السجلات من قاعدة البيانات
   const deleteAllFromDatabase = async (): Promise<number> => {
     let totalDeleted = 0
     const batchSize = 500
-
-    // جلب جميع IDs من قاعدة البيانات بدون limit
     let hasMore = true
     let offset = 0
 
@@ -402,7 +403,6 @@ export default function ActivityLogs({ embedded = false }: { embedded?: boolean 
 
       const batchIds = batchData.map((log) => log.id)
 
-      // حذف الدفعة
       const { data: deletedData, error: deleteError } = await supabase
         .from('activity_log')
         .delete()
@@ -419,7 +419,6 @@ export default function ActivityLogs({ embedded = false }: { embedded?: boolean 
 
       logger.debug(`[ActivityLogs] Deleted batch: ${actualDeleted} rows, Total: ${totalDeleted}`)
 
-      // إذا كانت الدفعة أقل من batchSize، يعني وصلنا للنهاية
       if (batchData.length < batchSize) {
         hasMore = false
       } else {
@@ -440,7 +439,6 @@ export default function ActivityLogs({ embedded = false }: { embedded?: boolean 
     try {
       if (deleteAllMode) {
         if (deleteFromDatabase) {
-          // حذف جميع السجلات من قاعدة البيانات
           logger.debug('[ActivityLogs] Starting delete of ALL logs from database')
 
           const totalDeleted = await deleteAllFromDatabase()
@@ -458,18 +456,17 @@ export default function ActivityLogs({ embedded = false }: { embedded?: boolean 
           setUsersMap(new Map())
           await loadLogs()
         } else {
-          // حذف السجلات المعروضة فقط
-          const allIds = logs.map((log) => log.id)
+          // حذف السجلات المفلترة المعروضة فقط — وليس جميع logs
+          const allIds = filteredLogs.map((log) => log.id)
 
           if (allIds.length === 0) {
-            toast.error('لا توجد نشاطات للحذف')
+            toast.info('لا توجد نشاطات للحذف')
             setDeleting(false)
             return
           }
 
-          logger.debug(`[ActivityLogs] Starting delete of ${allIds.length} visible logs`)
+          logger.debug(`[ActivityLogs] Starting delete of ${allIds.length} filtered logs`)
 
-          // حذف بالدفعات
           const batchSize = 500
           let deletedCount = 0
           let failedBatches = 0
@@ -520,7 +517,6 @@ export default function ActivityLogs({ embedded = false }: { embedded?: boolean 
           await loadLogs()
         }
       } else {
-        // حذف النشاطات المحددة
         const idsToDelete = Array.from(selectedLogIds)
         if (idsToDelete.length === 0) {
           toast.error('لم يتم تحديد أي نشاطات للحذف')
@@ -529,12 +525,10 @@ export default function ActivityLogs({ embedded = false }: { embedded?: boolean 
         }
 
         if (deleteFromDatabase) {
-          // حذف من قاعدة البيانات
           logger.debug(
             `[ActivityLogs] Starting delete of ${idsToDelete.length} selected logs from database`
           )
 
-          // حذف بالدفعات إذا كان العدد كبير (أكثر من 1000)
           const batchSize = 1000
           let deletedCount = 0
 
@@ -589,11 +583,9 @@ export default function ActivityLogs({ embedded = false }: { embedded?: boolean 
             toast.success(`تم حذف ${deletedCount} نشاط من قاعدة البيانات بنجاح`)
           }
 
-          // إعادة تحميل البيانات للتأكد من التحديث
           await loadLogs()
           setSelectedLogIds(new Set())
         } else {
-          // حذف من العرض فقط - إزالة السجلات المحددة من state فقط
           logger.debug(
             `[ActivityLogs] Removing ${idsToDelete.length} selected logs from display only`
           )
@@ -601,7 +593,6 @@ export default function ActivityLogs({ embedded = false }: { embedded?: boolean 
           const updatedLogs = logs.filter((log) => !idsToDelete.includes(log.id))
           setLogs(updatedLogs)
 
-          // إزالة المستخدمين الذين لم يعودوا موجودين في السجلات
           const remainingUserIds = new Set<string>()
           updatedLogs.forEach((log) => {
             if (log.user_id) {
@@ -609,11 +600,11 @@ export default function ActivityLogs({ embedded = false }: { embedded?: boolean 
             }
           })
 
-          const updatedUsersMap = new Map<string, User>()
+          const updatedUsersMap = new Map<string, ActivityLogUser>()
           remainingUserIds.forEach((userId) => {
-            const user = usersMap.get(userId)
-            if (user) {
-              updatedUsersMap.set(userId, user)
+            const u = usersMap.get(userId)
+            if (u) {
+              updatedUsersMap.set(userId, u)
             }
           })
           setUsersMap(updatedUsersMap)
@@ -626,6 +617,7 @@ export default function ActivityLogs({ embedded = false }: { embedded?: boolean 
       setShowDeleteModal(false)
       setDeleteAllMode(false)
       setDeleteFromDatabase(false)
+      setDeleteConfirmWord('')
     } catch (error: unknown) {
       console.error('Error deleting logs:', error)
       toast.error((error instanceof Error ? error.message : String(error)) || 'فشل في حذف النشاطات')
@@ -634,14 +626,19 @@ export default function ActivityLogs({ embedded = false }: { embedded?: boolean 
     }
   }
 
-  // Export to Excel
   const exportToExcel = useCallback(async () => {
+    if (totalDbCount != null && totalDbCount > logs.length) {
+      toast.warning(
+        `التصدير يشمل ${filteredLogs.length} سجل فقط (المعروض). قاعدة البيانات تحتوي ${totalDbCount.toLocaleString('ar-EG')} سجل إجمالاً.`
+      )
+    }
+
     const data = filteredLogs.map((log) => {
       let userDisplay = 'النظام'
       if (log.user_id) {
-        const user = usersMap.get(log.user_id)
-        if (user) {
-          userDisplay = `${user.full_name} (${user.username})`
+        const u = usersMap.get(log.user_id)
+        if (u) {
+          userDisplay = `${u.full_name} (${u.username})`
         } else {
           userDisplay = String(log.user_id).slice(0, 8) + '...'
         }
@@ -667,7 +664,7 @@ export default function ActivityLogs({ embedded = false }: { embedded?: boolean 
     })
     saveAs(blob, `سجل_النشاطات_${new Date().toISOString().split('T')[0]}.xlsx`)
     toast.success('تم تصدير البيانات بنجاح')
-  }, [filteredLogs, usersMap])
+  }, [filteredLogs, usersMap, logs.length, totalDbCount])
 
   const content = unauthorized ? (
     <div className="flex items-center justify-center h-64">
@@ -689,7 +686,14 @@ export default function ActivityLogs({ embedded = false }: { embedded?: boolean 
                 <h1 className="text-lg sm:text-xl lg:text-2xl font-bold text-neutral-900">
                   سجل النشاطات
                 </h1>
-                <p className="text-xs text-neutral-600 mt-0 sm:mt-0.5">تتبع الإجراءات</p>
+                <p className="text-xs text-neutral-600 mt-0 sm:mt-0.5">
+                  تتبع الإجراءات
+                  {totalDbCount != null && totalDbCount > logs.length && (
+                    <span className="text-orange-600 mr-1">
+                      — أحدث {logs.length.toLocaleString('ar-EG')} من {totalDbCount.toLocaleString('ar-EG')} إجمالاً
+                    </span>
+                  )}
+                </p>
               </div>
             </div>
             <div className="flex flex-wrap gap-2 text-xs sm:text-sm">
@@ -786,9 +790,9 @@ export default function ActivityLogs({ embedded = false }: { embedded?: boolean 
               setCurrentPage(1)
             }}
             currentPage={currentPage}
-            totalPages={totalPages}
+            totalPages={computedTotalPages}
             setCurrentPage={(n) => setCurrentPage(n)}
-            usersMap={usersMap}
+            usersMap={usersMap as Map<string, User>}
             getActionColor={getActionColor}
             getActionIcon={getActionIcon}
             getActionLabel={getActionLabel}
@@ -808,12 +812,16 @@ export default function ActivityLogs({ embedded = false }: { embedded?: boolean 
             deleteAllMode={deleteAllMode}
             deleteFromDatabase={deleteFromDatabase}
             setDeleteFromDatabase={setDeleteFromDatabase}
+            deleteConfirmWord={deleteConfirmWord}
+            setDeleteConfirmWord={setDeleteConfirmWord}
+            totalDbCount={totalDbCount}
             deleting={deleting}
             confirmDelete={confirmDelete}
             onClose={() => {
               setShowDeleteModal(false)
               setDeleteAllMode(false)
               setDeleteFromDatabase(false)
+              setDeleteConfirmWord('')
             }}
             selectedCount={selectedLogIds.size}
             visibleCount={filteredLogs.length}
@@ -822,7 +830,7 @@ export default function ActivityLogs({ embedded = false }: { embedded?: boolean 
           <LogDetailsModal
             open={Boolean(selectedLog)}
             log={selectedLog}
-            usersMap={usersMap}
+            usersMap={usersMap as Map<string, User>}
             onClose={() => setSelectedLog(null)}
             getActionColor={getActionColor}
             getActionIcon={getActionIcon}
@@ -832,7 +840,6 @@ export default function ActivityLogs({ embedded = false }: { embedded?: boolean 
             generateActivityDescription={generateActivityDescription}
           />
 
-          {/* End of main container */}
         </div>
   )
 

@@ -5,8 +5,6 @@ import { useEmailSettings } from './EmailSettingsTab/useEmailSettings'
 import { SMTPSection } from './EmailSettingsTab/SMTPSection'
 import { RecipientsSection } from './EmailSettingsTab/RecipientsSection'
 import { BackupEmailSection } from './EmailSettingsTab/BackupEmailSection'
-import { QueueStatsSection } from './EmailSettingsTab/QueueStatsSection'
-
 export function EmailSettingsTab() {
   const ctx = useEmailSettings()
   const {
@@ -25,7 +23,6 @@ export function EmailSettingsTab() {
     newRecipientDailyDigest, setNewRecipientDailyDigest,
     newRecipientError, setNewRecipientError,
     recentBackups, recentBackupsState,
-    queueStats, queueStatsLoading, queueStatsError,
     backupEmailModalTarget, setBackupEmailModalTarget,
     csvSending, csvSendMsg,
     expiredSettings,
@@ -36,7 +33,6 @@ export function EmailSettingsTab() {
     handleRecipientPermissionChange,
     handleSendCsvReport,
     loadRecentBackups,
-    loadQueueStats,
     handleExpiredInclusionChange,
     resetAddRecipientForm,
   } = ctx
@@ -147,13 +143,6 @@ export function EmailSettingsTab() {
         recentBackupsState={recentBackupsState}
         setBackupEmailModalTarget={setBackupEmailModalTarget}
         loadRecentBackups={loadRecentBackups}
-      />
-
-      <QueueStatsSection
-        queueStats={queueStats}
-        queueStatsLoading={queueStatsLoading}
-        queueStatsError={queueStatsError}
-        loadQueueStats={loadQueueStats}
       />
 
       {backupEmailModalTarget && (

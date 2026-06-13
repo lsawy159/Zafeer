@@ -5,6 +5,9 @@ interface DeleteConfirmModalProps {
   deleteAllMode: boolean
   deleteFromDatabase: boolean
   setDeleteFromDatabase: (v: boolean) => void
+  deleteConfirmWord: string
+  setDeleteConfirmWord: (v: string) => void
+  totalDbCount: number | null
   deleting: boolean
   confirmDelete: () => void | Promise<void>
   onClose: () => void
@@ -18,6 +21,9 @@ export function DeleteConfirmModal(props: DeleteConfirmModalProps) {
     deleteAllMode,
     deleteFromDatabase,
     setDeleteFromDatabase,
+    deleteConfirmWord,
+    setDeleteConfirmWord,
+    totalDbCount,
     deleting,
     confirmDelete,
     onClose,
@@ -26,6 +32,10 @@ export function DeleteConfirmModal(props: DeleteConfirmModalProps) {
   } = props
 
   if (!open) return null
+
+  // Confirm button disabled when "delete all from DB" and word not typed
+  const requiresConfirmWord = deleteAllMode && deleteFromDatabase
+  const confirmDisabled = deleting || (requiresConfirmWord && deleteConfirmWord !== 'حذف')
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm">
@@ -56,7 +66,7 @@ export function DeleteConfirmModal(props: DeleteConfirmModalProps) {
                   <div className="flex-1">
                     <div className="font-bold text-neutral-900 mb-1">حذف السجلات المعروضة فقط</div>
                     <div className="text-sm text-neutral-600">
-                      سيتم حذف {visibleCount} سجل المعروض حالياً في الصفحة
+                      سيتم حذف {visibleCount} سجل من النتائج المُفلترة المعروضة حالياً
                     </div>
                   </div>
                   {!deleteFromDatabase && (
@@ -81,8 +91,11 @@ export function DeleteConfirmModal(props: DeleteConfirmModalProps) {
                       حذف جميع السجلات من قاعدة البيانات
                     </div>
                     <div className="text-sm text-neutral-600">
-                      سيتم حذف <span className="font-bold text-red-600">جميع</span> السجلات من قاعدة
-                      البيانات بشكل نهائي
+                      سيتم حذف{' '}
+                      <span className="font-bold text-red-600">
+                        {totalDbCount != null ? totalDbCount.toLocaleString('ar-EG') : 'جميع'}{' '}
+                      </span>
+                      سجل من قاعدة البيانات بشكل نهائي
                     </div>
                     <div className="text-xs text-red-600 mt-2 font-medium">
                       ⚠️ تحذير: هذه العملية لا يمكن التراجع عنها!
@@ -93,6 +106,25 @@ export function DeleteConfirmModal(props: DeleteConfirmModalProps) {
                   )}
                 </div>
               </button>
+
+              {/* حقل التأكيد — يظهر فقط عند اختيار "حذف من قاعدة البيانات" */}
+              {deleteFromDatabase && (
+                <div className="mt-2">
+                  <label className="block text-sm font-medium text-neutral-700 mb-1">
+                    اكتب كلمة{' '}
+                    <span className="font-bold text-red-600 font-mono">حذف</span>{' '}
+                    للتأكيد:
+                  </label>
+                  <input
+                    type="text"
+                    value={deleteConfirmWord}
+                    onChange={(e) => setDeleteConfirmWord(e.target.value)}
+                    placeholder="حذف"
+                    dir="rtl"
+                    className="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-400 border-neutral-300"
+                  />
+                </div>
+              )}
             </div>
           ) : (
             <div className="space-y-4 mb-6">
@@ -163,7 +195,7 @@ export function DeleteConfirmModal(props: DeleteConfirmModalProps) {
             </button>
             <button
               onClick={confirmDelete}
-              disabled={deleting}
+              disabled={confirmDisabled}
               className="app-button-danger flex-1 justify-center"
             >
               {deleting ? (

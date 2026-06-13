@@ -40,6 +40,7 @@ export function useCreateUser() {
       try {
         await supabase.from('activity_log').insert({
           entity_type: 'user',
+          entity_id: createdUser.id,
           action: 'إنشاء مستخدم',
           details: {
             user_name: createdUser.full_name,

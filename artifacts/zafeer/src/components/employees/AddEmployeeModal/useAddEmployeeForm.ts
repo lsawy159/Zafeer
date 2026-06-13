@@ -451,6 +451,22 @@ export function useAddEmployeeForm({ isOpen, onClose, onSuccess, initialData }: 
       }
 
       toast.success('تم إضافة الموظف بنجاح')
+
+      if (insertedEmployee?.id) {
+        try {
+          await supabase.from('activity_log').insert({
+            entity_type: 'employee',
+            entity_id: insertedEmployee.id,
+            action: 'إنشاء موظف',
+            details: {
+              employee_name: insertedEmployee.name,
+              residence_number: insertedEmployee.residence_number,
+              company_name: (insertedEmployee as { company?: { name?: string } }).company?.name,
+            },
+          })
+        } catch { /* non-blocking */ }
+      }
+
       setFormData(createDefaultFormData())
       setPendingFile(null)
       setPendingFileError(null)

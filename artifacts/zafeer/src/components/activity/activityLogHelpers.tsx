@@ -426,6 +426,7 @@ export const generateActivityDescription = (log: ActivityLog): string | React.JS
   const employeeName = details.employee_name || details.name
   const companyName = details.company_name || details.company
   const unifiedNumber = details.unified_number
+  const residenceNumber = details.residence_number
 
   // ── handlers للـ entity types الجديدة ──
 
@@ -474,6 +475,16 @@ export const generateActivityDescription = (log: ActivityLog): string | React.JS
     const amount = details.total_amount ?? 0
     const verb = log.action.includes('حذف') ? 'حذف' : log.action.includes('تصدير') ? 'تصدير' : 'إنشاء'
     return `تم ${verb} مستخلص "${title}" — ${emp} موظف — إجمالي: ${amount} ريال`
+  }
+
+  if (entityType === 'payroll') {
+    const statusMap: Record<string, string> = { draft: 'مسودة', finalized: 'معتمد', cancelled: 'ملغي' }
+    const from = statusMap[String(details.from_status)] ?? String(details.from_status ?? '—')
+    const to = statusMap[String(details.to_status)] ?? String(details.to_status ?? '—')
+    const month = details.payroll_month
+      ? new Date(String(details.payroll_month)).toLocaleDateString('ar-SA', { month: 'long', year: 'numeric' })
+      : '—'
+    return `تم تغيير حالة مسير راتب ${month} من "${from}" إلى "${to}"${details.entry_count !== undefined ? ` — ${details.entry_count} موظف` : ''}`
   }
 
   if (entityType === 'obligation') {
@@ -551,7 +562,8 @@ export const generateActivityDescription = (log: ActivityLog): string | React.JS
     action.includes('إضافة')
   ) {
     if (entityType === 'employee' && employeeName) {
-      return `تم إنشاء موظف جديد باسم "${employeeName}"${companyName ? ` في المؤسسة "${companyName}"` : ''}.`
+      const empDisplay = residenceNumber ? `${employeeName} (${residenceNumber})` : employeeName
+      return `تم إنشاء موظف جديد "${empDisplay}"${companyName ? ` في المؤسسة "${companyName}"` : ''}.`
     } else if (entityType === 'company' && companyName) {
       const companyDisplay = unifiedNumber ? `${companyName} (${unifiedNumber})` : companyName
       return `تم إنشاء مؤسسة جديدة باسم "${companyDisplay}".`
@@ -571,7 +583,8 @@ export const generateActivityDescription = (log: ActivityLog): string | React.JS
     if (changedFieldLabels.length > 0) {
       const fieldNames = changedFieldLabels.join(' و ')
       if (entityType === 'employee' && employeeName) {
-        return `تم تحديث موظف "${employeeName}" - تحديث ${fieldNames}${companyName ? ` من ${companyName}` : ''}.`
+        const empDisplay = residenceNumber ? `${employeeName} (${residenceNumber})` : employeeName
+        return `تم تحديث موظف "${empDisplay}" - تحديث ${fieldNames}${companyName ? ` من ${companyName}` : ''}.`
       } else if (entityType === 'company' && companyName) {
         const companyDisplay = unifiedNumber ? `${companyName} (${unifiedNumber})` : companyName
         return `تم تحديث مؤسسة "${companyDisplay}" - تحديث ${fieldNames}.`
@@ -582,7 +595,8 @@ export const generateActivityDescription = (log: ActivityLog): string | React.JS
 
   if (action.includes('delete') || action.includes('remove') || action.includes('حذف')) {
     if (entityType === 'employee' && employeeName) {
-      return `تم حذف الموظف "${employeeName}"${companyName ? ` من المؤسسة "${companyName}"` : ''}.`
+      const empDisplay = residenceNumber ? `${employeeName} (${residenceNumber})` : employeeName
+      return `تم حذف الموظف "${empDisplay}"${companyName ? ` من المؤسسة "${companyName}"` : ''}.`
     } else if (entityType === 'company' && companyName) {
       const companyDisplay = unifiedNumber ? `${companyName} (${unifiedNumber})` : companyName
       return `تم حذف المؤسسة "${companyDisplay}".`
@@ -610,7 +624,8 @@ export const generateActivityDescription = (log: ActivityLog): string | React.JS
   }
 
   if (employeeName) {
-    return `تم تنفيذ العملية "${getActionLabel(log.action)}" على الموظف "${employeeName}".`
+    const empDisplay = residenceNumber ? `${employeeName} (${residenceNumber})` : employeeName
+    return `تم تنفيذ العملية "${getActionLabel(log.action)}" على الموظف "${empDisplay}".`
   } else if (companyName) {
     return `تم تنفيذ العملية "${getActionLabel(log.action)}" على المؤسسة "${companyName}".`
   } else {

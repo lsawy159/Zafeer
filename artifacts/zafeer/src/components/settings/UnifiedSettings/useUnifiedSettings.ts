@@ -74,7 +74,32 @@ export function useUnifiedSettings({ isReadOnly = false }: { isReadOnly?: boolea
     })
   }
 
+  const validateThresholdOrdering = (s: UnifiedSettingsData): { group: string } | null => {
+    const groups = [
+      { key: 'residence', label: 'إقامات الموظفين' },
+      { key: 'contract', label: 'عقود الموظفين' },
+      { key: 'health_insurance', label: 'التأمين الصحي' },
+      { key: 'hired_worker_contract', label: 'عقد الأجير' },
+      { key: 'commercial_reg', label: 'السجل التجاري' },
+      { key: 'power_subscription', label: 'اشتراك الكهرباء' },
+      { key: 'moqeem_subscription', label: 'اشتراك مقيم' },
+    ]
+    for (const { key, label } of groups) {
+      const urgent = s[`${key}_urgent_days`]
+      const high = s[`${key}_high_days`]
+      const medium = s[`${key}_medium_days`]
+      if (urgent > high || high > medium) return { group: label }
+    }
+    return null
+  }
+
   const handleSave = async () => {
+    const invalid = validateThresholdOrdering(settings)
+    if (invalid) {
+      toast.error(`ترتيب العتبات خاطئ في "${invalid.group}" — يجب: عاجل ≤ عالي ≤ متوسط`)
+      return
+    }
+
     setSaving(true)
     try {
       // حفظ إعدادات التنبيهات والحالات (موحدة للموظفين والمؤسسات)
