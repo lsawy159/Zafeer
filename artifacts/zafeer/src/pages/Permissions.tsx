@@ -186,7 +186,7 @@ export function PermissionsPanel({ embedded = true }: PermissionsPanelProps) {
                     <tr key={user.id} className="border-t border-border-100 text-sm text-foreground-secondary">
                       <td className="px-4 py-3">
                         <div className="font-semibold text-foreground">{user.full_name}</div>
-                        <div className="text-xs text-foreground-tertiary">{user.username}</div>
+                        <div className="text-xs text-foreground-tertiary">{user.email}</div>
                       </td>
                       <td className="px-4 py-3">
                         <RoleBadge role={user.role} />
