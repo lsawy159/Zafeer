@@ -297,7 +297,7 @@ export function useCompanyModal({ isOpen, company, onClose, onSuccess }: UseComp
           await logActivity('full_edit', changes, originalData as Record<string, unknown>, actualUpdateData, company.id, formData.name, unifiedNumber)
         }
       } else {
-        result = await supabase.from('companies').insert([companyData])
+        result = await supabase.from('companies').insert([companyData]).select('id').single()
         error = result.error
         if (!error) {
           const newCompanyData = companyData as Record<string, unknown>
@@ -307,6 +307,7 @@ export function useCompanyModal({ isOpen, company, onClose, onSuccess }: UseComp
           })
           await supabase.from('activity_log').insert({
             entity_type: 'company',
+            entity_id: (result.data as { id?: string } | null)?.id,
             action: 'إضافة مؤسسة جديدة',
             details: { company_name: formData.name, unified_number: newCompanyData.unified_number, created_fields: Object.keys(companyData) },
             old_data: JSON.stringify({}),

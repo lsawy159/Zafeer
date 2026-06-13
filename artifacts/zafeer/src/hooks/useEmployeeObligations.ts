@@ -24,6 +24,7 @@ export interface CreateEmployeeObligationPlanInput {
   status?: ObligationPlanStatus
   notes?: string | null
   employee_name?: string
+  residence_number?: number
 }
 
 interface CreateEmployeeObligationPlanResult {
@@ -145,9 +146,11 @@ export function useCreateEmployeeObligationPlan() {
       try {
         await supabase.from('activity_log').insert({
           entity_type: 'obligation',
+          entity_id: variables.employee_id,
           action: 'إنشاء التزام',
           details: {
             employee_name: variables.employee_name ?? '—',
+            residence_number: variables.residence_number,
             obligation_type: getObligationTypeLabel(variables.obligation_type),
             amount: variables.total_amount,
           },
@@ -213,6 +216,7 @@ export interface UpdateObligationPlanInput {
   plan: EmployeeObligationPlan
   employeeId: string
   employee_name?: string
+  residence_number?: number
   updates: {
     obligation_type: ObligationType
     title: string
@@ -256,13 +260,15 @@ export function useUpdateObligationPlan() {
         }
       }
     },
-    onSuccess: async (_, { employeeId, employee_name, updates }) => {
+    onSuccess: async (_, { employeeId, employee_name, residence_number, updates }) => {
       try {
         await supabase.from('activity_log').insert({
           entity_type: 'obligation',
+          entity_id: employeeId,
           action: 'تحديث التزام',
           details: {
             employee_name: employee_name ?? '—',
+            residence_number: residence_number,
             obligation_type: getObligationTypeLabel(updates.obligation_type),
             amount: updates.total_amount,
           },

@@ -121,6 +121,13 @@ export default function SessionsManager() {
   const handleConfirmTerminate = async () => {
     if (!sessionToTerminate) return
 
+    if (!canDeleteSessions) {
+      toast.error('ليس لديك صلاحية لإنهاء الجلسات')
+      setShowConfirmTerminate(false)
+      setSessionToTerminate(null)
+      return
+    }
+
     try {
       const { error } = await supabase
         .from('user_sessions')
@@ -302,12 +309,14 @@ export default function SessionsManager() {
                 <div className="w-3 h-3 bg-green-500 rounded-full"></div>
                 <span className="font-semibold">جلسة نشطة</span>
               </div>
-              <button
-                onClick={() => terminateSession(session)}
-                className="app-button-danger px-3 py-1 text-sm"
-              >
-                إنهاء الجلسة
-              </button>
+              {canDeleteSessions && (
+                <button
+                  onClick={() => terminateSession(session)}
+                  className="app-button-danger px-3 py-1 text-sm"
+                >
+                  إنهاء الجلسة
+                </button>
+              )}
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">

@@ -249,7 +249,7 @@ export function useEmployeesPage() {
       else if (changedFields.length > 1 && !action.includes('حذف')) actionName = `تحديث متعدد (${changedFields.length} حقول)`
       await supabase.from('activity_log').insert({
         entity_type: 'employee', entity_id: employeeId, action: actionName,
-        details: { employee_name: employee?.name, changes: translatedChanges, timestamp: new Date().toISOString() },
+        details: { employee_name: employee?.name, residence_number: employee?.residence_number, changes: translatedChanges, timestamp: new Date().toISOString() },
       })
     } catch (err) { logger.error('Error logging activity:', err) }
   }

@@ -330,6 +330,7 @@ export function useEmployeeCardLogic({
         action: actionName,
         details: {
           employee_name: employee.name,
+          residence_number: employee.residence_number,
           changes: detailedChanges,
           changes_simple: translatedChanges,
           timestamp: new Date().toISOString(),
@@ -498,24 +499,6 @@ export function useEmployeeCardLogic({
 
       await logActivity(actionType, changes, baselineData, newDataFull)
 
-      if (actualUpdateData.project_id !== undefined) {
-        await supabase.from('activity_log').insert({
-          entity_type: 'employee',
-          entity_id: employee.id,
-          action: 'project_transfer',
-          details: {
-            employee_name: employee.name,
-            from_project_id: (baselineData.project_id as string) ?? null,
-            from_project_name: (baselineData.project_name as string) ?? null,
-            to_project_id: (actualUpdateData.project_id as string) ?? null,
-            to_project_name: (actualUpdateData.project_name as string) ?? null,
-            timestamp: new Date().toISOString(),
-          },
-          old_data: baselineData,
-          new_data: newDataFull,
-        })
-      }
-
       if (Object.keys(actualUpdateData).length > 0) {
         setFormData((prev) => {
           const next = { ...prev }
@@ -644,6 +627,8 @@ export function useEmployeeCardLogic({
     try {
       await createEmployeeObligationPlan.mutateAsync({
         employee_id: employee.id,
+        employee_name: employee.name,
+        residence_number: employee.residence_number,
         obligation_type: obligationForm.obligation_type,
         total_amount: totalAmount,
         start_month: `${obligationForm.start_month}-01`,
@@ -686,6 +671,8 @@ export function useEmployeeCardLogic({
       await updateObligationPlan.mutateAsync({
         plan,
         employeeId: employee.id,
+        employee_name: employee.name,
+        residence_number: employee.residence_number,
         updates: {
           obligation_type: editPlanForm.obligation_type,
           title: editPlanForm.title.trim() || OBLIGATION_TYPE_LABELS[editPlanForm.obligation_type] || editPlanForm.obligation_type,

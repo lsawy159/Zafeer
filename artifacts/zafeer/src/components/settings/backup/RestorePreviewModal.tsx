@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { RotateCcw, AlertTriangle, CheckCircle, XCircle, Loader2 } from 'lucide-react'
 import type { BackupRecord } from '@/lib/backupService'
 import { triggerRestore, getRestoreHistoryEntry } from '@/lib/restoreService'
@@ -61,6 +61,13 @@ export function RestorePreviewModal({ backup, onClose }: Props) {
   const [restoreResult, setRestoreResult] = useState<RestoreResult | null>(null)
   const [restoreEntry, setRestoreEntry] = useState<RestoreHistoryRecord | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
+
+  useEffect(() => {
+    return () => {
+      if (intervalRef.current) clearInterval(intervalRef.current)
+    }
+  }, [])
 
   const backupDateFormatted = formatDate(backup.started_at)
   const canSubmit = confirmDate === backupDateFormatted && confirmWord === 'استعادة'
@@ -72,9 +79,11 @@ export function RestorePreviewModal({ backup, onClose }: Props) {
       setRestoreEntry(entry)
       if (entry.status === 'completed' || entry.status === 'failed') {
         clearInterval(interval)
+        intervalRef.current = null
         setStep('result')
       }
     }, 2000)
+    intervalRef.current = interval
     return interval
   }, [])
 
@@ -93,9 +102,13 @@ export function RestorePreviewModal({ backup, onClose }: Props) {
       }
 
       if (result.restore_id) {
-        const interval = await pollRestoreStatus(result.restore_id)
-        // Cleanup on unmount handled by setting step to result in poll
-        setTimeout(() => clearInterval(interval), 10 * 60 * 1000) // max 10 min poll
+        await pollRestoreStatus(result.restore_id)
+        setTimeout(() => {
+          if (intervalRef.current) {
+            clearInterval(intervalRef.current)
+            intervalRef.current = null
+          }
+        }, 10 * 60 * 1000)
       } else {
         setError(result.error_message_ar ?? 'حدث خطأ غير متوقع')
         setStep('result')
@@ -144,7 +157,7 @@ export function RestorePreviewModal({ backup, onClose }: Props) {
 
               <div>
                 <p className="text-sm font-medium text-neutral-700 mb-2">
-                  الجداول في هذه النسخة ({Object.keys(tableRecordCounts).length} جدول — {totalRecords.toLocaleString('ar-EG')} سجل)
+                  الجداول في هذه النسخة ({Object.keys(tableRecordCounts).length} جدول — {totalRecords.toLocaleString('ar-SA')} سجل)
                 </p>
                 <div className="border border-neutral-200 rounded-lg overflow-hidden">
                   <table className="w-full text-sm">
@@ -158,7 +171,7 @@ export function RestorePreviewModal({ backup, onClose }: Props) {
                       {Object.entries(tableRecordCounts).map(([table, count], idx) => (
                         <tr key={table} className={idx % 2 === 0 ? 'bg-white' : 'bg-neutral-50'}>
                           <td className="p-3 text-neutral-700">{TABLE_NAMES_AR[table] ?? table}</td>
-                          <td className="p-3 text-neutral-600 text-left font-mono">{count.toLocaleString('ar-EG')}</td>
+                          <td className="p-3 text-neutral-600 text-left font-mono">{count.toLocaleString('ar-SA')}</td>
                         </tr>
                       ))}
                     </tbody>

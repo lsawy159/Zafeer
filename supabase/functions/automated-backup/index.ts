@@ -1,4 +1,5 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.45.0'
+import { Resend } from 'https://esm.sh/resend@4.0.0'
 
 const CORS_HEADERS = {
   'Access-Control-Allow-Origin': '*',
@@ -59,6 +60,51 @@ async function gzipString(input: string): Promise<Uint8Array> {
     .stream()
     .pipeThrough(new CompressionStream('gzip'))
   return new Uint8Array(await new Response(stream).arrayBuffer())
+}
+
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+
+function formatDateUTC(iso: string): string {
+  const d = new Date(iso)
+  return `${String(d.getUTCDate()).padStart(2, '0')}/${String(d.getUTCMonth() + 1).padStart(2, '0')}/${d.getUTCFullYear()}`
+}
+
+function formatBytes(bytes: number): string {
+  if (!bytes) return '0 B'
+  const sizes = ['B', 'KB', 'MB', 'GB']
+  const i = Math.floor(Math.log(bytes) / Math.log(1024))
+  return (bytes / Math.pow(1024, i)).toFixed(1) + ' ' + sizes[i]
+}
+
+function buildScheduledEmailHtml(date: string, fileSize: number, signedUrl: string): string {
+  return `<!DOCTYPE html>
+<html dir="rtl" lang="ar">
+<head><meta charset="UTF-8"><title>نسخة احتياطية تلقائية — زفير</title></head>
+<body style="font-family:Tahoma,Arial,sans-serif;direction:rtl;background:#f9fafb;margin:0;padding:24px;">
+  <div style="max-width:560px;margin:0 auto;background:#fff;border-radius:12px;border:1px solid #e5e7eb;padding:32px;">
+    <h2 style="color:#111827;margin:0 0 8px;">نسخة احتياطية تلقائية — زفير</h2>
+    <p style="color:#6b7280;margin:0 0 24px;font-size:14px;">اكتملت النسخة الاحتياطية المجدولة بنجاح.</p>
+    <table style="width:100%;border-collapse:collapse;font-size:14px;margin-bottom:24px;">
+      <tr style="border-bottom:1px solid #e5e7eb;">
+        <td style="padding:10px 0;color:#6b7280;width:40%;">التاريخ</td>
+        <td style="padding:10px 0;color:#111827;font-weight:500;">${date}</td>
+      </tr>
+      <tr style="border-bottom:1px solid #e5e7eb;">
+        <td style="padding:10px 0;color:#6b7280;">النوع</td>
+        <td style="padding:10px 0;color:#111827;font-weight:500;">نسخة تلقائية</td>
+      </tr>
+      <tr>
+        <td style="padding:10px 0;color:#6b7280;">الحجم</td>
+        <td style="padding:10px 0;color:#111827;font-weight:500;">${formatBytes(fileSize)}</td>
+      </tr>
+    </table>
+    <a href="${signedUrl}" style="display:inline-block;background:#2563eb;color:#fff;text-decoration:none;padding:12px 24px;border-radius:8px;font-size:15px;font-weight:600;margin-bottom:16px;">
+      تحميل ملف النسخة (JSON)
+    </a>
+    <p style="color:#dc2626;font-size:13px;margin:8px 0 0;">⚠️ هذا الرابط صالح لمدة 7 أيام فقط.</p>
+  </div>
+</body>
+</html>`
 }
 
 Deno.serve(async (req: Request) => {
@@ -188,6 +234,65 @@ Deno.serve(async (req: Request) => {
       .single()
 
     if (updateError) throw new Error(`Failed to finalize backup record: ${updateError.message}`)
+
+    // Auto-email notification for scheduled backups
+    if (backupType === 'scheduled') {
+      try {
+        const RESEND_API_KEY = Deno.env.get('RESEND_API_KEY')
+        const FROM_EMAIL = Deno.env.get('RESEND_FROM_EMAIL') ?? 'onboarding@resend.dev'
+
+        if (RESEND_API_KEY) {
+          const { data: settingsRows } = await admin
+            .from('system_settings')
+            .select('setting_key, setting_value')
+            .in('setting_key', ['backup_email_notifications_enabled', 'backup_email_recipients'])
+
+          const sm: Record<string, unknown> = {}
+          for (const row of settingsRows ?? []) sm[row.setting_key] = row.setting_value
+
+          const notifyEnabled =
+            sm['backup_email_notifications_enabled'] === true ||
+            sm['backup_email_notifications_enabled'] === 'true'
+
+          if (notifyEnabled) {
+            const raw = sm['backup_email_recipients']
+            let recipients: string[] = []
+            if (Array.isArray(raw)) {
+              recipients = raw.filter((r): r is string => typeof r === 'string' && EMAIL_REGEX.test(r))
+            } else if (typeof raw === 'string') {
+              try {
+                const parsed = JSON.parse(raw)
+                if (Array.isArray(parsed)) {
+                  recipients = parsed.filter((r): r is string => typeof r === 'string' && EMAIL_REGEX.test(r))
+                }
+              } catch { /* malformed JSON */ }
+            }
+
+            if (recipients.length > 0) {
+              const { data: signedData } = await admin.storage
+                .from(BUCKET)
+                .createSignedUrl(filePath, 604800) // 7 days
+
+              const signedUrl = signedData?.signedUrl ?? ''
+              const date = formatDateUTC(new Date().toISOString())
+              const html = buildScheduledEmailHtml(date, gzSize, signedUrl)
+              const resend = new Resend(RESEND_API_KEY)
+
+              await Promise.allSettled(
+                recipients.map((to) =>
+                  resend.emails.send({
+                    from: FROM_EMAIL,
+                    to,
+                    subject: `نسخة احتياطية تلقائية — زفير | ${date}`,
+                    html,
+                  }),
+                ),
+              )
+            }
+          }
+        }
+      } catch { /* email failure must NOT mark backup as failed */ }
+    }
 
     return jsonResponse({ success: true, backup: updated })
   } catch (err) {

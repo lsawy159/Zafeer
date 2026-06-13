@@ -31,7 +31,10 @@ import {
   Shield,
   Play,
   Info,
+  ChevronDown,
+  ChevronUp,
 } from 'lucide-react'
+import { formatBytes } from '@/utils/formatBytes'
 
 const FREQUENCY_LABELS: Record<string, string> = {
   daily: 'يومي',
@@ -40,14 +43,6 @@ const FREQUENCY_LABELS: Record<string, string> = {
 }
 
 const DAY_LABELS = ['الأحد', 'الاثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة', 'السبت']
-
-function formatBytes(bytes: number): string {
-  if (!bytes || bytes === 0) return '0 B'
-  const k = 1024
-  const sizes = ['B', 'KB', 'MB', 'GB']
-  const i = Math.floor(Math.log(bytes) / Math.log(k))
-  return (bytes / Math.pow(k, i)).toFixed(1) + ' ' + sizes[i]
-}
 
 function formatNextRun(iso: string | null): string {
   if (!iso) return 'غير محدد'
@@ -339,6 +334,8 @@ const RESTORE_STATUS_AR: Record<string, string> = {
 export function BackupTab(): React.JSX.Element {
   const [csvDownloadingId, setCsvDownloadingId] = useState<string | null>(null)
   const [manualBackupStarted, setManualBackupStarted] = useState(false)
+  const [showHistory, setShowHistory] = useState(false)
+  const [showRestoreHistory, setShowRestoreHistory] = useState(false)
 
   // Backup settings
   const {
@@ -509,88 +506,135 @@ export function BackupTab(): React.JSX.Element {
         </div>
       </div>
 
-      {/* ── Backup History ── */}
-      <div>
-        <div className="mb-3 flex items-center justify-between">
-          <h4 className="text-sm font-semibold text-foreground">سجل النسخ الاحتياطية</h4>
-          <button
-            type="button"
-            onClick={() => refetchHistory()}
-            className="flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs text-foreground-tertiary hover:bg-surface-secondary transition-colors"
-          >
-            <RotateCcw className="h-3.5 w-3.5" />
-            تحديث
-          </button>
-        </div>
-
-        {historyLoading ? (
-          <div className="space-y-2">
-            <Skeleton className="h-16 w-full" />
-            <Skeleton className="h-16 w-full" />
-            <Skeleton className="h-16 w-full" />
+      {/* ── Backup History (collapsible) ── */}
+      <div className="rounded-xl border border-border bg-surface overflow-hidden">
+        <button
+          type="button"
+          onClick={() => setShowHistory((v) => !v)}
+          className="w-full flex items-center justify-between px-5 py-4 hover:bg-surface-secondary/40 transition-colors"
+        >
+          <div className="flex items-center gap-2">
+            <Database className="h-4 w-4 text-foreground-secondary" />
+            <span className="text-sm font-semibold text-foreground">سجل النسخ الاحتياطية</span>
+            {!historyLoading && (
+              <span className="text-xs text-foreground-tertiary">({backups.length} سجل)</span>
+            )}
           </div>
-        ) : (
-          <div className="space-y-2">
-            {backups.map((backup) => (
-              <BackupListItem
-                key={backup.id}
-                backup={backup}
-                onCsvDownload={handleCsvDownload}
-                csvDownloading={csvDownloadingId === backup.id}
-              />
-            ))}
+          <div className="flex items-center gap-2">
+            {showHistory && (
+              <button
+                type="button"
+                onClick={(e) => { e.stopPropagation(); refetchHistory() }}
+                className="flex items-center gap-1 rounded-lg px-2 py-1 text-xs text-foreground-tertiary hover:bg-surface-secondary transition-colors"
+              >
+                <RotateCcw className="h-3.5 w-3.5" />
+                تحديث
+              </button>
+            )}
+            {showHistory ? (
+              <ChevronUp className="h-4 w-4 text-foreground-tertiary" />
+            ) : (
+              <ChevronDown className="h-4 w-4 text-foreground-tertiary" />
+            )}
+          </div>
+        </button>
+
+        {showHistory && (
+          <div className="border-t border-border p-4">
+            {historyLoading ? (
+              <div className="space-y-2">
+                <Skeleton className="h-16 w-full" />
+                <Skeleton className="h-16 w-full" />
+                <Skeleton className="h-16 w-full" />
+              </div>
+            ) : backups.length === 0 ? (
+              <EmptyState title="لا توجد نسخ احتياطية" />
+            ) : (
+              <div className="space-y-2">
+                {backups.map((backup) => (
+                  <BackupListItem
+                    key={backup.id}
+                    backup={backup}
+                    onCsvDownload={handleCsvDownload}
+                    csvDownloading={csvDownloadingId === backup.id}
+                  />
+                ))}
+              </div>
+            )}
           </div>
         )}
       </div>
 
-      {/* ── Restore History ── */}
+      {/* ── Restore History (collapsible) ── */}
       {(restoreHistoryLoading || restoreHistory.length > 0) && (
-        <div>
-          <div className="mb-3 flex items-center justify-between">
-            <h4 className="text-sm font-semibold text-foreground">سجل عمليات الاستعادة</h4>
-            <button
-              type="button"
-              onClick={() => refetchRestoreHistory()}
-              className="flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs text-foreground-tertiary hover:bg-surface-secondary transition-colors"
-            >
-              <RotateCcw className="h-3.5 w-3.5" />
-              تحديث
-            </button>
-          </div>
-          <div className="border border-neutral-200 rounded-lg overflow-hidden">
-            <table className="w-full text-sm">
-              <thead className="bg-neutral-50">
-                <tr>
-                  <th className="text-right p-3 font-medium text-neutral-600 text-xs">التاريخ</th>
-                  <th className="text-right p-3 font-medium text-neutral-600 text-xs">النسخة المُستعادة</th>
-                  <th className="text-right p-3 font-medium text-neutral-600 text-xs">الحالة</th>
-                </tr>
-              </thead>
-              <tbody>
-                {restoreHistory.map((entry: RestoreHistoryRecord, idx) => (
-                  <tr key={entry.id} className={idx % 2 === 0 ? 'bg-white' : 'bg-neutral-50'}>
-                    <td className="p-3 text-neutral-600 text-xs">
-                      {entry.started_at ? formatDateWithHijri(entry.started_at) : '—'}
-                    </td>
-                    <td className="p-3 text-neutral-600 text-xs font-mono">
-                      {entry.backup_id.slice(0, 8)}...
-                    </td>
-                    <td className="p-3">
-                      <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
-                        entry.status === 'completed'
-                          ? 'bg-green-50 text-green-700'
-                          : entry.status === 'failed'
-                          ? 'bg-red-50 text-red-700'
-                          : 'bg-amber-50 text-amber-700'
-                      }`}>
-                        {RESTORE_STATUS_AR[entry.status] ?? entry.status}
-                      </span>
-                    </td>
+        <div className="rounded-xl border border-border bg-surface overflow-hidden">
+          <button
+            type="button"
+            onClick={() => setShowRestoreHistory((v) => !v)}
+            className="w-full flex items-center justify-between px-5 py-4 hover:bg-surface-secondary/40 transition-colors"
+          >
+            <div className="flex items-center gap-2">
+              <RotateCcw className="h-4 w-4 text-foreground-secondary" />
+              <span className="text-sm font-semibold text-foreground">سجل عمليات الاستعادة</span>
+              {!restoreHistoryLoading && (
+                <span className="text-xs text-foreground-tertiary">({restoreHistory.length} سجل)</span>
+              )}
+            </div>
+            <div className="flex items-center gap-2">
+              {showRestoreHistory && (
+                <button
+                  type="button"
+                  onClick={(e) => { e.stopPropagation(); refetchRestoreHistory() }}
+                  className="flex items-center gap-1 rounded-lg px-2 py-1 text-xs text-foreground-tertiary hover:bg-surface-secondary transition-colors"
+                >
+                  <RotateCcw className="h-3.5 w-3.5" />
+                  تحديث
+                </button>
+              )}
+              {showRestoreHistory ? (
+                <ChevronUp className="h-4 w-4 text-foreground-tertiary" />
+              ) : (
+                <ChevronDown className="h-4 w-4 text-foreground-tertiary" />
+              )}
+            </div>
+          </button>
+
+          {showRestoreHistory && (
+            <div className="border-t border-border overflow-hidden">
+              <table className="w-full text-sm">
+                <thead className="bg-neutral-50 dark:bg-neutral-800/50">
+                  <tr>
+                    <th className="text-right p-3 font-medium text-neutral-600 text-xs">التاريخ</th>
+                    <th className="text-right p-3 font-medium text-neutral-600 text-xs">النسخة المُستعادة</th>
+                    <th className="text-right p-3 font-medium text-neutral-600 text-xs">الحالة</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                </thead>
+                <tbody>
+                  {restoreHistory.map((entry: RestoreHistoryRecord, idx) => (
+                    <tr key={entry.id} className={idx % 2 === 0 ? 'bg-white dark:bg-transparent' : 'bg-neutral-50 dark:bg-neutral-800/30'}>
+                      <td className="p-3 text-neutral-600 text-xs">
+                        {entry.started_at ? formatDateWithHijri(entry.started_at) : '—'}
+                      </td>
+                      <td className="p-3 text-neutral-600 text-xs font-mono">
+                        {entry.backup_id.slice(0, 8)}...
+                      </td>
+                      <td className="p-3">
+                        <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
+                          entry.status === 'completed'
+                            ? 'bg-green-50 text-green-700'
+                            : entry.status === 'failed'
+                            ? 'bg-red-50 text-red-700'
+                            : 'bg-amber-50 text-amber-700'
+                        }`}>
+                          {RESTORE_STATUS_AR[entry.status] ?? entry.status}
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
         </div>
       )}
     </div>

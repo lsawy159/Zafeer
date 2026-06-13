@@ -32,12 +32,6 @@ const EMAIL_SETTINGS_KEYS = [
 
 type NotificationMethod = 'in_app' | 'email' | 'all'
 
-type QueueStats = {
-  pending: number
-  sent: number
-  failed: number
-}
-
 function parseSettingValue(raw: unknown): string {
   if (raw == null) return ''
 
@@ -81,9 +75,6 @@ export function useEmailSettings() {
   const [recentBackupsState, setRecentBackupsState] = useState<SettingsSectionLoadState>(
     createSectionLoadState('recentBackups', 'loading')
   )
-  const [queueStats, setQueueStats] = useState<QueueStats | null>(null)
-  const [queueStatsLoading, setQueueStatsLoading] = useState(false)
-  const [queueStatsError, setQueueStatsError] = useState(true)
   const [backupEmailModalTarget, setBackupEmailModalTarget] = useState<BackupRecord | null>(null)
 
   const [csvSending, setCsvSending] = useState(false)
@@ -155,12 +146,6 @@ export function useEmailSettings() {
         })
       )
     }
-  }
-
-  const loadQueueStats = async () => {
-    setQueueStatsLoading(false)
-    setQueueStatsError(true)
-    setQueueStats(null)
   }
 
   useEffect(() => {
@@ -422,7 +407,6 @@ export function useEmailSettings() {
     newRecipientDailyDigest, setNewRecipientDailyDigest,
     newRecipientError, setNewRecipientError,
     recentBackups, recentBackupsState,
-    queueStats, queueStatsLoading, queueStatsError,
     backupEmailModalTarget, setBackupEmailModalTarget,
     csvSending, csvSendMsg,
     expiredSettings, setExpiredSettings,
@@ -435,7 +419,6 @@ export function useEmailSettings() {
     handleRecipientPermissionChange,
     handleSendCsvReport,
     loadRecentBackups,
-    loadQueueStats,
     handleExpiredInclusionChange,
     resetAddRecipientForm,
   }

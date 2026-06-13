@@ -51,9 +51,13 @@ export default function AuditDashboard() {
 
   const loadAuditStats = async () => {
     try {
+      let activityLogQueryOk = false
+      let sessionsQueryOk = false
+
       const { count: totalLogs } = await supabase
         .from('activity_log')
         .select('id', { count: 'exact', head: true })
+      activityLogQueryOk = totalLogs != null
 
       let failedLogins = 0
       let totalFailedLogins = 0
@@ -90,6 +94,7 @@ export default function AuditDashboard() {
           .gt('expires_at', now)
 
         activeSessionsCount = sessionsCount || 0
+        sessionsQueryOk = sessionsCount != null
       } catch (sessionsError) {
         const errorMessage = sessionsError instanceof Error ? sessionsError.message : ''
         if (!errorMessage.includes('not found') && !errorMessage.includes('schema cache')) {
@@ -131,8 +136,8 @@ export default function AuditDashboard() {
       setSystemStatus({
         dataEncryption: true, // Supabase TLS + تشفير قاعدة البيانات — دائماً نشط
         autoBackup: autoBackupEnabled,
-        operationsLogging: (totalLogs || 0) >= 0, // الجدول موجود ويستجيب
-        sessionMonitoring: activeSessionsCount >= 0, // جدول user_sessions يستجيب
+        operationsLogging: activityLogQueryOk,
+        sessionMonitoring: sessionsQueryOk,
       })
     } catch (error) {
       console.error('Error loading audit stats:', error)
@@ -164,7 +169,7 @@ export default function AuditDashboard() {
               id: `backup-${backup.id}`,
               type: 'backup',
               title: `تم إنشاء نسخة احتياطية ${backupTypeLabel} بنجاح`,
-              timestamp: backup.completed_at || backup.id,
+              timestamp: backup.completed_at ?? new Date(0).toISOString(),
               icon: CheckCircle,
               bgColor: 'bg-green-50',
               iconColor: 'text-success-600',
