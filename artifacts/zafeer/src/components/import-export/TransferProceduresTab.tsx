@@ -67,9 +67,15 @@ const isStatusAllowed = (status: string): boolean => {
 export default function TransferProceduresTab({
   canImport,
   canExport,
+  canCreate,
+  canEdit,
+  canDelete,
 }: {
   canImport: boolean
   canExport: boolean
+  canCreate: boolean
+  canEdit: boolean
+  canDelete: boolean
 }) {
   const [transferRows, setTransferRows] = useState<TransferProcedureRow[]>([])
   const [projects, setProjects] = useState<Project[]>([])
@@ -160,6 +166,11 @@ export default function TransferProceduresTab({
   const handleCreateTransferProcedure = async (event: FormEvent) => {
     event.preventDefault()
 
+    if (!canCreate) {
+      toast.error('ليس لديك صلاحية إضافة طلبات النقل')
+      return
+    }
+
     const requestDateParsed = parseDate(formData.request_date)
     if (!requestDateParsed.date) {
       toast.error('تاريخ الطلب غير صحيح')
@@ -227,6 +238,11 @@ export default function TransferProceduresTab({
   }
 
   const handleUpdateStatus = async (row: TransferProcedureRow) => {
+    if (!canEdit) {
+      toast.error('ليس لديك صلاحية تعديل طلبات النقل')
+      return
+    }
+
     const nextStatus = statusDrafts[row.id] || row.status
     if (!isStatusAllowed(nextStatus)) {
       toast.error('حالة النقل غير صالحة')
@@ -253,6 +269,11 @@ export default function TransferProceduresTab({
   }
 
   const handleDeleteTransfer = async (rowId: string) => {
+    if (!canDelete) {
+      toast.error('ليس لديك صلاحية حذف طلبات النقل')
+      return
+    }
+
     try {
       setSaving(true)
       const { error } = await supabase.from('transfer_procedures').delete().eq('id', rowId)
@@ -538,15 +559,17 @@ export default function TransferProceduresTab({
             <h3 className="text-base font-bold text-slate-900">تسجيل طلب نقل</h3>
             <p className="mt-1 text-xs text-slate-500">افتح نموذج الطلب داخل مربع منبثق سريع</p>
           </div>
-          <button
-            type="button"
-            onClick={() => setShowCreateModal(true)}
-            className="app-button-primary px-3 py-2 text-sm"
-            disabled={saving}
-          >
-            <Plus className="h-4 w-4" />
-            تسجيل طلب نقل
-          </button>
+          {canCreate && (
+            <button
+              type="button"
+              onClick={() => setShowCreateModal(true)}
+              className="app-button-primary px-3 py-2 text-sm"
+              disabled={saving}
+            >
+              <Plus className="h-4 w-4" />
+              تسجيل طلب نقل
+            </button>
+          )}
         </div>
       </div>
 
@@ -654,7 +677,7 @@ export default function TransferProceduresTab({
                               setStatusDrafts((prev) => ({ ...prev, [row.id]: e.target.value }))
                             }
                             className="app-input py-2 text-sm"
-                            disabled={saving}
+                            disabled={saving || !canEdit}
                           >
                             {TRANSFER_PROCEDURE_STATUS_OPTIONS.map((status) => (
                               <option key={status} value={status}>
@@ -662,41 +685,47 @@ export default function TransferProceduresTab({
                               </option>
                             ))}
                           </select>
-                          <button
-                            type="button"
-                            onClick={() => void handleUpdateStatus(row)}
-                            className="app-button-secondary px-2.5 py-2"
-                            disabled={saving}
-                            title="حفظ الحالة"
-                          >
-                            <CheckCircle2 className="h-4 w-4" />
-                          </button>
+                          {canEdit && (
+                            <button
+                              type="button"
+                              onClick={() => void handleUpdateStatus(row)}
+                              className="app-button-secondary px-2.5 py-2"
+                              disabled={saving}
+                              title="حفظ الحالة"
+                            >
+                              <CheckCircle2 className="h-4 w-4" />
+                            </button>
+                          )}
                         </div>
                       </td>
                       <td className="px-3 py-3">
                         <div className="flex flex-wrap items-center gap-2">
-                          <button
-                            type="button"
-                            onClick={() => handleStartConversion(row)}
-                            disabled={!isDone || saving}
-                            className={`px-3 py-2 rounded-lg text-xs font-semibold border transition ${
-                              isDone
-                                ? 'border-green-300 bg-green-50 text-success-700 hover:bg-green-100'
-                                : 'border-neutral-200 bg-neutral-100 text-neutral-400 cursor-not-allowed'
-                            }`}
-                          >
-                            <UserPlus className="h-4 w-4 inline ml-1" />
-                            تحويل لموظف
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => void handleDeleteTransfer(row.id)}
-                            className="app-button-secondary px-2.5 py-2 text-red-600 hover:bg-red-50"
-                            disabled={saving}
-                            title="حذف"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </button>
+                          {canEdit && (
+                            <button
+                              type="button"
+                              onClick={() => handleStartConversion(row)}
+                              disabled={!isDone || saving}
+                              className={`px-3 py-2 rounded-lg text-xs font-semibold border transition ${
+                                isDone
+                                  ? 'border-green-300 bg-green-50 text-success-700 hover:bg-green-100'
+                                  : 'border-neutral-200 bg-neutral-100 text-neutral-400 cursor-not-allowed'
+                              }`}
+                            >
+                              <UserPlus className="h-4 w-4 inline ml-1" />
+                              تحويل لموظف
+                            </button>
+                          )}
+                          {canDelete && (
+                            <button
+                              type="button"
+                              onClick={() => void handleDeleteTransfer(row.id)}
+                              className="app-button-secondary px-2.5 py-2 text-red-600 hover:bg-red-50"
+                              disabled={saving}
+                              title="حذف"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </button>
+                          )}
                         </div>
                       </td>
                     </tr>

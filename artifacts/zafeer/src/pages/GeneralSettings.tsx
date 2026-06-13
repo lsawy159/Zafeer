@@ -3,7 +3,7 @@ import { useSearchParams } from 'react-router-dom'
 import Layout from '@/components/layout/Layout'
 import {
   Settings,
-  Database as DatabaseIcon,
+  Users,
   Clock,
   Shield,
 } from 'lucide-react'
@@ -32,6 +32,7 @@ export default function GeneralSettings() {
   const [searchParams, setSearchParams] = useSearchParams()
   const [activeTab, setActiveTab] = useState<TabType>('system')
   const [settingsCount, setSettingsCount] = useState<number | null>(null)
+  const [activeUsersCount, setActiveUsersCount] = useState<number | null>(null)
   const [lastUpdatedAt, setLastUpdatedAt] = useState<string | null>(null)
 
   const hasViewPermission = canView('adminSettings')
@@ -63,6 +64,12 @@ export default function GeneralSettings() {
         .limit(1)
         .maybeSingle()
       if (latest?.updated_at) setLastUpdatedAt(latest.updated_at as string)
+
+      const { count: usersCount } = await supabase
+        .from('users')
+        .select('id', { count: 'exact', head: true })
+        .eq('is_active', true)
+      if (usersCount != null) setActiveUsersCount(usersCount)
     } catch {
       // non-blocking
     }
@@ -216,11 +223,11 @@ export default function GeneralSettings() {
           <div className="bg-gradient-to-br from-green-50 to-green-100 rounded-lg shadow-sm border border-green-200 p-2.5">
             <div className="flex items-center gap-2">
               <div className="w-8 h-8 bg-green-500 rounded-full flex items-center justify-center shadow-sm">
-                <DatabaseIcon className="w-4 h-4 text-white" />
+                <Users className="w-4 h-4 text-white" />
               </div>
               <div>
-                <h3 className="font-bold text-xs text-foreground">{settingsCategories.length}</h3>
-                <p className="text-xs text-foreground-secondary">فئات الإعدادات</p>
+                <h3 className="font-bold text-xs text-foreground">{activeUsersCount ?? '—'}</h3>
+                <p className="text-xs text-foreground-secondary">المستخدمون النشطون</p>
               </div>
             </div>
           </div>
@@ -233,7 +240,7 @@ export default function GeneralSettings() {
               <div>
                 <h3 className="font-bold text-xs text-foreground">
                   {lastUpdatedAt
-                    ? new Date(lastUpdatedAt).toLocaleDateString('ar-SA')
+                    ? new Date(lastUpdatedAt).toLocaleDateString('ar-EG')
                     : '—'}
                 </h3>
                 <p className="text-xs text-foreground-secondary">آخر تحديث</p>

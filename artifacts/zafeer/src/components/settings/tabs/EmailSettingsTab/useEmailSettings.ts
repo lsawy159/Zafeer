@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase'
 import { toast } from 'sonner'
+import { usePermissions } from '@/utils/permissions'
 import { logger } from '@/utils/logger'
 import {
   DEFAULT_EXPIRED_INCLUSION,
@@ -51,6 +52,8 @@ function parseSettingValue(raw: unknown): string {
 
 
 export function useEmailSettings() {
+  const { canEdit } = usePermissions()
+  const canEditEmail = canEdit('emailSettings')
   const [adminEmail, setAdminEmail] = useState('')
   const [notificationMethods, setNotificationMethods] = useState<NotificationMethod>('in_app')
   const [quietHoursStart, setQuietHoursStart] = useState('22:00')
@@ -161,6 +164,7 @@ export function useEmailSettings() {
     key: keyof ExpiredInclusionSettings,
     checked: boolean
   ) {
+    if (!canEditEmail) return
     setExpiredSettings((current) => {
       const next = { ...current, [key]: checked }
       void saveExpiredInclusionSettings(next).catch((error) => {
@@ -172,6 +176,10 @@ export function useEmailSettings() {
   }
 
   async function saveEmailSettings() {
+    if (!canEditEmail) {
+      toast.error('ليس لديك صلاحية تعديل إعدادات البريد')
+      return
+    }
     setAdminEmailError(null)
 
     const trimmedEmail = adminEmail.trim()
@@ -251,6 +259,7 @@ export function useEmailSettings() {
     key: 'expiryAlerts' | 'backupNotifications' | 'dailyDigest',
     checked: boolean
   ) {
+    if (!canEditEmail) return
     if (!recipientsConfig) return
 
     const nextConfig: NotificationRecipientsConfig = {
@@ -267,6 +276,7 @@ export function useEmailSettings() {
   }
 
   async function handleDeleteRecipient(recipientId: string) {
+    if (!canEditEmail) return
     if (!recipientsConfig) return
 
     const nextConfig: NotificationRecipientsConfig = {
@@ -292,6 +302,7 @@ export function useEmailSettings() {
   }
 
   async function handleAddRecipient() {
+    if (!canEditEmail) return
     if (!recipientsConfig) return
 
     const trimmedEmail = newRecipientEmail.trim().toLowerCase()
@@ -339,6 +350,10 @@ export function useEmailSettings() {
   }
 
   async function handleSendCsvReport() {
+    if (!canEditEmail) {
+      toast.error('ليس لديك صلاحية إرسال التقرير')
+      return
+    }
     setCsvSending(true)
     setCsvSendMsg(null)
     try {

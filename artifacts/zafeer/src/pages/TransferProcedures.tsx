@@ -1,10 +1,10 @@
 import Layout from '@/components/layout/Layout'
 import TransferProceduresTab from '@/components/import-export/TransferProceduresTab'
-import { RefreshCcw, Send } from 'lucide-react'
+import { Send } from 'lucide-react'
 import { usePermissions } from '@/utils/permissions'
 
 export default function TransferProcedures() {
-  const { canView, canImport, canExport } = usePermissions()
+  const { canView, canImport, canExport, canCreate, canEdit, canDelete } = usePermissions()
 
   if (!canView('transferProcedures')) {
     return (
@@ -34,20 +34,15 @@ export default function TransferProcedures() {
                 إدارة طلبات النقل والعمال الجدد، وتحويلهم لاحقاً إلى موظفين مسجلين بعد اكتمال كافة الإجراءات المطلوبة
               </p>
             </div>
-            <button
-              type="button"
-              onClick={() => window.location.reload()}
-              className="flex-shrink-0 p-2 rounded-lg hover:bg-sky-100/80 transition text-slate-600 hover:text-sky-700"
-              title="تحديث الصفحة"
-            >
-              <RefreshCcw className="h-5 w-5 sm:h-6 sm:w-6" />
-            </button>
           </div>
         </div>
 
         <TransferProceduresTab
           canImport={canImport('transferProcedures')}
           canExport={canExport('transferProcedures')}
+          canCreate={canCreate('transferProcedures')}
+          canEdit={canEdit('transferProcedures')}
+          canDelete={canDelete('transferProcedures')}
         />
       </div>
     </Layout>

@@ -22,6 +22,7 @@ interface Props {
   isLoadingEmailSettings: Ctx['isLoadingEmailSettings']
   isSavingEmailSettings: Ctx['isSavingEmailSettings']
   saveEmailSettings: Ctx['saveEmailSettings']
+  canEdit: boolean
 }
 
 export function SMTPSection({
@@ -32,6 +33,7 @@ export function SMTPSection({
   adminEmailError, setAdminEmailError,
   isLoadingEmailSettings, isSavingEmailSettings,
   saveEmailSettings,
+  canEdit,
 }: Props) {
   return (
     <section className="rounded-2xl border border-border bg-surface p-5 shadow-sm">
@@ -50,7 +52,7 @@ export function SMTPSection({
         <Button
           type="button"
           onClick={saveEmailSettings}
-          disabled={isSavingEmailSettings}
+          disabled={isSavingEmailSettings || !canEdit}
           size="sm"
           className="shrink-0"
         >
