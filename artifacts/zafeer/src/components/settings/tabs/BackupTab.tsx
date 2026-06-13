@@ -553,7 +553,11 @@ export function BackupTab(): React.JSX.Element {
                 <Skeleton className="h-16 w-full" />
               </div>
             ) : backups.length === 0 ? (
-              <EmptyState title="لا توجد نسخ احتياطية" />
+              <EmptyState
+                icon={<HardDrive className="w-8 h-8" />}
+                title="لا توجد نسخ احتياطية"
+                description="لم يتم إنشاء أي نسخ احتياطية بعد"
+              />
             ) : (
               <div className="space-y-2">
                 {backups.map((backup) => (
