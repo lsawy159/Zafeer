@@ -167,6 +167,7 @@ Deno.serve(async (req: Request) => {
     }
 
     const updates: Record<string, unknown> = {}
+    let newEmail: string | undefined
 
     if (body.full_name !== undefined) {
       if (!isNonEmptyString(body.full_name)) {
@@ -189,8 +190,28 @@ Deno.serve(async (req: Request) => {
       updates.is_active = body.is_active
     }
 
+    if (body.email !== undefined) {
+      const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+      if (!isNonEmptyString(body.email) || !EMAIL_RE.test((body.email as string).trim())) {
+        return jsonResponse({ error: 'البريد الإلكتروني غير صالح' }, 400)
+      }
+      newEmail = (body.email as string).trim().toLowerCase()
+      updates.email = newEmail
+    }
+
     if (Object.keys(updates).length === 0) {
       return jsonResponse({ error: 'لا توجد بيانات للتحديث' }, 400)
+    }
+
+    // تحديث auth.users أولاً إذا تغيّر الإيميل
+    if (newEmail) {
+      const { error: emailError } = await adminClient.auth.admin.updateUserById(id, {
+        email: newEmail,
+        email_confirm: true,
+      })
+      if (emailError) {
+        return jsonResponse({ error: mapAuthError(emailError.message) }, 400)
+      }
     }
 
     const { data: updatedUser, error: updateError } = await adminClient
@@ -201,6 +222,10 @@ Deno.serve(async (req: Request) => {
       .single()
 
     if (updateError || !updatedUser) {
+      // PG 23505 = unique_violation (مثلاً الإيميل مستخدم بالفعل)
+      if (updateError?.code === '23505') {
+        return jsonResponse({ error: 'البريد الإلكتروني مستخدم بالفعل' }, 400)
+      }
       return jsonResponse({ error: 'حدث خطأ، حاول مجدداً' }, 500)
     }
 

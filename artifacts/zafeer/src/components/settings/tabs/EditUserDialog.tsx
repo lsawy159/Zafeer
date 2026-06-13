@@ -32,12 +32,18 @@ interface EditUserDialogProps {
   userName: string
   currentFullName: string
   currentRole: string
+  currentEmail: string
   onClose: () => void
 }
+
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
 const schema = z.object({
   full_name: z.string().min(1, 'الاسم مطلوب'),
   role: z.enum(['manager', 'user']),
+  new_email: z.string().refine(v => v === '' || EMAIL_RE.test(v), {
+    message: 'بريد إلكتروني غير صالح',
+  }),
   new_password: z.string().refine(v => v === '' || v.length >= 8, {
     message: 'كلمة المرور يجب أن تكون 8 أحرف على الأقل',
   }),
@@ -54,6 +60,7 @@ export function EditUserDialog({
   userName,
   currentFullName,
   currentRole,
+  currentEmail,
   onClose,
 }: EditUserDialogProps) {
   const queryClient = useQueryClient()
@@ -71,12 +78,14 @@ export function EditUserDialog({
     defaultValues: {
       full_name: currentFullName,
       role: (currentRole === 'manager' ? 'manager' : 'user') as FormData['role'],
+      new_email: '',
       new_password: '',
       confirm_password: '',
     },
     values: {
       full_name: currentFullName,
       role: (currentRole === 'manager' ? 'manager' : 'user') as FormData['role'],
+      new_email: '',
       new_password: '',
       confirm_password: '',
     },
@@ -97,6 +106,7 @@ export function EditUserDialog({
         data: {
           full_name: data.full_name,
           role: data.role,
+          ...(data.new_email.trim() ? { email: data.new_email.trim().toLowerCase() } : {}),
         },
       })
 
@@ -146,6 +156,23 @@ export function EditUserDialog({
             />
             {errors.full_name && (
               <p className="text-xs text-red-600 text-right">{errors.full_name.message}</p>
+            )}
+          </div>
+
+          <div className="space-y-1">
+            <label className="text-sm font-medium text-right block">
+              البريد الإلكتروني
+              <span className="text-foreground-tertiary text-xs font-normal me-1">(الحالي: {currentEmail})</span>
+            </label>
+            <Input
+              type="email"
+              placeholder="اتركه فارغاً للإبقاء على الحالي"
+              {...register('new_email')}
+              disabled={isSubmitting}
+              dir="ltr"
+            />
+            {errors.new_email && (
+              <p className="text-xs text-red-600 text-right">{errors.new_email.message}</p>
             )}
           </div>
 
