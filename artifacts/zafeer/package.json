@@ -67,7 +67,6 @@
     "jszip": "^3.10.1",
     "react-image-crop": "^11.0.10",
     "react-router-dom": "^7.14.2",
-    "use-debounce": "^10.1.1",
     "vitest": "^4.1.5",
     "xlsx": "0.18.5"
   }
