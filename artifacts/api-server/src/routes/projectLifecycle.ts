@@ -46,7 +46,7 @@ async function userHasPermission(userId: string, permission: string): Promise<bo
 }
 
 // DELETE /admin/projects/:id — soft delete a project
-// LOCAL ONLY — production uses Edge Function admin-projects
+// LOCAL ONLY — production uses Edge Function admin-projects (spec 060)
 router.delete("/admin/projects/:id", requireAdmin, async (req: AuthRequest, res) => {
   const parsed = DeleteAdminProjectParams.safeParse(req.params);
   if (!parsed.success) {
@@ -125,7 +125,7 @@ router.delete("/admin/projects/:id", requireAdmin, async (req: AuthRequest, res)
 });
 
 // DELETE /admin/extracts/:id — delete extract invoice (cascade to lines)
-// LOCAL ONLY — production uses Edge Function admin-projects
+// LOCAL ONLY — production uses Edge Function admin-projects (spec 060)
 router.delete("/admin/extracts/:id", requireAdmin, async (req: AuthRequest, res) => {
   const parsed = DeleteAdminExtractParams.safeParse(req.params);
   if (!parsed.success) {
@@ -183,7 +183,7 @@ router.delete("/admin/extracts/:id", requireAdmin, async (req: AuthRequest, res)
 });
 
 // POST /admin/extracts/:id/lines — add extract line (returns created row, HTTP 201)
-// LOCAL ONLY — production uses Edge Function admin-projects
+// LOCAL ONLY — production uses Edge Function admin-projects (spec 060)
 router.post("/admin/extracts/:id/lines", requireAdmin, async (req: AuthRequest, res) => {
   const parsedParams = AddAdminExtractLineParams.safeParse(req.params);
   if (!parsedParams.success) {
@@ -309,7 +309,7 @@ router.post("/admin/extracts/:id/lines", requireAdmin, async (req: AuthRequest, 
 });
 
 // PATCH /admin/extract-lines/:lineId — update attendance days / rate on extract line
-// LOCAL ONLY — production uses Edge Function admin-projects
+// LOCAL ONLY — production uses Edge Function admin-projects (spec 060)
 router.patch("/admin/extract-lines/:lineId", requireAdmin, async (req: AuthRequest, res) => {
   const parsedParams = UpdateAdminExtractLineParams.safeParse(req.params);
   if (!parsedParams.success) {
@@ -393,7 +393,7 @@ router.patch("/admin/extract-lines/:lineId", requireAdmin, async (req: AuthReque
 });
 
 // DELETE /admin/extract-lines/:lineId — remove extract line and recalculate totals
-// LOCAL ONLY — production uses Edge Function admin-projects
+// LOCAL ONLY — production uses Edge Function admin-projects (spec 060)
 router.delete("/admin/extract-lines/:lineId", requireAdmin, async (req: AuthRequest, res) => {
   const parsed = DeleteAdminExtractLineParams.safeParse(req.params);
   if (!parsed.success) {
