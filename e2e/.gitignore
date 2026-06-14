@@ -1,0 +1,7 @@
+.env
+.auth/
+playwright/.auth/
+.tmp/
+test-results/
+playwright-report/
+screenshots/
