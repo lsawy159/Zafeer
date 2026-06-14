@@ -1,79 +1,11 @@
 import { Alert } from '../../components/alerts/AlertCard'
-import { supabase, type Company } from '../../lib/supabase'
-import { logger } from '../logger'
+import { type Company } from '../../lib/supabase'
 import { getNotificationThresholds } from './alertThresholds'
 import {
   checkCommercialRegistrationExpiry,
   checkPowerSubscriptionExpiry,
   checkMoqeemSubscriptionExpiry,
 } from './companyExpiryChecks'
-
-const loggedCompanyDigestKeys = new Set<string>()
-
-function getTodayAlertDate(): string {
-  return new Date().toISOString().slice(0, 10)
-}
-
-function getCompanyDigestKey(alert: Alert): string {
-  return `${alert.company?.id ?? 'unknown'}:${alert.type}:${alert.expiry_date ?? getTodayAlertDate()}`
-}
-
-async function logCompanyAlertsForDigest(alerts: Alert[]) {
-  if (import.meta.env.MODE === 'test' || import.meta.env.VITEST) {
-    return
-  }
-
-  const urgentHighAlerts = alerts.filter((alert) => alert.priority === 'urgent' || alert.priority === 'high')
-
-  if (urgentHighAlerts.length === 0) {
-    return
-  }
-
-  const logsToSend = urgentHighAlerts
-    .filter((alert) => {
-      const digestKey = getCompanyDigestKey(alert)
-      if (loggedCompanyDigestKeys.has(digestKey)) {
-        return false
-      }
-      loggedCompanyDigestKeys.add(digestKey)
-      return true
-    })
-    .map((alert) => ({
-      company_id: alert.company?.id || null,
-      alert_type: alert.type,
-      priority: alert.priority,
-      title: alert.title,
-      message: alert.message,
-      action_required: alert.action_required,
-      expiry_date: alert.expiry_date || null,
-      details: {
-        company_name: alert.company?.name,
-        company_commercial_id: alert.company?.commercial_registration_expiry,
-        unified_number: alert.company?.unified_number,
-      },
-    }))
-
-  if (logsToSend.length === 0) {
-    return
-  }
-
-  const supabaseUrl = import.meta.env.VITE_SUPABASE_URL
-  fetch(`${supabaseUrl}/functions/v1/log-alert-digest`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${(await supabase.auth.getSession()).data?.session?.access_token || ''}`,
-    },
-    body: JSON.stringify({ logs: logsToSend }),
-  })
-    .then((res) => res.json())
-    .then((result) => {
-      logger.debug(`Alert digest logging: ${result.logged} logged, ${result.skipped} skipped, ${result.failed} failed`)
-    })
-    .catch((err) => {
-      logger.error('Failed to call log-alert-digest function:', err)
-    })
-}
 
 export async function generateCompanyAlerts(companies: Company[]): Promise<Alert[]> {
   const alerts: Alert[] = []
@@ -94,8 +26,6 @@ export async function generateCompanyAlerts(companies: Company[]): Promise<Alert
       alerts.push(moqeemAlert)
     }
   }
-
-  logCompanyAlertsForDigest(alerts)
 
   return alerts.sort((a, b) => {
     const priorityOrder = { urgent: 4, high: 3, medium: 2, low: 1 }
@@ -268,8 +198,6 @@ export async function generateCompanyAlertsSync(companies: Company[]): Promise<A
       }
     }
   })
-
-  logCompanyAlertsForDigest(alerts)
 
   return alerts.sort((a, b) => {
     const priorityOrder = { urgent: 4, high: 3, medium: 2, low: 1 }
