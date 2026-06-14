@@ -133,7 +133,7 @@ migrations فقط — لا تعديل يدوي من Supabase Studio
 - **Project Ref**: `acnkrijhndgbnxabfklx`
 - **RLS**: مفعّل على كل الجداول (25 جدول). policies مبنية على `user_has_permission(section, action)` SECURITY DEFINER.
 - **Migrations**: `supabase/migrations/` — لا تعديل يدوي من Studio أبداً.
-- **Edge Functions**: `daily-notification-run`, `send-alert-report`, `automated-backup`, `restore-backup`, `admin-users`, `admin-projects`, `process-email-queue`, `send-backup-email`, `log-alert-digest`
+- **Edge Functions**: `daily-notification-run`, `send-alert-report`, `automated-backup`, `restore-backup`, `admin-users`, `admin-projects`, `process-email-queue`, `send-backup-email`
 - **RPCs**: `generate_expiry_notifications`, `create_employee_obligation_plan`, `get_all_users_for_admin`, `user_has_permission`, `upsert_payroll_allocations`
 
 ### Permissions System

@@ -1,6 +1,4 @@
 import { Employee, Company } from '../../lib/supabase'
-import { supabase } from '../../lib/supabase'
-import { logger } from '../logger'
 import { EmployeeAlert } from './employeeAlertThresholds'
 import {
   checkContractExpiry,
@@ -8,79 +6,6 @@ import {
   checkHealthInsuranceExpiry,
   checkHiredWorkerContractExpiry,
 } from './employeeExpiryChecks'
-
-const loggedEmployeeDigestKeys = new Set<string>()
-
-function getTodayEmployeeAlertDate(): string {
-  return new Date().toISOString().slice(0, 10)
-}
-
-function getEmployeeDigestKey(alert: EmployeeAlert): string {
-  return `${alert.employee.id}:${alert.type}:${alert.expiry_date ?? getTodayEmployeeAlertDate()}`
-}
-
-async function logEmployeeAlertsForDigest(alerts: EmployeeAlert[], employees: Employee[]) {
-  if (import.meta.env.MODE === 'test' || import.meta.env.VITEST) {
-    return
-  }
-
-  const employeeMap = new Map(employees.map((employee) => [employee.id, employee]))
-  const urgentHighAlerts = alerts.filter((alert) => alert.priority === 'urgent' || alert.priority === 'high')
-
-  if (urgentHighAlerts.length === 0) {
-    return
-  }
-
-  const logsToSend = urgentHighAlerts
-    .filter((alert) => {
-      const digestKey = getEmployeeDigestKey(alert)
-      if (loggedEmployeeDigestKeys.has(digestKey)) {
-        return false
-      }
-      loggedEmployeeDigestKeys.add(digestKey)
-      return true
-    })
-    .map((alert) => {
-      const employee = employeeMap.get(alert.employee.id)
-      return {
-        employee_id: alert.employee.id,
-        alert_type: alert.type,
-        priority: alert.priority,
-        title: alert.title,
-        message: alert.message,
-        action_required: alert.action_required,
-        expiry_date: alert.expiry_date || null,
-        details: {
-          employee_name: alert.employee.name,
-          employee_profession: alert.employee.profession,
-          employee_nationality: alert.employee.nationality,
-          residence_number: employee?.residence_number,
-          unified_number: alert.company?.unified_number,
-        },
-      }
-    })
-
-  if (logsToSend.length === 0) {
-    return
-  }
-
-  const supabaseUrl = import.meta.env.VITE_SUPABASE_URL
-  fetch(`${supabaseUrl}/functions/v1/log-alert-digest`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${(await supabase.auth.getSession())?.data?.session?.access_token || ''}`,
-    },
-    body: JSON.stringify({ logs: logsToSend }),
-  })
-    .then((res) => res.json())
-    .then((result) => {
-      logger.debug(`Employee alert digest logging: ${result.logged} logged, ${result.skipped} skipped, ${result.failed} failed`)
-    })
-    .catch((err) => {
-      logger.error('Failed to call log-alert-digest function:', err)
-    })
-}
 
 export async function generateEmployeeAlerts(
   employees: Employee[],
@@ -125,8 +50,6 @@ export async function generateEmployeeAlerts(
       alerts.push(hiredWorkerContractAlert)
     }
   }
-
-  logEmployeeAlertsForDigest(alerts, employees)
 
   return alerts.sort((a, b) => {
     const priorityOrder = { urgent: 4, high: 3, medium: 2, low: 1 }
