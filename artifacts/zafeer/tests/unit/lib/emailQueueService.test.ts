@@ -145,3 +145,243 @@ describe('enqueueEmail — normal mode', () => {
     expect(result.success).toBe(true)
   })
 })
+
+// ─── Activity logging ─────────────────────────────────────────────────────────
+
+describe('emailQueueService activity logging', () => {
+  let insertMock: any
+  let catchMock: any
+
+  beforeEach(() => {
+    vi.stubEnv('VITE_EMAIL_QUEUE_MODE', 'normal')
+    vi.clearAllMocks()
+    catchMock = vi.fn(() => Promise.resolve({}))
+    insertMock = vi.fn(() => ({
+      catch: catchMock,
+    }))
+  })
+
+  describe('digest-only mode guards', () => {
+    it('blocks non-digest general emails in digest-only mode', async () => {
+      vi.stubEnv('VITE_EMAIL_QUEUE_MODE', 'digest-only')
+
+      const result = await enqueueEmail({
+        toEmails: ['team@example.com'],
+        subject: 'Team update',
+      })
+
+      expect(result.success).toBe(false)
+      expect(result.error).toContain('digest-only mode')
+      expect(mockFrom).not.toHaveBeenCalled()
+    })
+
+    it('allows backup category emails in digest-only mode', async () => {
+      vi.stubEnv('VITE_EMAIL_QUEUE_MODE', 'digest-only')
+      const mockData = { id: 'backup-email-id' }
+
+      mockFrom.mockImplementation((table: string) => {
+        if (table === 'email_queue') {
+          return {
+            insert: vi.fn().mockReturnValue({
+              select: vi.fn().mockReturnValue({
+                single: vi.fn().mockResolvedValue({ data: mockData, error: null }),
+              }),
+            }),
+          }
+        }
+        if (table === 'activity_log') {
+          return { insert: vi.fn(() => ({ catch: vi.fn() })) }
+        }
+        return undefined
+      })
+
+      const result = await enqueueEmail({
+        toEmails: ['ops@example.com'],
+        subject: 'Backup completed successfully',
+        category: 'backup',
+      })
+
+      expect(result.success).toBe(true)
+      expect(result.id).toBe('backup-email-id')
+    })
+  })
+
+  describe('success path logs create_success', () => {
+    it('should log successful email enqueue to activity_log', async () => {
+      const mockData = { id: 'test-email-id' }
+
+      mockFrom.mockImplementation((table: string) => {
+        if (table === 'email_queue') {
+          return {
+            insert: vi.fn().mockReturnValue({
+              select: vi.fn().mockReturnValue({
+                single: vi.fn().mockResolvedValue({ data: mockData, error: null }),
+              }),
+            }),
+          }
+        }
+        if (table === 'activity_log') {
+          return { insert: insertMock }
+        }
+        return undefined
+      })
+
+      const result = await enqueueEmail({
+        toEmails: ['test@example.com'],
+        subject: 'Test Email',
+        htmlContent: '<p>Test</p>',
+      })
+
+      expect(result.success).toBe(true)
+      expect(result.id).toBe('test-email-id')
+      expect(insertMock).toHaveBeenCalledWith(
+        expect.objectContaining({
+          entity_type: 'email_queue',
+          action: 'create_success',
+          entity_id: 'test-email-id',
+        })
+      )
+    })
+  })
+
+  describe('failure path logs create_failed', () => {
+    it('should log DB error to activity_log with create_failed action', async () => {
+      const mockError = { message: 'Database connection failed' }
+
+      mockFrom.mockImplementation((table: string) => {
+        if (table === 'email_queue') {
+          return {
+            insert: vi.fn().mockReturnValue({
+              select: vi.fn().mockReturnValue({
+                single: vi.fn().mockResolvedValue({ data: null, error: mockError }),
+              }),
+            }),
+          }
+        }
+        if (table === 'activity_log') {
+          return { insert: insertMock }
+        }
+        return undefined
+      })
+
+      const result = await enqueueEmail({
+        toEmails: ['test@example.com'],
+        subject: 'Test Email',
+      })
+
+      expect(result.success).toBe(false)
+      expect(result.error).toBe('Failed to enqueue email.')
+      expect(insertMock).toHaveBeenCalledWith(
+        expect.objectContaining({
+          entity_type: 'email_queue',
+          action: 'create_failed',
+          details: 'Database connection failed',
+        })
+      )
+    })
+  })
+
+  describe('exception path logs create_exception', () => {
+    it('should log unexpected exception to activity_log with create_exception action', async () => {
+      const mockError = new Error('Network timeout')
+
+      mockFrom.mockImplementation((table: string) => {
+        if (table === 'email_queue') {
+          return {
+            insert: vi.fn().mockReturnValue({
+              select: vi.fn().mockReturnValue({
+                single: vi.fn().mockRejectedValue(mockError),
+              }),
+            }),
+          }
+        }
+        if (table === 'activity_log') {
+          return { insert: insertMock }
+        }
+        return undefined
+      })
+
+      const result = await enqueueEmail({
+        toEmails: ['test@example.com'],
+        subject: 'Test Email',
+      })
+
+      expect(result.success).toBe(false)
+      expect(result.error).toBe('An unexpected error occurred.')
+      expect(insertMock).toHaveBeenCalledWith(
+        expect.objectContaining({
+          entity_type: 'email_queue',
+          action: 'create_exception',
+          details: 'Network timeout',
+        })
+      )
+    })
+  })
+
+  describe('non-blocking error handling', () => {
+    it('should not fail email enqueue if activity_log insert fails', async () => {
+      const mockData = { id: 'test-email-id' }
+
+      mockFrom.mockImplementation((table: string) => {
+        if (table === 'email_queue') {
+          return {
+            insert: vi.fn().mockReturnValue({
+              select: vi.fn().mockReturnValue({
+                single: vi.fn().mockResolvedValue({ data: mockData, error: null }),
+              }),
+            }),
+          }
+        }
+        if (table === 'activity_log') {
+          return {
+            insert: vi.fn().mockReturnValue({
+              catch: vi.fn().mockImplementation((fn) => {
+                fn(new Error('activity_log insert failed'))
+                return Promise.resolve({})
+              }),
+            }),
+          }
+        }
+        return undefined
+      })
+
+      const result = await enqueueEmail({
+        toEmails: ['test@example.com'],
+        subject: 'Test Email',
+      })
+
+      expect(result.success).toBe(true)
+      expect(result.id).toBe('test-email-id')
+    })
+  })
+
+  describe('queue mode constraint', () => {
+    it('should allow emails in normal mode (production: digest-only constraint enforced separately)', async () => {
+      const mockData = { id: 'normal-mode-email-id' }
+
+      mockFrom.mockImplementation((table: string) => {
+        if (table === 'email_queue') {
+          return {
+            insert: vi.fn().mockReturnValue({
+              select: vi.fn().mockReturnValue({
+                single: vi.fn().mockResolvedValue({ data: mockData, error: null }),
+              }),
+            }),
+          }
+        }
+        if (table === 'activity_log') {
+          return { insert: vi.fn(() => ({ catch: vi.fn() })) }
+        }
+        return undefined
+      })
+
+      const result = await enqueueEmail({
+        toEmails: ['any@example.com'],
+        subject: 'Any Email Subject',
+      })
+
+      expect(result.success).toBe(true)
+      expect(result.id).toBe('normal-mode-email-id')
+    })
+  })
+})
