@@ -3,7 +3,15 @@ info:
   # Do not change the title, if the title changes, the import paths will be broken
   title: Api
   version: 0.2.0
-  description: Zafeer HR Management API — privileged admin operations via Supabase Admin SDK
+  description: >
+    Zafeer HR Management API — privileged admin operations via Supabase Admin SDK.
+
+
+    **⚠️ LOCAL DEVELOPMENT / ADMIN TOOL ONLY.**
+    This Express API server runs only in local development environments.
+    In production, all user management operations use the Supabase Edge Function
+    `admin-users`, and all project/extract lifecycle operations use the Edge Function
+    `admin-projects`. Do NOT deploy this Express server as a production backend.
 servers:
   - url: /api
     description: Base API path
@@ -11,7 +19,11 @@ tags:
   - name: health
     description: Health operations
   - name: admin-users
-    description: User management (admin only)
+    description: User management (admin only) — production uses Edge Function admin-users
+  - name: admin-projects
+    description: Project lifecycle operations (admin only) — production uses Edge Function admin-projects
+  - name: admin-extracts
+    description: Extract invoice and line operations (admin only) — production uses Edge Function admin-projects
 
 paths:
   /healthz:
@@ -152,7 +164,7 @@ paths:
       - $ref: "#/components/parameters/ProjectIdParam"
     delete:
       operationId: deleteAdminProject
-      tags: [admin-users]
+      tags: [admin-projects]
       summary: Soft delete a project
       security:
         - bearerAuth: []
@@ -162,7 +174,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/DeleteProjectResponse"
+                $ref: "#/components/schemas/SuccessResponse"
         "401":
           $ref: "#/components/responses/Unauthorized"
         "403":
@@ -179,7 +191,7 @@ paths:
       - $ref: "#/components/parameters/ExtractIdParam"
     delete:
       operationId: deleteAdminExtract
-      tags: [admin-users]
+      tags: [admin-extracts]
       summary: Delete extract invoice
       security:
         - bearerAuth: []
@@ -189,7 +201,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/DeleteExtractResponse"
+                $ref: "#/components/schemas/SuccessResponse"
         "401":
           $ref: "#/components/responses/Unauthorized"
         "403":
@@ -204,7 +216,7 @@ paths:
       - $ref: "#/components/parameters/ExtractIdParam"
     post:
       operationId: addAdminExtractLine
-      tags: [admin-users]
+      tags: [admin-extracts]
       summary: Add extract line
       security:
         - bearerAuth: []
@@ -215,12 +227,12 @@ paths:
             schema:
               $ref: "#/components/schemas/AddExtractLineRequest"
       responses:
-        "200":
-          description: Extract line added
+        "201":
+          description: Extract line created
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/ExtractLineMutationResponse"
+                $ref: "#/components/schemas/ExtractLine"
         "401":
           $ref: "#/components/responses/Unauthorized"
         "403":
@@ -237,7 +249,7 @@ paths:
       - $ref: "#/components/parameters/ExtractLineIdParam"
     patch:
       operationId: updateAdminExtractLine
-      tags: [admin-users]
+      tags: [admin-extracts]
       summary: Update extract line
       security:
         - bearerAuth: []
@@ -253,7 +265,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/ExtractLineMutationResponse"
+                $ref: "#/components/schemas/SuccessResponse"
         "401":
           $ref: "#/components/responses/Unauthorized"
         "403":
@@ -266,7 +278,7 @@ paths:
           $ref: "#/components/responses/TooManyRequests"
     delete:
       operationId: deleteAdminExtractLine
-      tags: [admin-users]
+      tags: [admin-extracts]
       summary: Delete extract line
       security:
         - bearerAuth: []
@@ -276,7 +288,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/ExtractLineMutationResponse"
+                $ref: "#/components/schemas/SuccessResponse"
         "401":
           $ref: "#/components/responses/Unauthorized"
         "403":
@@ -358,6 +370,14 @@ components:
 
   schemas:
     # ── Utility ───────────────────────────────────────────────────────────────
+    SuccessResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          const: true
+      required: [success]
+
     HealthStatus:
       type: object
       properties:
@@ -603,28 +623,6 @@ components:
           format: date-time
       required: [id, name, status, is_deleted, created_at, updated_at]
 
-    DeleteProjectResponse:
-      type: object
-      properties:
-        success:
-          type: boolean
-          const: true
-        projectId:
-          type: string
-          format: uuid
-      required: [success, projectId]
-
-    DeleteExtractResponse:
-      type: object
-      properties:
-        success:
-          type: boolean
-          const: true
-        extractId:
-          type: string
-          format: uuid
-      required: [success, extractId]
-
     AddExtractLineRequest:
       type: object
       properties:
@@ -650,21 +648,47 @@ components:
           minimum: 0
       required: [attendanceDays, totalDaysInMonth, monthlyRate]
 
-    ExtractLineMutationResponse:
+    ExtractLine:
       type: object
       properties:
-        success:
-          type: boolean
-          const: true
-        invoiceId:
+        id:
           type: string
           format: uuid
-        lineId:
+        invoice_id:
           type: string
           format: uuid
-        totalAmount:
+        employee_id:
+          type: string
+          format: uuid
+          nullable: true
+        employee_name_snapshot:
+          type: string
+        residence_number_snapshot:
+          type: integer
+        profession_snapshot:
+          type: string
+        monthly_rate_snapshot:
           type: number
-      required: [success, invoiceId, lineId, totalAmount]
+        attendance_days:
+          type: integer
+        total_days_in_month:
+          type: integer
+        amount:
+          type: number
+        created_at:
+          type: string
+          format: date-time
+      required:
+        - id
+        - invoice_id
+        - employee_name_snapshot
+        - residence_number_snapshot
+        - profession_snapshot
+        - monthly_rate_snapshot
+        - attendance_days
+        - total_days_in_month
+        - amount
+        - created_at
 
     ObligationType:
       type: string
