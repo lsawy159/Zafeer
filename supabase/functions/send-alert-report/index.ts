@@ -19,8 +19,6 @@ function jsonResponse(body: unknown, status = 200): Response {
   })
 }
 
-// ─── Inlined helpers (from _shared/alert-helpers.ts) ──────────────────────────
-
 interface Thresholds {
   urgent_days: number
   warning_days: number

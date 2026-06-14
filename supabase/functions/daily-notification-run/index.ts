@@ -4,8 +4,6 @@ import { Resend } from 'https://esm.sh/resend@4.0.0'
 import ExcelJS from 'npm:exceljs@4.4.0'
 import JSZip from 'https://esm.sh/jszip@3.10.1'
 
-// ─── Inlined helpers (from _shared/alert-helpers.ts) ──────────────────────────
-
 interface Thresholds {
   urgent_days: number
   warning_days: number
@@ -56,25 +54,6 @@ function formatDateDDMMYYYY(dateStr: string | null | undefined): string {
   const dd = String(d.getUTCDate()).padStart(2, '0')
   const mm = String(d.getUTCMonth() + 1).padStart(2, '0')
   return `${dd}/${mm}/${d.getUTCFullYear()}`
-}
-
-function arrayToCsv(rows: Record<string, unknown>[]): string {
-  if (!rows || rows.length === 0) return ''
-  const headers = Object.keys(rows[0])
-  const BOM = '﻿'
-  const escape = (val: unknown): string => {
-    if (val === null || val === undefined) return ''
-    const str = String(val)
-    if (str.includes(',') || str.includes('"') || str.includes('\n') || str.includes('\r')) {
-      return `"${str.replace(/"/g, '""')}"`
-    }
-    return str
-  }
-  const lines = [
-    headers.map(escape).join(','),
-    ...rows.map((row) => headers.map((h) => escape(row[h])).join(',')),
-  ]
-  return BOM + lines.join('\r\n')
 }
 
 const CORS_HEADERS = {
