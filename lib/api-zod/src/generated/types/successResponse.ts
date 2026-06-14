@@ -8,9 +8,8 @@
 
  * OpenAPI spec version: 0.2.0
  */
-import type { ErrorResponse } from './errorResponse';
 
-/**
- * Too many requests
- */
-export type TooManyRequestsResponse = ErrorResponse;
+export const SuccessResponseValue = {
+  success: true,
+} as const;
+export type SuccessResponse = typeof SuccessResponseValue;

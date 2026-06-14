@@ -98,6 +98,37 @@ pnpm docker:down
 
 ---
 
+## Express API vs Edge Functions
+
+ZaFeer uses two backend mechanisms with distinct scopes:
+
+| | Express API (`artifacts/api-server/`) | Supabase Edge Functions (`supabase/functions/`) |
+|---|---|---|
+| **When it runs** | Local development only | Production (and local via `supabase functions serve`) |
+| **Auth** | Supabase Admin SDK (`service_role`) | Supabase Admin SDK or user JWT |
+| **Deployed to production?** | ❌ No | ✅ Yes |
+
+### Rule: when to add a new operation
+
+- **Browser → Supabase directly (RLS)**: for any operation safe with a user JWT
+- **Express route**: if you need `service_role` but it's a local-dev / admin convenience tool only
+- **Edge Function**: if you need `service_role` AND the operation runs in production
+
+### Production Edge Functions
+
+| Function | Purpose |
+|---|---|
+| `admin-users` | User account management (mirrors Express `/admin/users` routes) |
+| `admin-projects` | Project soft-delete + extract lifecycle (mirrors Express `/admin/projects` + `/admin/extracts` routes) |
+| `automated-backup` | Scheduled full DB backup → Supabase Storage |
+| `restore-backup` | Admin-initiated restore from backup |
+| `daily-notification-run` | Sends daily alert digest email |
+| `send-alert-report` | Sends CSV alert report email |
+| `process-email-queue` | Processes queued outgoing emails |
+| `send-backup-email` | Sends backup as email attachment |
+
+---
+
 ## Architecture
 
 ### القاعدة الأساسية (NON-NEGOTIABLE)

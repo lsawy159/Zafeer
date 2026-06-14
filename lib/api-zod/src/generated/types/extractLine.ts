@@ -8,9 +8,17 @@
 
  * OpenAPI spec version: 0.2.0
  */
-import type { ErrorResponse } from './errorResponse';
 
-/**
- * Too many requests
- */
-export type TooManyRequestsResponse = ErrorResponse;
+export interface ExtractLine {
+  id: string;
+  invoice_id: string;
+  employee_id?: string | null;
+  employee_name_snapshot: string;
+  residence_number_snapshot: number;
+  profession_snapshot: string;
+  monthly_rate_snapshot: number;
+  attendance_days: number;
+  total_days_in_month: number;
+  amount: number;
+  created_at: Date;
+}
