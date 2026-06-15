@@ -1,6 +1,6 @@
 {
   "extends": "../../tsconfig.base.json",
-  "include": ["tests/unit/**/*.test.ts", "tests/unit/**/*.test.tsx", "src/test/**/*.ts"],
+  "include": ["tests/unit/**/*.test.ts", "tests/unit/**/*.test.tsx", "src/test/**/*.ts", "tests/integration/**/*.ts"],
   "exclude": ["node_modules", "build", "dist"],
   "compilerOptions": {
     "noEmit": true,
