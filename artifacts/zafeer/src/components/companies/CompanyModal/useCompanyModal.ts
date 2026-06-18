@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useCallback, useEffect } from 'react'
 import { useModalScrollLock } from '@/hooks/useModalScrollLock'
 import { supabase, Company } from '@/lib/supabase'
 import { toast } from 'sonner'
@@ -353,15 +353,27 @@ export function useCompanyModal({ isOpen, company, onClose, onSuccess }: UseComp
     }
   }
 
+  const [showUnsavedConfirm, setShowUnsavedConfirm] = useState(false)
+
   const handleOverlayClick = () => {
     if (isDirty) {
-      if (window.confirm('لديك تغييرات غير محفوظة. هل تريد الخروج بدون حفظ؟')) {
-        onClose()
-      }
+      setShowUnsavedConfirm(true)
     } else {
       onClose()
     }
   }
 
-  return { formData, handleChange, handleSubmit, handleOverlayClick, loading, isDirty, isEditing }
+  const handleUnsavedConfirm = useCallback(() => {
+    setShowUnsavedConfirm(false)
+    onClose()
+  }, [onClose])
+
+  const handleUnsavedCancel = useCallback(() => {
+    setShowUnsavedConfirm(false)
+  }, [])
+
+  return {
+    formData, handleChange, handleSubmit, handleOverlayClick, loading, isDirty, isEditing,
+    showUnsavedConfirm, handleUnsavedConfirm, handleUnsavedCancel,
+  }
 }

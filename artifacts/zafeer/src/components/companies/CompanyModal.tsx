@@ -7,6 +7,7 @@ import {
   calculateMoqeemSubscriptionStatus,
 } from '@/utils/autoCompanyStatus'
 import { useCompanyModal } from './CompanyModal/useCompanyModal'
+import ConfirmationDialog from '@/components/dialogs/ConfirmationDialog'
 
 interface CompanyModalProps {
   isOpen: boolean
@@ -16,8 +17,10 @@ interface CompanyModalProps {
 }
 
 export default function CompanyModal(props: CompanyModalProps) {
-  const { formData, handleChange, handleSubmit, handleOverlayClick, loading, isEditing } =
-    useCompanyModal(props)
+  const {
+    formData, handleChange, handleSubmit, handleOverlayClick, loading, isEditing,
+    showUnsavedConfirm, handleUnsavedConfirm, handleUnsavedCancel,
+  } = useCompanyModal(props)
 
   if (!props.isOpen) return null
 
@@ -31,7 +34,7 @@ export default function CompanyModal(props: CompanyModalProps) {
     ? calculateMoqeemSubscriptionStatus(formData.ending_subscription_moqeem_date)
     : null
 
-  return createPortal(
+  const portal = createPortal(
     <div
       className="fixed inset-0 z-[120] bg-slate-950/55 flex items-center justify-center p-4 backdrop-blur-sm"
       onClick={handleOverlayClick}
@@ -228,5 +231,22 @@ export default function CompanyModal(props: CompanyModalProps) {
       </div>
     </div>,
     document.body
+  )
+
+  return (
+    <>
+      {portal}
+      <ConfirmationDialog
+        isOpen={showUnsavedConfirm}
+        onClose={handleUnsavedCancel}
+        onConfirm={handleUnsavedConfirm}
+        title="تغييرات غير محفوظة"
+        message="لديك تغييرات غير محفوظة. هل تريد الخروج بدون حفظ؟"
+        confirmText="خروج بدون حفظ"
+        cancelText="البقاء"
+        isDangerous={true}
+        icon="alert"
+      />
+    </>
   )
 }
