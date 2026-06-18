@@ -259,16 +259,16 @@ export default function ProjectStatistics() {
                 <td colSpan={2} className="px-6 py-3 text-sm font-bold text-neutral-900">
                   الإجمالي
                 </td>
-                <td className="px-6 py-3 text-sm font-bold text-neutral-900">
+                <td className="px-6 py-3 text-sm font-bold text-neutral-900 whitespace-nowrap">
                   {statistics.reduce((sum, stat) => sum + stat.employee_count, 0)}
                 </td>
-                <td className="px-6 py-3 text-sm font-bold text-neutral-900">
+                <td className="px-6 py-3 text-sm font-bold text-neutral-900 whitespace-nowrap">
                   {statistics
                     .reduce((sum, stat) => sum + stat.total_salaries, 0)
                     .toLocaleString('en-US')}{' '}
                   ريال
                 </td>
-                <td className="px-6 py-3 text-sm font-bold text-neutral-900">
+                <td className="px-6 py-3 text-sm font-bold text-neutral-900 whitespace-nowrap">
                   {statistics.length > 0
                     ? Math.round(
                         statistics.reduce((sum, stat) => sum + stat.total_salaries, 0) /

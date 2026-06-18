@@ -91,14 +91,14 @@ function CompanyCard({
       <div className="app-card-meta text-[12.5px]">
         <div className="app-card-meta-row">
           <span className="app-card-meta-label">الرقم الموحد:</span>
-          <span className="app-card-meta-value font-mono [direction:ltr] text-left">
+          <span className="app-card-meta-value font-mono [direction:ltr] text-left truncate min-w-0 block">
             {company.unified_number}
           </span>
         </div>
         {company.social_insurance_number && (
           <div className="app-card-meta-row">
             <span className="app-card-meta-label">رقم اشتراك التأمينات الاجتماعية:</span>
-            <span className="app-card-meta-value font-mono [direction:ltr] text-left">
+            <span className="app-card-meta-value font-mono [direction:ltr] text-left truncate min-w-0 block">
               {company.social_insurance_number}
             </span>
           </div>
@@ -106,7 +106,7 @@ function CompanyCard({
         {company.labor_subscription_number && (
           <div className="app-card-meta-row">
             <span className="app-card-meta-label">رقم اشتراك قوى:</span>
-            <span className="app-card-meta-value font-mono [direction:ltr] text-left">
+            <span className="app-card-meta-value font-mono [direction:ltr] text-left truncate min-w-0 block">
               {company.labor_subscription_number}
             </span>
           </div>

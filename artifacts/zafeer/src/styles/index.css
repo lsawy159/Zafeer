@@ -64,7 +64,7 @@ body {
   padding: 2px; flex-shrink: 0;
 }
 .v3-chip {
-  padding: 4px 11px; border-radius: 9999px; font-size: 0.8125rem; font-weight: 500;
+  padding: 7px 12px; border-radius: 9999px; font-size: 0.8125rem; font-weight: 500;
   cursor: pointer; color: var(--color-muted-foreground); white-space: nowrap;
   background: transparent; border: none;
   transition: background 0.12s ease, color 0.12s ease;
@@ -76,3 +76,10 @@ body {
 .v3-vsep { width: 1px; height: 20px; background: var(--color-border); flex-shrink: 0; }
 .v3-search { flex: 1; min-width: 160px; }
 .v3-secondary { display: flex; align-items: center; gap: 6px; }
+@media (max-width: 639px) {
+  .v3-bar { row-gap: 8px; }
+  .v3-chips { order: 1; }
+  .v3-search { width: 100%; min-width: 0; order: 10; }
+  .v3-secondary { order: 11; flex-wrap: wrap; }
+  .v3-vsep { display: none; }
+}

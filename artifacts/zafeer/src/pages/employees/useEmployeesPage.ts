@@ -490,18 +490,22 @@ export function useEmployeesPage() {
 
   // Virtual grid
   const gridContainerRef = useRef<HTMLDivElement>(null)
-  const [gridColumnsCount, setGridColumnsCount] = useState(6)
+  const calcGridColumns = (w: number) => {
+    if (w >= 1200) return 6
+    if (w >= 1000) return 5
+    if (w >= 780) return 4
+    if (w >= 560) return 3
+    if (w >= 300) return 2
+    return 1
+  }
+  const [gridColumnsCount, setGridColumnsCount] = useState(() =>
+    calcGridColumns(typeof window !== 'undefined' ? window.innerWidth : 320)
+  )
   useEffect(() => {
     const el = gridContainerRef.current
     if (!el) return
     const observer = new ResizeObserver(([entry]) => {
-      const w = entry.contentRect.width
-      if (w >= 1200) setGridColumnsCount(6)
-      else if (w >= 1000) setGridColumnsCount(5)
-      else if (w >= 780) setGridColumnsCount(4)
-      else if (w >= 560) setGridColumnsCount(3)
-      else if (w >= 360) setGridColumnsCount(2)
-      else setGridColumnsCount(1)
+      setGridColumnsCount(calcGridColumns(entry.contentRect.width))
     })
     observer.observe(el)
     return () => observer.disconnect()
