@@ -198,10 +198,16 @@ Deno.serve(async (req: Request) => {
   }
 
   // Generate CSV ZIP (in-memory only — NOT uploaded to Storage)
+  // CSV is for human reading: exclude soft-deleted rows (is_deleted=true)
+  const SOFT_DELETE_TABLES = new Set(['employees', 'projects'])
   const zip = new JSZip()
   const tables = backupJson.tables ?? {}
   for (const [tableName, rows] of Object.entries(tables)) {
-    const csv = arrayToCsv(rows as Record<string, unknown>[])
+    let filtered = rows as Record<string, unknown>[]
+    if (SOFT_DELETE_TABLES.has(tableName)) {
+      filtered = filtered.filter((row) => !row.is_deleted)
+    }
+    const csv = arrayToCsv(filtered)
     zip.file(`${tableName}.csv`, csv)
   }
 
