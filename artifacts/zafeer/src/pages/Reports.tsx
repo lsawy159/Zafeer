@@ -563,9 +563,9 @@ export default function Reports() {
         </div>
 
         <div className="app-panel p-6">
-          <div className="mb-4 flex items-center justify-between">
+          <div className="mb-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
             <h2 className="text-xl font-bold">الاشتراكات القريبة من الانتهاء</h2>
-            <div className="flex gap-2">
+            <div className="flex gap-2 flex-shrink-0">
               <Select value={filterType} onValueChange={setFilterType}>
                 <SelectTrigger className="w-40">
                   <SelectValue placeholder="جميع الأنواع" />
