@@ -30,7 +30,7 @@ export function useEmployeeLeaves() {
         logger.error('Error fetching employee leaves:', error)
         throw error
       }
-      return (data ?? []) as unknown as EmployeeLeaveWithEmployee[]
+      return ((data ?? []) as unknown as EmployeeLeaveWithEmployee[]).filter((l) => !!l.employee)
     },
     staleTime: 5 * 60 * 1000,
     gcTime: 10 * 60 * 1000,
