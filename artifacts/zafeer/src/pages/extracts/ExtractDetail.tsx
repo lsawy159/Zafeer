@@ -265,8 +265,8 @@ export default function ExtractDetail({ extractId: extractIdProp, onBack }: Prop
   return wrap(
     <div className="max-w-4xl mx-auto py-6 px-4 space-y-5" dir="rtl">
       {/* Header */}
-      <div className="flex items-start justify-between">
-        <div className="flex items-center gap-3">
+      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
+        <div className="flex items-center gap-3 min-w-0">
           <button
             onClick={() => onBack ? onBack() : navigate('/extracts')}
             className="text-slate-500 hover:text-slate-700 transition mt-1"
