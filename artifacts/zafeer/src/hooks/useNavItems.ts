@@ -10,6 +10,7 @@ import {
   Bell,
   Wallet,
   RefreshCcw,
+  CalendarDays,
 } from 'lucide-react'
 import { useAlertsStats } from '@/hooks/useAlertsStats'
 import { usePermissions } from '@/utils/permissions'
@@ -63,6 +64,13 @@ export function useNavItems() {
         icon: RefreshCcw,
         label: 'إجراءات النقل',
         permission: { section: 'transferProcedures' as const, action: 'view' },
+        badge: null,
+      },
+      {
+        path: '/employee-leaves',
+        icon: CalendarDays,
+        label: 'إجازات الموظفين',
+        permission: { section: 'employeeLeaves' as const, action: 'view' },
         badge: null,
       },
       {
@@ -140,6 +148,8 @@ export function useNavItems() {
             item.path.includes('finance') ? 'مالية' : '',
             item.path.includes('finance') ? 'راتب' : '',
             item.path.includes('finance') ? 'مستخلص' : '',
+            item.path.includes('employee-leaves') ? 'إجازة' : '',
+            item.path.includes('employee-leaves') ? 'اجازات' : '',
           ].filter(Boolean),
         })),
     [visibleNavItems]

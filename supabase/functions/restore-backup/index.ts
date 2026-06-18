@@ -17,6 +17,7 @@ const TABLES_TO_EXPORT = [
   'companies',
   'projects',
   'employees',
+  'employee_leaves',
   'project_job_title_rates',
   'saved_searches',
   'notifications',

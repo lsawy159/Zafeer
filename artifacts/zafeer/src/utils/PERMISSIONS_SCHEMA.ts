@@ -128,6 +128,12 @@ export const PERMISSION_SECTIONS = {
     description: 'تخصيص حدود التنبيهات وألوانها وحالاتها.',
     actions: ['view', 'edit'] as const,
   },
+  // [active] — employeeLeaves.{view,create,edit,delete}
+  employeeLeaves: {
+    label: 'إجازات الموظفين',
+    description: 'تسجيل إجازات الموظفين وعرض سجل الإجازات.',
+    actions: ['view', 'create', 'edit', 'delete'] as const,
+  },
   // [orphaned] — centralizedSettings.{view,edit}: old /centralized-settings route redirected into
   // /admin-settings umbrella; no active RLS/RPC enforcement; subsumed by adminSettings.
   // Removed from editable catalog per T007 (see research.md Audit Catalog).

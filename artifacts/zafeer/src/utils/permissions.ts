@@ -33,6 +33,7 @@ export interface PermissionMatrix {
   importExport: { view: boolean; import: boolean; export: boolean }
   activityLogs: { view: boolean }
   dashboard: { view: boolean }
+  employeeLeaves: { view: boolean; create: boolean; edit: boolean; delete: boolean }
 }
 
 /**

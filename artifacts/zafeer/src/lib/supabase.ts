@@ -319,3 +319,18 @@ export interface NotificationStats {
   medium_count: number
   low_count: number
 }
+
+export interface EmployeeLeave {
+  id: string
+  employee_id: string
+  start_date: string
+  end_date: string
+  notes?: string | null
+  created_by?: string | null
+  created_at: string
+  updated_at: string
+}
+
+export interface EmployeeLeaveWithEmployee extends EmployeeLeave {
+  employee?: Pick<Employee, 'id' | 'name' | 'residence_number'>
+}

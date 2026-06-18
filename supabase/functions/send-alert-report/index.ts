@@ -590,6 +590,29 @@ Deno.serve(async (req: Request) => {
     const companyRows = (companiesData ?? []) as CompanyRow[]
     const companyLookup = new Map<string, CompanyRow>(companyRows.map((row) => [row.id, row]))
 
+    // Fetch employee leaves
+    const { data: leavesData } = await admin
+      .from('employee_leaves')
+      .select('id, employee_id, start_date, end_date, notes')
+      .order('start_date', { ascending: false })
+
+    interface LeaveRow { id: string; employee_id: string; start_date: string; end_date: string; notes: string | null }
+    const leavesRows: Record<string, unknown>[] = ((leavesData ?? []) as LeaveRow[]).map((l) => {
+      const emp = employeeLookup.get(l.employee_id)
+      const days = Math.max(
+        0,
+        Math.round((new Date(l.end_date).getTime() - new Date(l.start_date).getTime()) / 86400000) + 1
+      )
+      return {
+        'رقم الإقامة': emp?.residence_number ?? '',
+        'اسم الموظف': emp?.name ?? '',
+        'تاريخ البداية': formatDateDDMMYYYY(l.start_date),
+        'تاريخ النهاية': formatDateDDMMYYYY(l.end_date),
+        'عدد الأيام': String(days),
+        'ملاحظات': l.notes ?? '',
+      }
+    })
+
     const { data: snoozedRows, error: snoozedError } = await admin
       .from('snoozed_alerts')
       .select('alert_id, snoozed_until, is_deferred')
@@ -694,10 +717,10 @@ Deno.serve(async (req: Request) => {
 
     const deferredCsvRows = buildDeferredSheet(deferredRows)
 
-    if (employeesCsvRows.length === 0 && companiesCsvRows.length === 0) {
+    if (employeesCsvRows.length === 0 && companiesCsvRows.length === 0 && leavesRows.length === 0) {
       return jsonResponse({
         success: true,
-        employees_count: 0, companies_count: 0, deferred_count: deferredRows.length,
+        employees_count: 0, companies_count: 0, deferred_count: deferredRows.length, leaves_count: 0,
         email_sent: false, email_skip_reason: 'no_active_alerts',
       })
     }
@@ -843,6 +866,20 @@ Deno.serve(async (req: Request) => {
       },
     ])
     zip.file('companies.xlsx', companiesXlsx)
+
+    const leavesXlsx = await buildXlsxWorkbook([
+      {
+        name: 'إجازات الموظفين',
+        headers: ['رقم الإقامة', 'اسم الموظف', 'تاريخ البداية', 'تاريخ النهاية', 'عدد الأيام', 'ملاحظات'],
+        keys: ['رقم الإقامة', 'اسم الموظف', 'تاريخ البداية', 'تاريخ النهاية', 'عدد الأيام', 'ملاحظات'],
+        widths: [14, 22, 16, 16, 10, 28],
+        rows: leavesRows,
+        daysKey: null,
+        thresholds: null,
+      },
+    ])
+    zip.file('leaves.xlsx', leavesXlsx)
+
     if (deferredCsvRows.length > 0) zip.file('deferred.csv', arrayToCsv(deferredCsvRows))
 
     const zipBytes = await zip.generateAsync({ type: 'uint8array', compression: 'DEFLATE' })
@@ -913,6 +950,7 @@ Deno.serve(async (req: Request) => {
       employees_count: employeesCsvRows.length,
       companies_count: companiesCsvRows.length,
       deferred_count: deferredRows.length,
+      leaves_count: leavesRows.length,
       email_sent: true,
       recipient: adminEmail,
     })
