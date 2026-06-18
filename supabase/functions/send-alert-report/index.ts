@@ -597,20 +597,21 @@ Deno.serve(async (req: Request) => {
       .order('start_date', { ascending: false })
 
     interface LeaveRow { id: string; employee_id: string; start_date: string; end_date: string; notes: string | null }
-    const leavesRows: Record<string, unknown>[] = ((leavesData ?? []) as LeaveRow[]).map((l) => {
+    const leavesRows: Record<string, unknown>[] = ((leavesData ?? []) as LeaveRow[]).flatMap((l) => {
       const emp = employeeLookup.get(l.employee_id)
+      if (!emp) return [] // skip leaves of soft-deleted / unknown employees
       const days = Math.max(
         0,
         Math.round((new Date(l.end_date).getTime() - new Date(l.start_date).getTime()) / 86400000) + 1
       )
-      return {
-        'رقم الإقامة': emp?.residence_number ?? '',
-        'اسم الموظف': emp?.name ?? '',
+      return [{
+        'رقم الإقامة': emp.residence_number ?? '',
+        'اسم الموظف': emp.name,
         'تاريخ البداية': formatDateDDMMYYYY(l.start_date),
         'تاريخ النهاية': formatDateDDMMYYYY(l.end_date),
         'عدد الأيام': String(days),
         'ملاحظات': l.notes ?? '',
-      }
+      }]
     })
 
     const { data: snoozedRows, error: snoozedError } = await admin
@@ -717,10 +718,10 @@ Deno.serve(async (req: Request) => {
 
     const deferredCsvRows = buildDeferredSheet(deferredRows)
 
-    if (employeesCsvRows.length === 0 && companiesCsvRows.length === 0 && leavesRows.length === 0) {
+    if (employeesCsvRows.length === 0 && companiesCsvRows.length === 0) {
       return jsonResponse({
         success: true,
-        employees_count: 0, companies_count: 0, deferred_count: deferredRows.length, leaves_count: 0,
+        employees_count: 0, companies_count: 0, deferred_count: deferredRows.length, leaves_count: leavesRows.length,
         email_sent: false, email_skip_reason: 'no_active_alerts',
       })
     }
