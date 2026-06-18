@@ -2,6 +2,7 @@ import { useState, useMemo } from 'react'
 import { CalendarDays, Plus, Trash2, Pencil, UmbrellaOff } from 'lucide-react'
 import { toast } from 'sonner'
 import Layout from '@/components/layout/Layout'
+import ConfirmationDialog from '@/components/dialogs/ConfirmationDialog'
 import { PageHeader } from '@/components/ui/PageHeader'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
@@ -239,6 +240,7 @@ export default function EmployeeLeaves() {
   const [search, setSearch] = useState('')
   const [modalOpen, setModalOpen] = useState(false)
   const [editLeave, setEditLeave] = useState<EmployeeLeaveWithEmployee | null>(null)
+  const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null)
 
   if (!canView('employeeLeaves')) {
     return (
@@ -263,12 +265,18 @@ export default function EmployeeLeaves() {
   }, [leaves, search])
 
   async function handleDelete(id: string) {
-    if (!confirm('هل أنت متأكد من حذف هذه الإجازة؟')) return
+    setDeleteConfirmId(id)
+  }
+
+  async function handleDeleteConfirmed() {
+    if (!deleteConfirmId) return
     try {
-      await deleteLeave.mutateAsync(id)
+      await deleteLeave.mutateAsync(deleteConfirmId)
       toast.success('تم حذف الإجازة')
     } catch {
       toast.error('حدث خطأ أثناء الحذف')
+    } finally {
+      setDeleteConfirmId(null)
     }
   }
 
@@ -415,6 +423,18 @@ export default function EmployeeLeaves() {
           editLeave={editLeave}
         />
       )}
+
+      <ConfirmationDialog
+        isOpen={!!deleteConfirmId}
+        onClose={() => setDeleteConfirmId(null)}
+        onConfirm={handleDeleteConfirmed}
+        title="حذف الإجازة"
+        message="هل أنت متأكد من حذف هذه الإجازة؟ لا يمكن التراجع عن هذا الإجراء."
+        confirmText="حذف"
+        cancelText="إلغاء"
+        isDangerous={true}
+        icon="alert"
+      />
     </Layout>
   )
 }

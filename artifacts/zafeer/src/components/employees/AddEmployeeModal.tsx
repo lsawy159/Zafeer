@@ -7,6 +7,7 @@ import {
 } from 'lucide-react'
 import { HIRED_WORKER_CONTRACT_STATUS_OPTIONS } from '@/utils/employeeBusinessFields'
 import { useAddEmployeeForm } from './AddEmployeeModal/useAddEmployeeForm'
+import ConfirmationDialog from '@/components/dialogs/ConfirmationDialog'
 
 interface AddEmployeeModalProps {
   isOpen: boolean
@@ -34,11 +35,12 @@ export default function AddEmployeeModal(props: AddEmployeeModalProps) {
     filteredCompanies, filteredProjects, showCreateOption,
     handleChange, handleSubmit, handleOverlayClick, handleCreateProject,
     selectCompany, selectProject, clearProject,
+    showUnsavedConfirm, handleUnsavedConfirm, handleUnsavedCancel,
   } = useAddEmployeeForm(props)
 
   if (!props.isOpen) return null
 
-  return createPortal(
+  const portal = createPortal(
     <div
       className="fixed inset-0 z-[120] bg-slate-950/55 flex items-center justify-center p-4 backdrop-blur-sm"
       onClick={handleOverlayClick}
@@ -283,5 +285,22 @@ export default function AddEmployeeModal(props: AddEmployeeModalProps) {
       </div>
     </div>,
     document.body
+  )
+
+  return (
+    <>
+      {portal}
+      <ConfirmationDialog
+        isOpen={showUnsavedConfirm}
+        onClose={handleUnsavedCancel}
+        onConfirm={handleUnsavedConfirm}
+        title="تغييرات غير محفوظة"
+        message="لديك تغييرات غير محفوظة. هل تريد الخروج بدون حفظ؟"
+        confirmText="خروج بدون حفظ"
+        cancelText="البقاء"
+        isDangerous={true}
+        icon="alert"
+      />
+    </>
   )
 }

@@ -4,6 +4,7 @@ import { useModalScrollLock } from '@/hooks/useModalScrollLock'
 import { supabase, Project } from '@/lib/supabase'
 import { X, FolderKanban, Loader2 } from 'lucide-react'
 import { toast } from 'sonner'
+import ConfirmationDialog from '@/components/dialogs/ConfirmationDialog'
 
 interface ProjectModalProps {
   isOpen: boolean
@@ -15,6 +16,7 @@ interface ProjectModalProps {
 export default function ProjectModal({ isOpen, project, onClose, onSuccess }: ProjectModalProps) {
   const [loading, setLoading] = useState(false)
   const [isDirty, setIsDirty] = useState(false)
+  const [showUnsavedConfirm, setShowUnsavedConfirm] = useState(false)
   const [formData, setFormData] = useState({
     name: '',
     description: '',
@@ -73,9 +75,7 @@ export default function ProjectModal({ isOpen, project, onClose, onSuccess }: Pr
 
   const handleOverlayClick = () => {
     if (isDirty) {
-      if (window.confirm('لديك تغييرات غير محفوظة. هل تريد الخروج بدون حفظ؟')) {
-        onClose()
-      }
+      setShowUnsavedConfirm(true)
     } else {
       onClose()
     }
@@ -165,7 +165,7 @@ export default function ProjectModal({ isOpen, project, onClose, onSuccess }: Pr
 
   if (!isOpen) return null
 
-  return createPortal(
+  const portal = createPortal(
     <div
       className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[120] p-4"
       onClick={handleOverlayClick}
@@ -254,5 +254,22 @@ export default function ProjectModal({ isOpen, project, onClose, onSuccess }: Pr
       </div>
     </div>,
     document.body
+  )
+
+  return (
+    <>
+      {portal}
+      <ConfirmationDialog
+        isOpen={showUnsavedConfirm}
+        onClose={() => setShowUnsavedConfirm(false)}
+        onConfirm={() => { setShowUnsavedConfirm(false); onClose() }}
+        title="تغييرات غير محفوظة"
+        message="لديك تغييرات غير محفوظة. هل تريد الخروج بدون حفظ؟"
+        confirmText="خروج بدون حفظ"
+        cancelText="البقاء"
+        isDangerous={true}
+        icon="alert"
+      />
+    </>
   )
 }

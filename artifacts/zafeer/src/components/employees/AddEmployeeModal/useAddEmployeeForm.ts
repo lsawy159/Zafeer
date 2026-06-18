@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useCallback, useEffect, useRef } from 'react'
 import { useModalScrollLock } from '@/hooks/useModalScrollLock'
 import { supabase, Company, Project, Employee, EmployeeWithRelations } from '@/lib/supabase'
 import { useUploadResidenceFile } from '@/hooks/useResidenceFile'
@@ -483,13 +483,24 @@ export function useAddEmployeeForm({ isOpen, onClose, onSuccess, initialData }: 
     }
   }
 
+  const [showUnsavedConfirm, setShowUnsavedConfirm] = useState(false)
+
   const handleOverlayClick = () => {
     if (isDirty) {
-      if (window.confirm('لديك تغييرات غير محفوظة. هل تريد الخروج بدون حفظ؟')) onClose()
+      setShowUnsavedConfirm(true)
     } else {
       onClose()
     }
   }
+
+  const handleUnsavedConfirm = useCallback(() => {
+    setShowUnsavedConfirm(false)
+    onClose()
+  }, [onClose])
+
+  const handleUnsavedCancel = useCallback(() => {
+    setShowUnsavedConfirm(false)
+  }, [])
 
   const selectCompany = (company: CompanyWithStats) => {
     setFormData((prev) => ({ ...prev, company_id: company.id }))
@@ -531,5 +542,6 @@ export function useAddEmployeeForm({ isOpen, onClose, onSuccess, initialData }: 
     // handlers
     handleChange, handleSubmit, handleOverlayClick, handleCreateProject,
     selectCompany, selectProject, clearProject,
+    showUnsavedConfirm, handleUnsavedConfirm, handleUnsavedCancel,
   }
 }
