@@ -397,32 +397,32 @@ export default function PDCObligationsSection(ctx: Ctx) {
                         <td className="px-4 py-3" colSpan={4}>
                           الإجمالي ({filteredObligationsSummary.length} موظف)
                         </td>
-                        <td className="px-4 py-3 text-amber-700">
+                        <td className="px-4 py-3 text-amber-700 whitespace-nowrap">
                           {filteredObligationsSummary
                             .reduce((s, r) => s + r.transfer_remaining, 0)
                             .toLocaleString('en-US')}
                         </td>
-                        <td className="px-4 py-3 text-amber-700">
+                        <td className="px-4 py-3 text-amber-700 whitespace-nowrap">
                           {filteredObligationsSummary
                             .reduce((s, r) => s + r.renewal_remaining, 0)
                             .toLocaleString('en-US')}
                         </td>
-                        <td className="px-4 py-3 text-rose-600">
+                        <td className="px-4 py-3 text-rose-600 whitespace-nowrap">
                           {filteredObligationsSummary
                             .reduce((s, r) => s + r.penalty_remaining, 0)
                             .toLocaleString('en-US')}
                         </td>
-                        <td className="px-4 py-3 text-blue-700">
+                        <td className="px-4 py-3 text-blue-700 whitespace-nowrap">
                           {filteredObligationsSummary
                             .reduce((s, r) => s + r.advance_remaining, 0)
                             .toLocaleString('en-US')}
                         </td>
-                        <td className="px-4 py-3 text-violet-700">
+                        <td className="px-4 py-3 text-violet-700 whitespace-nowrap">
                           {filteredObligationsSummary
                             .reduce((s, r) => s + r.other_remaining, 0)
                             .toLocaleString('en-US')}
                         </td>
-                        <td className="px-4 py-3 text-red-600">
+                        <td className="px-4 py-3 text-red-600 whitespace-nowrap">
                           {filteredObligationsSummary
                             .reduce((s, r) => s + r.total_remaining, 0)
                             .toLocaleString('en-US')}

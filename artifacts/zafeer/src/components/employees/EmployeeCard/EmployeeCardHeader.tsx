@@ -24,14 +24,14 @@ export function EmployeeCardHeader({
 }: EmployeeCardHeaderProps) {
   return (
     <div
-      className={`sticky top-0 z-30 flex items-center justify-between border-b p-6 backdrop-blur-md ${
+      className={`sticky top-0 z-30 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border-b p-6 backdrop-blur-md ${
         isEditMode
           ? 'border-warning-200 bg-warning-50 text-warning-900'
           : 'border-neutral-200 bg-white/95 text-neutral-900'
       }`}
     >
-      <div>
-        <h2 className="text-2xl font-bold">{employee.name}</h2>
+      <div className="min-w-0 sm:flex-1">
+        <h2 className="text-2xl font-bold line-clamp-2 break-words">{employee.name}</h2>
         <p className={`mt-1 ${isEditMode ? 'text-warning-700' : 'text-neutral-600'}`}>
           {employee.profession} - {employee?.company?.name ?? 'غير محدد'}
         </p>
@@ -41,7 +41,7 @@ export function EmployeeCardHeader({
           </p>
         )}
       </div>
-      <div className="flex items-center gap-2">
+      <div className="flex flex-wrap items-center gap-2 flex-shrink-0">
         {!isEditMode && (
           <>
             <button

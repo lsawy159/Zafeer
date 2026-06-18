@@ -181,9 +181,9 @@ export default function RevenueTab() {
               <tfoot className="border-t-2 border-border-200">
                 <tr className="font-bold">
                   <td className="py-2 px-3" colSpan={2}>الإجمالي</td>
-                  <td className="py-2 px-3 tabular-nums text-right text-green-800">{fmt(totals.revenue)}</td>
-                  <td className="py-2 px-3 tabular-nums text-right text-red-800">{fmt(totals.labor_cost)}</td>
-                  <td className={`py-2 px-3 tabular-nums text-right ${totals.margin < 0 ? 'text-red-700' : 'text-foreground'}`}>
+                  <td className="py-2 px-3 tabular-nums text-right text-green-800 whitespace-nowrap">{fmt(totals.revenue)}</td>
+                  <td className="py-2 px-3 tabular-nums text-right text-red-800 whitespace-nowrap">{fmt(totals.labor_cost)}</td>
+                  <td className={`py-2 px-3 tabular-nums text-right whitespace-nowrap ${totals.margin < 0 ? 'text-red-700' : 'text-foreground'}`}>
                     {fmt(totals.margin)}
                   </td>
                   <td className="py-2 px-3">

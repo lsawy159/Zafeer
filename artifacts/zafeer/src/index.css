@@ -843,6 +843,9 @@
     font-weight: 600;
     color: var(--color-foreground);
     text-align: left;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
 
   .dark .app-card-meta-value {

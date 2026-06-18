@@ -345,7 +345,7 @@ export function DashboardEmployeesTab({
           </h3>
           <button
             onClick={() => navigate('/employees')}
-            className="text-primary hover:brightness-90 text-xs font-medium flex items-center gap-1"
+            className="text-primary hover:brightness-90 text-xs font-medium flex items-center gap-1 py-2 px-1"
           >
             عرض الكل
             <ArrowRight className="w-3 h-3" />

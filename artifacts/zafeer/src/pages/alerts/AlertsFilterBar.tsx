@@ -56,23 +56,25 @@ export function AlertsFilterBar(p: AlertsFilterBarProps) {
         <div className="v3-vsep" />
         <SearchInput type="text" placeholder="البحث..." value={p.searchTerm} onChange={(e) => p.setSearchTerm(e.target.value)} wrapperClassName="v3-search" />
         <div className="v3-vsep" />
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="secondary" className="h-9 px-3 text-sm">
-              <span className="truncate max-w-[120px]">{getPriorityFilterLabel(p.activeFilter)}</span>
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="start" sideOffset={8} className="w-56">
-            <DropdownMenuLabel>اختر الأولويات</DropdownMenuLabel>
-            <DropdownMenuItem onSelect={() => p.clearPriorityFilter()}>جميع الأولويات</DropdownMenuItem>
-            <DropdownMenuSeparator />
-            {PRIORITY_OPTIONS.map((option) => (
-              <DropdownMenuCheckboxItem key={option.value} checked={p.activeFilter.includes(option.value)} onCheckedChange={() => p.togglePriorityFilter(option.value)} onSelect={(event) => event.preventDefault()}>
-                {option.label}
-              </DropdownMenuCheckboxItem>
-            ))}
-          </DropdownMenuContent>
-        </DropdownMenu>
+        <div className="order-3 sm:order-none">
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="secondary" className="h-9 px-3 text-sm">
+                <span className="truncate max-w-[120px]">{getPriorityFilterLabel(p.activeFilter)}</span>
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="start" sideOffset={8} className="w-56">
+              <DropdownMenuLabel>اختر الأولويات</DropdownMenuLabel>
+              <DropdownMenuItem onSelect={() => p.clearPriorityFilter()}>جميع الأولويات</DropdownMenuItem>
+              <DropdownMenuSeparator />
+              {PRIORITY_OPTIONS.map((option) => (
+                <DropdownMenuCheckboxItem key={option.value} checked={p.activeFilter.includes(option.value)} onCheckedChange={() => p.togglePriorityFilter(option.value)} onSelect={(event) => event.preventDefault()}>
+                  {option.label}
+                </DropdownMenuCheckboxItem>
+              ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
         <div className="v3-secondary">
           <Select value={p.alertStatusFilter} onValueChange={(value) => p.setAlertStatusFilter(value as typeof p.alertStatusFilter)}>
             <SelectTrigger className="h-9 min-w-[100px] text-sm"><SelectValue placeholder="الحالة" /></SelectTrigger>
@@ -107,21 +109,23 @@ export function AlertsFilterBar(p: AlertsFilterBarProps) {
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
-        <div className="app-toggle-shell">
+        <div className="app-toggle-shell order-4 sm:order-none">
           <button type="button" onClick={() => p.setViewMode('table')} className={`app-toggle-button ${p.viewMode === 'table' ? 'app-toggle-button-active' : ''}`} title="عرض جدول"><List className="h-4 w-4" /></button>
           <button type="button" onClick={() => p.setViewMode('grid')} className={`app-toggle-button ${p.viewMode === 'grid' ? 'app-toggle-button-active' : ''}`} title="عرض بطاقات"><LayoutGrid className="h-4 w-4" /></button>
         </div>
-        {p.readFilterTab === 'new' && p.totalAlerts > 0 && (
-          <Button onClick={p.handleMarkAllAsRead} variant="default" className="h-9 px-3 text-sm whitespace-nowrap">
-            <CheckCircle2 className="w-4 h-4" />
-            <span>اطلع على الكل</span>
-          </Button>
-        )}
-        {p.readFilterTab === 'read' && p.totalReadAlerts > 0 && (
-          <Button onClick={p.handleMarkAllAsUnread} variant="secondary" className="h-9 px-3 text-sm whitespace-nowrap">
-            <Mail className="w-4 h-4" />
-          </Button>
-        )}
+        <div className="order-12 sm:order-none w-full sm:w-auto flex justify-end">
+          {p.readFilterTab === 'new' && p.totalAlerts > 0 && (
+            <Button onClick={p.handleMarkAllAsRead} variant="default" className="h-9 px-3 text-sm whitespace-nowrap">
+              <CheckCircle2 className="w-4 h-4" />
+              <span>اطلع على الكل</span>
+            </Button>
+          )}
+          {p.readFilterTab === 'read' && p.totalReadAlerts > 0 && (
+            <Button onClick={p.handleMarkAllAsUnread} variant="secondary" className="h-9 px-3 text-sm whitespace-nowrap">
+              <Mail className="w-4 h-4" />
+            </Button>
+          )}
+        </div>
       </div>
     </div>
   )

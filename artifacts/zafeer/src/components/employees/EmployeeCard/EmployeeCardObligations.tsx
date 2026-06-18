@@ -149,20 +149,20 @@ export function EmployeeCardObligations({
             onClick={(e) => e.stopPropagation()}
           >
             <div className="border border-neutral-200 rounded-xl p-5 bg-neutral-50">
-              <div className="flex items-center justify-between gap-4 mb-4">
+              <div className="flex flex-wrap items-start gap-4 mb-4">
                 <div>
                   <h3 className="text-lg font-bold text-neutral-900">الالتزامات المالية</h3>
                   <p className="text-sm text-neutral-600">ملخص الأقساط والخطط المفتوحة لهذا الموظف</p>
                 </div>
-                <div className="flex items-center gap-3">
-                  <div className="text-sm text-neutral-500">
+                <div className="flex items-center gap-3 flex-shrink-0 flex-wrap">
+                  <div className="text-sm text-neutral-500 whitespace-nowrap">
                     {isLoadingObligations ? 'جاري التحميل...' : `${activeObligationPlans.length} خطة نشطة / مسودة`}
                   </div>
                   {canEdit('employees') && (
                     <button
                       type="button"
                       onClick={onAddObligation}
-                      className="app-button-primary px-4 py-2 text-sm"
+                      className="app-button-primary px-4 py-2 text-sm whitespace-nowrap"
                     >
                       <Plus className="w-4 h-4" />
                       إضافة التزام

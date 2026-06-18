@@ -273,8 +273,8 @@ export default function ExtractDetail({ extractId: extractIdProp, onBack }: Prop
           >
             <ChevronRight className="h-5 w-5" />
           </button>
-          <div>
-            <h1 className="text-xl font-bold text-slate-900">
+          <div className="min-w-0">
+            <h1 className="text-xl font-bold text-slate-900 line-clamp-2">
               {extract.projects?.name ?? '—'}
             </h1>
             <p className="text-sm text-slate-500 mt-0.5">
@@ -283,7 +283,7 @@ export default function ExtractDetail({ extractId: extractIdProp, onBack }: Prop
           </div>
         </div>
 
-        <div className="flex items-center gap-2 flex-wrap justify-end">
+        <div className="flex items-center gap-2 flex-wrap justify-end flex-shrink-0">
           <StatusBadge status={extract.status} />
 
           {/* Admin editing exported extract badge */}

@@ -101,7 +101,7 @@ export default function PDCRunsSection(ctx: Ctx) {
       <div className="space-y-5">
         <div className="overflow-hidden rounded-[28px] border border-sky-200/70 bg-gradient-to-br from-white via-sky-50/50 to-indigo-50/40 shadow-[0_20px_60px_-34px_rgba(14,116,144,0.42)]">
         <div className="flex items-center justify-between gap-3 border-b border-sky-100 bg-gradient-to-l from-sky-50 via-white to-indigo-50 px-5 py-4">
-          <div>
+          <div className="min-w-0">
             <div className="flex flex-wrap items-center gap-2">
               <span className="inline-flex items-center rounded-full border border-sky-200 bg-white/80 px-2.5 py-1 text-[11px] font-semibold text-sky-700">
                 عرض المسير
@@ -142,7 +142,7 @@ export default function PDCRunsSection(ctx: Ctx) {
             </div>
           </div>
           {isAdmin && (
-            <div className="flex flex-wrap items-center justify-end gap-2 max-w-2xl">
+            <div className="flex flex-col sm:flex-row sm:items-center gap-2 flex-wrap justify-end">
               <input
                 ref={payrollExcelInputRef}
                 type="file"
@@ -157,196 +157,200 @@ export default function PDCRunsSection(ctx: Ctx) {
                 className="hidden"
                 onChange={handleDaysExcelFile}
               />
-              <button
-                type="button"
-                onClick={handleRefreshPayrollData}
-                className={outlineCompactButtonClass}
-              >
-                <RefreshCw className="w-4 h-4" />
-                تحديث المسير
-              </button>
-              {selectedPayrollRun.status === 'draft' && isAdmin && (
+              <div className="flex flex-wrap items-center gap-2">
                 <button
                   type="button"
-                  onClick={() => setShowEditMonthModal(true)}
-                  className="inline-flex items-center gap-1.5 rounded-lg border border-blue-200 bg-blue-50 px-3 py-1.5 text-xs font-medium text-blue-700 shadow-sm transition hover:bg-blue-100"
+                  onClick={handleRefreshPayrollData}
+                  className={`${outlineCompactButtonClass} whitespace-nowrap`}
                 >
-                  <Calendar className="w-4 h-4" />
-                  تعديل الشهر
+                  <RefreshCw className="w-4 h-4" />
+                  تحديث المسير
                 </button>
-              )}
-              {selectedPayrollRun.status === 'draft' && isAdmin && (
+                {selectedPayrollRun.status === 'draft' && isAdmin && (
+                  <button
+                    type="button"
+                    onClick={() => setShowEditMonthModal(true)}
+                    className="inline-flex items-center gap-1.5 rounded-lg border border-blue-200 bg-blue-50 px-3 py-1.5 text-xs font-medium text-blue-700 shadow-sm transition hover:bg-blue-100 whitespace-nowrap"
+                  >
+                    <Calendar className="w-4 h-4" />
+                    تعديل الشهر
+                  </button>
+                )}
+                {selectedPayrollRun.status === 'draft' && isAdmin && (
+                  <button
+                    type="button"
+                    onClick={() => setShowAddEmployeeModal(true)}
+                    className={`${primaryCompactButtonClass} whitespace-nowrap`}
+                  >
+                    <Plus className="w-4 h-4" />
+                    إضافة موظف
+                  </button>
+                )}
                 <button
-                  type="button"
-                  onClick={() => setShowAddEmployeeModal(true)}
-                  className={primaryCompactButtonClass}
-                >
-                  <Plus className="w-4 h-4" />
-                  إضافة موظف
-                </button>
-              )}
-              <button
-                onClick={() => {
-                  if (showPayrollEntryForm) {
-                    setShowPayrollEntryForm(false)
-                    return
-                  }
-                  handleOpenPayrollEntryForm()
-                }}
-                className={`${primaryCompactButtonClass} disabled:bg-surface-secondary-200 disabled:text-foreground-tertiary disabled:border disabled:border-border-200`}
-                disabled={
-                  !selectedPayrollRunEditable ||
-                  scopedEmployeesLoading ||
-                  scopedPayrollEmployees.length === 0
-                }
-                title={
-                  selectedPayrollRun.status === 'cancelled'
-                    ? 'هذا المسير ملغي ويجب إعادة فتحه أولًا'
-                    : scopedPayrollEmployees.length === 0
-                      ? 'لا يوجد موظفون داخل نطاق المسير الحالي'
-                      : undefined
-                }
-              >
-                <Plus className="w-4 h-4" />
-                {showPayrollEntryForm ? 'إخفاء النموذج' : 'إدخال راتب يدوي'}
-              </button>
-              {selectedPayrollRunEditable && (
-                <button
-                  type="button"
-                  onClick={downloadPayrollTemplate}
-                  className={slateCompactButtonClass}
-                >
-                  <Download className="w-4 h-4" />
-                  قالب Excel
-                </button>
-              )}
-              {canExport('payroll') && payrollEntries.length > 0 && (
-                <button
-                  type="button"
-                  onClick={exportPayrollToExcel}
-                  className={`${successCompactButtonClass} bg-emerald-600 hover:bg-emerald-700`}
-                >
-                  <Download className="w-4 h-4" />
-                  تصدير كشف المسير
-                </button>
-              )}
-              {selectedPayrollRunEditable && (
-                <button
-                  type="button"
-                  onClick={handleOpenPayrollExcelImport}
-                  className={indigoCompactButtonClass}
+                  onClick={() => {
+                    if (showPayrollEntryForm) {
+                      setShowPayrollEntryForm(false)
+                      return
+                    }
+                    handleOpenPayrollEntryForm()
+                  }}
+                  className={`${primaryCompactButtonClass} disabled:bg-surface-secondary-200 disabled:text-foreground-tertiary disabled:border disabled:border-border-200 whitespace-nowrap`}
                   disabled={
-                    importingPayrollExcel ||
-                    confirmingPayrollExcelImport ||
+                    !selectedPayrollRunEditable ||
+                    scopedEmployeesLoading ||
                     scopedPayrollEmployees.length === 0
                   }
-                  title="استيراد بيانات الرواتب الكاملة: الراتب، الإضافي، الخصومات، والأيام"
+                  title={
+                    selectedPayrollRun.status === 'cancelled'
+                      ? 'هذا المسير ملغي ويجب إعادة فتحه أولًا'
+                      : scopedPayrollEmployees.length === 0
+                        ? 'لا يوجد موظفون داخل نطاق المسير الحالي'
+                        : undefined
+                  }
                 >
-                  {importingPayrollExcel ? (
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                  ) : (
-                    <FileUp className="w-4 h-4" />
-                  )}
-                  استيراد بيانات الرواتب
+                  <Plus className="w-4 h-4" />
+                  {showPayrollEntryForm ? 'إخفاء النموذج' : 'إدخال راتب يدوي'}
                 </button>
-              )}
-              {selectedPayrollRunEditable && isAdmin && (
-                <button
-                  type="button"
-                  onClick={handleDownloadDaysTemplate}
-                  className="inline-flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 shadow-sm transition hover:bg-slate-50 disabled:opacity-50"
-                  title="تحميل نموذج Excel جاهز لاستيراد الأيام — يحتوي على أسماء الموظفين وأرقام الإقامة"
-                >
-                  <Download className="w-4 h-4" />
-                  نموذج الأيام
-                </button>
-              )}
-              {selectedPayrollRunEditable && isAdmin && (
-                <button
-                  type="button"
-                  onClick={handleOpenDaysExcelImport}
-                  className="inline-flex items-center gap-1.5 rounded-lg border border-teal-300 bg-teal-50 px-3 py-1.5 text-xs font-medium text-teal-800 shadow-sm transition hover:bg-teal-100 disabled:opacity-50"
-                  disabled={importingDaysExcel || confirmingDaysImport}
-                  title="استيراد أيام الحضور والإجازات المدفوعة فقط — يحدّث الأيام ويعيد احتساب الراتب"
-                >
-                  {importingDaysExcel ? (
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                  ) : (
-                    <FileUp className="w-4 h-4" />
-                  )}
-                  استيراد الأيام
-                </button>
-              )}
-              {selectedPayrollRunEditable && (
-                <button
-                  onClick={() => handleUpdatePayrollRunStatus('finalized')}
-                  className={successCompactButtonClass}
-                  disabled={updatePayrollRunStatus.isPending}
-                >
-                  {updatePayrollRunStatus.isPending ? (
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                  ) : (
-                    <ReceiptText className="w-4 h-4" />
-                  )}
-                  اعتماد المسير
-                </button>
-              )}
-              {selectedPayrollRun.status === 'finalized' && (
-                <button
-                  onClick={() => handleUpdatePayrollRunStatus('draft')}
-                  className={orangeCompactButtonClass}
-                  disabled={updatePayrollRunStatus.isPending}
-                >
-                  {updatePayrollRunStatus.isPending ? (
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                  ) : (
-                    <RefreshCw className="w-4 h-4" />
-                  )}
-                  إعادة إلى مسودة
-                </button>
-              )}
-              {selectedPayrollRun.status === 'cancelled' && (
-                <button
-                  onClick={() => handleUpdatePayrollRunStatus('draft')}
-                  className={warningCompactButtonClass}
-                  disabled={updatePayrollRunStatus.isPending}
-                >
-                  {updatePayrollRunStatus.isPending ? (
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                  ) : (
-                    <RefreshCw className="w-4 h-4" />
-                  )}
-                  إعادة فتح المسير
-                </button>
-              )}
-              {selectedPayrollRun.status === 'cancelled' && canDelete('payroll') && (
-                <button
-                  onClick={handleDeletePayrollRun}
-                  className={dangerCompactButtonClass}
-                  disabled={deletePayrollRun.isPending}
-                >
-                  {deletePayrollRun.isPending ? (
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                  ) : (
-                    <Trash2 className="w-4 h-4" />
-                  )}
-                  حذف المسير
-                </button>
-              )}
-              {selectedPayrollRun.status !== 'cancelled' && (
-                <button
-                  onClick={() => handleUpdatePayrollRunStatus('cancelled')}
-                  className={dangerCompactButtonClass}
-                  disabled={updatePayrollRunStatus.isPending}
-                >
-                  {updatePayrollRunStatus.isPending ? (
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                  ) : (
-                    <AlertTriangle className="w-4 h-4" />
-                  )}
-                  إلغاء المسير
-                </button>
-              )}
+                {selectedPayrollRunEditable && (
+                  <button
+                    type="button"
+                    onClick={downloadPayrollTemplate}
+                    className={`${slateCompactButtonClass} whitespace-nowrap`}
+                  >
+                    <Download className="w-4 h-4" />
+                    قالب Excel
+                  </button>
+                )}
+                {canExport('payroll') && payrollEntries.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={exportPayrollToExcel}
+                    className={`${successCompactButtonClass} bg-emerald-600 hover:bg-emerald-700 whitespace-nowrap`}
+                  >
+                    <Download className="w-4 h-4" />
+                    تصدير كشف المسير
+                  </button>
+                )}
+                {selectedPayrollRunEditable && (
+                  <button
+                    type="button"
+                    onClick={handleOpenPayrollExcelImport}
+                    className={`${indigoCompactButtonClass} whitespace-nowrap`}
+                    disabled={
+                      importingPayrollExcel ||
+                      confirmingPayrollExcelImport ||
+                      scopedPayrollEmployees.length === 0
+                    }
+                    title="استيراد بيانات الرواتب الكاملة: الراتب، الإضافي، الخصومات، والأيام"
+                  >
+                    {importingPayrollExcel ? (
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                    ) : (
+                      <FileUp className="w-4 h-4" />
+                    )}
+                    استيراد بيانات الرواتب
+                  </button>
+                )}
+                {selectedPayrollRunEditable && isAdmin && (
+                  <button
+                    type="button"
+                    onClick={handleDownloadDaysTemplate}
+                    className="inline-flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 shadow-sm transition hover:bg-slate-50 disabled:opacity-50 whitespace-nowrap"
+                    title="تحميل نموذج Excel جاهز لاستيراد الأيام — يحتوي على أسماء الموظفين وأرقام الإقامة"
+                  >
+                    <Download className="w-4 h-4" />
+                    نموذج الأيام
+                  </button>
+                )}
+                {selectedPayrollRunEditable && isAdmin && (
+                  <button
+                    type="button"
+                    onClick={handleOpenDaysExcelImport}
+                    className="inline-flex items-center gap-1.5 rounded-lg border border-teal-300 bg-teal-50 px-3 py-1.5 text-xs font-medium text-teal-800 shadow-sm transition hover:bg-teal-100 disabled:opacity-50 whitespace-nowrap"
+                    disabled={importingDaysExcel || confirmingDaysImport}
+                    title="استيراد أيام الحضور والإجازات المدفوعة فقط — يحدّث الأيام ويعيد احتساب الراتب"
+                  >
+                    {importingDaysExcel ? (
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                    ) : (
+                      <FileUp className="w-4 h-4" />
+                    )}
+                    استيراد الأيام
+                  </button>
+                )}
+              </div>
+              <div className="flex flex-wrap items-center gap-2">
+                {selectedPayrollRunEditable && (
+                  <button
+                    onClick={() => handleUpdatePayrollRunStatus('finalized')}
+                    className={`${successCompactButtonClass} whitespace-nowrap`}
+                    disabled={updatePayrollRunStatus.isPending}
+                  >
+                    {updatePayrollRunStatus.isPending ? (
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                    ) : (
+                      <ReceiptText className="w-4 h-4" />
+                    )}
+                    اعتماد المسير
+                  </button>
+                )}
+                {selectedPayrollRun.status === 'finalized' && (
+                  <button
+                    onClick={() => handleUpdatePayrollRunStatus('draft')}
+                    className={`${orangeCompactButtonClass} whitespace-nowrap`}
+                    disabled={updatePayrollRunStatus.isPending}
+                  >
+                    {updatePayrollRunStatus.isPending ? (
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                    ) : (
+                      <RefreshCw className="w-4 h-4" />
+                    )}
+                    إعادة إلى مسودة
+                  </button>
+                )}
+                {selectedPayrollRun.status === 'cancelled' && (
+                  <button
+                    onClick={() => handleUpdatePayrollRunStatus('draft')}
+                    className={`${warningCompactButtonClass} whitespace-nowrap`}
+                    disabled={updatePayrollRunStatus.isPending}
+                  >
+                    {updatePayrollRunStatus.isPending ? (
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                    ) : (
+                      <RefreshCw className="w-4 h-4" />
+                    )}
+                    إعادة فتح المسير
+                  </button>
+                )}
+                {selectedPayrollRun.status === 'cancelled' && canDelete('payroll') && (
+                  <button
+                    onClick={handleDeletePayrollRun}
+                    className={`${dangerCompactButtonClass} whitespace-nowrap`}
+                    disabled={deletePayrollRun.isPending}
+                  >
+                    {deletePayrollRun.isPending ? (
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                    ) : (
+                      <Trash2 className="w-4 h-4" />
+                    )}
+                    حذف المسير
+                  </button>
+                )}
+                {selectedPayrollRun.status !== 'cancelled' && (
+                  <button
+                    onClick={() => handleUpdatePayrollRunStatus('cancelled')}
+                    className={`${dangerCompactButtonClass} whitespace-nowrap`}
+                    disabled={updatePayrollRunStatus.isPending}
+                  >
+                    {updatePayrollRunStatus.isPending ? (
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                    ) : (
+                      <AlertTriangle className="w-4 h-4" />
+                    )}
+                    إلغاء المسير
+                  </button>
+                )}
+              </div>
             </div>
           )}
         </div>
