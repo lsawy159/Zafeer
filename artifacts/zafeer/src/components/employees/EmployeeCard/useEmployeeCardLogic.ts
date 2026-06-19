@@ -576,7 +576,6 @@ export function useEmployeeCardLogic({
   )
   const recentObligationLines = [...allObligationLines]
     .sort((a, b) => a.due_month.localeCompare(b.due_month))
-    .slice(0, 5)
 
   const remainingObligationAmount = openObligationLines.reduce(
     (total, line) => total + Math.max(line.amount_due - line.amount_paid, 0),

@@ -1,5 +1,8 @@
+import { useState } from 'react'
 import {
   AlertTriangle,
+  ChevronLeft,
+  ChevronRight,
   CreditCard,
   Loader2,
   Pencil,
@@ -136,6 +139,14 @@ export function EmployeeCardObligations({
   deleteObligationPlan,
   handleDeletePlan,
 }: EmployeeCardObligationsProps) {
+  const LINES_PAGE_SIZE = 5
+  const [linesPage, setLinesPage] = useState(0)
+  const totalLinesPages = Math.ceil(recentObligationLines.length / LINES_PAGE_SIZE)
+  const pagedLines = recentObligationLines.slice(
+    linesPage * LINES_PAGE_SIZE,
+    linesPage * LINES_PAGE_SIZE + LINES_PAGE_SIZE
+  )
+
   return (
     <>
       {/* ── Financial Overlay ──────────────────────────────────────────────── */}
@@ -196,8 +207,8 @@ export function EmployeeCardObligations({
                   {/* Summary cards */}
                   <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-3">
                     <div className="rounded-lg bg-white border border-neutral-200 p-4">
-                      <div className="text-sm text-neutral-500 mb-1">إجمالي الخطط</div>
-                      <div className="text-2xl font-bold text-neutral-900">{obligationPlans.length}</div>
+                      <div className="text-sm text-neutral-500 mb-1">الخطط النشطة</div>
+                      <div className="text-2xl font-bold text-neutral-900">{activeObligationPlans.length}</div>
                     </div>
                     <div className="rounded-lg bg-white border border-neutral-200 p-4">
                       <div className="text-sm text-neutral-500 mb-1">الأقساط المفتوحة</div>
@@ -282,7 +293,7 @@ export function EmployeeCardObligations({
 
                   {/* Installment lines */}
                   <div className="space-y-3">
-                    {recentObligationLines.map((line, index) => (
+                    {pagedLines.map((line, index) => (
                       <div key={line.id} className="rounded-lg border border-neutral-200 bg-white p-4 space-y-3">
                         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
                           <div>
@@ -301,7 +312,7 @@ export function EmployeeCardObligations({
                               </span>
                             </div>
                             <div className="text-sm text-neutral-500">
-                              القسط رقم {index + 1} • موعد السداد{' '}
+                              القسط رقم {linesPage * LINES_PAGE_SIZE + index + 1} • موعد السداد{' '}
                               <HijriDateDisplay date={line.due_month}>
                                 {formatDateShortWithHijri(line.due_month)}
                               </HijriDateDisplay>
@@ -385,9 +396,29 @@ export function EmployeeCardObligations({
                       </div>
                     ))}
 
-                    {recentObligationLines.length < (openObligationLines.length + (recentObligationLines.filter(l => l.line_status === 'paid').length)) && (
-                      <div className="text-sm text-neutral-500 text-center pt-1">
-                        يوجد أقساط إضافية غير ظاهرة في هذا الملخص.
+                    {totalLinesPages > 1 && (
+                      <div className="flex items-center justify-between pt-3 border-t border-neutral-100">
+                        <button
+                          type="button"
+                          onClick={() => setLinesPage(p => Math.max(0, p - 1))}
+                          disabled={linesPage === 0}
+                          className="flex items-center gap-1.5 rounded-lg border border-neutral-200 bg-white px-3 py-1.5 text-sm font-medium text-neutral-700 hover:bg-neutral-50 disabled:cursor-not-allowed disabled:opacity-40 transition-colors"
+                        >
+                          <ChevronRight className="w-4 h-4" />
+                          السابق
+                        </button>
+                        <span className="text-sm text-neutral-500 font-medium">
+                          {linesPage + 1} / {totalLinesPages}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => setLinesPage(p => Math.min(totalLinesPages - 1, p + 1))}
+                          disabled={linesPage === totalLinesPages - 1}
+                          className="flex items-center gap-1.5 rounded-lg border border-neutral-200 bg-white px-3 py-1.5 text-sm font-medium text-neutral-700 hover:bg-neutral-50 disabled:cursor-not-allowed disabled:opacity-40 transition-colors"
+                        >
+                          التالي
+                          <ChevronLeft className="w-4 h-4" />
+                        </button>
                       </div>
                     )}
                   </div>
