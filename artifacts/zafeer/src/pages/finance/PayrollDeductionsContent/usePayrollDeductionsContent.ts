@@ -78,9 +78,8 @@ import {
   getPayrollScopeName,
   getPayrollRunDisplayName,
   buildPayrollExportWorkbook,
-  obligationTypeLabel,
-  lineStatusLabel,
 } from './payrollDeductionsHelpers'
+import { buildSlipHtml, captureSlip, loadBengaliFont, type SlipData } from '@/utils/payslipBengali'
 
 export function usePayrollDeductionsContent({
   defaultTab = 'search',
@@ -191,6 +190,7 @@ export function usePayrollDeductionsContent({
   const [bulkPenaltyMonth, setBulkPenaltyMonth] = useState(new Date().toISOString().slice(0, 7))
   const [bulkPenaltyNotes, setBulkPenaltyNotes] = useState('')
   const [confirmingBulkPenalty, setConfirmingBulkPenalty] = useState(false)
+  const [downloadingSlipPdf, setDownloadingSlipPdf] = useState(false)
 
   // قفل التمرير عند فتح أي مودال
   const isAnyPayrollModalOpen =
@@ -2159,114 +2159,19 @@ export function usePayrollDeductionsContent({
     }
   }
 
-  const handlePrintPayrollSlip = () => {
-    if (!selectedPayrollSlip || !selectedSlipEntry) {
-      toast.error('لا توجد قسيمة جاهزة للطباعة')
-      return
-    }
-
-    const printWindow = window.open('', '_blank', 'width=1000,height=800')
-    if (!printWindow) {
-      toast.error('تعذر فتح نافذة الطباعة')
-      return
-    }
-
-    const componentRows =
-      selectedSlipComponents.length > 0
-        ? selectedSlipComponents
-            .map(
-              (component) => `
-          <tr>
-            <td>${component.component_type || '-'}</td>
-            <td>${component.component_code || '-'}</td>
-            <td>${Number(component.amount || 0).toLocaleString('en-US')}</td>
-            <td>${component.notes || '-'}</td>
-          </tr>
-        `
-            )
-            .join('')
-        : '<tr><td colspan="4">لا توجد مكونات تفصيلية محفوظة</td></tr>'
-
-    const html = `
-      <!DOCTYPE html>
-      <html lang="ar" dir="rtl">
-        <head>
-          <meta charset="UTF-8" />
-          <title>${selectedPayrollSlip.slip_number}</title>
-          <style>
-            body { font-family: Tahoma, Arial, sans-serif; padding: 24px; color: #111827; }
-            h1, h2, p { margin: 0; }
-            .header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 24px; }
-            .muted { color: #6b7280; font-size: 13px; margin-top: 6px; }
-            .grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; margin-bottom: 24px; }
-            .card { border: 1px solid #e5e7eb; border-radius: 12px; padding: 14px; background: #f9fafb; }
-            .label { color: #6b7280; font-size: 13px; margin-bottom: 8px; }
-            .value { font-size: 18px; font-weight: 700; }
-            table { width: 100%; border-collapse: collapse; margin-top: 16px; }
-            th, td { border: 1px solid #e5e7eb; padding: 10px; text-align: right; }
-            th { background: #f3f4f6; }
-          </style>
-        </head>
-        <body>
-          <div class="header">
-            <div>
-              <h1>قسيمة راتب</h1>
-              <p class="muted">${selectedPayrollSlip.slip_number}</p>
-            </div>
-            <div>
-              <p class="muted">تاريخ التوليد: ${selectedPayrollSlip.generated_at ? new Date(selectedPayrollSlip.generated_at).toLocaleString('en-GB') : '-'}</p>
-            </div>
-          </div>
-
-          <div class="grid">
-            <div class="card"><div class="label">الموظف</div><div class="value">${selectedSlipEntry.employee_name_snapshot || '-'}</div></div>
-            <div class="card"><div class="label">رقم الإقامة</div><div class="value">${selectedSlipEntry.residence_number_snapshot || '-'}</div></div>
-            <div class="card"><div class="label">إجمالي الراتب</div><div class="value">${Number(selectedSlipTotals?.grossAmount || selectedSlipEntry.gross_amount || 0).toLocaleString('en-US')}</div></div>
-            <div class="card"><div class="label">صافي الراتب</div><div class="value">${Number(selectedSlipTotals?.netAmount || selectedSlipEntry.net_amount || 0).toLocaleString('en-US')}</div></div>
-          </div>
-
-          <div class="grid">
-            <div class="card"><div class="label">الخصومات</div><div class="value">${Number(selectedSlipEntry.deductions_amount || 0).toLocaleString('en-US')}</div></div>
-            <div class="card"><div class="label">خصم الأقساط</div><div class="value">${Number(selectedSlipEntry.installment_deducted_amount || 0).toLocaleString('en-US')}</div></div>
-            <div class="card"><div class="label">أيام الحضور</div><div class="value">${Number(selectedSlipEntry.attendance_days || 0).toLocaleString('en-US')}</div></div>
-            <div class="card"><div class="label">الإجازات المدفوعة</div><div class="value">${Number(selectedSlipEntry.paid_leave_days || 0).toLocaleString('en-US')}</div></div>
-          </div>
-
-          <h2>مكونات القسيمة</h2>
-          <table>
-            <thead>
-              <tr>
-                <th>النوع</th>
-                <th>الكود</th>
-                <th>المبلغ</th>
-                <th>الملاحظات</th>
-              </tr>
-            </thead>
-            <tbody>
-              ${componentRows}
-            </tbody>
-          </table>
-        </body>
-      </html>
-    `
-
-    printWindow.document.open()
-    printWindow.document.write(html)
-    printWindow.document.close()
-    printWindow.focus()
-    printWindow.print()
-  }
-
   const handleDownloadPayrollSlipPdf = async () => {
     if (!selectedPayrollSlip || !selectedSlipEntry) {
       toast.error('لا توجد قسيمة جاهزة للتنزيل')
       return
     }
 
+    setDownloadingSlipPdf(true)
+    const toastId = toast.loading('جاري توليد PDF')
+
     try {
-      const [{ default: html2canvas }, { jsPDF }] = await Promise.all([
-        import('html2canvas'),
+      const [{ jsPDF }, bengaliFont] = await Promise.all([
         import('jspdf'),
+        loadBengaliFont(),
       ])
 
       const slipObligationSummary = allObligationsSummary.find(
@@ -2277,345 +2182,67 @@ export function usePayrollDeductionsContent({
       const netAmount = Number(selectedSlipTotals?.netAmount || selectedSlipEntry.net_amount || 0)
       const deductionsAmount = Number(selectedSlipEntry.deductions_amount || 0)
       const installmentAmount = Number(selectedSlipEntry.installment_deducted_amount || 0)
-      const totalRemaining = slipObligationSummary?.total_remaining ?? 0
-      const totalMonthly = slipObligationSummary?.total_monthly ?? 0
-
-      const componentRows =
-        selectedSlipComponents.length > 0
-          ? selectedSlipComponents
-              .map(
-                (component) => `
-            <tr>
-              <td>${component.component_type || '-'}</td>
-              <td>${component.component_code || '-'}</td>
-              <td style="font-weight:600">${Number(component.amount || 0).toLocaleString('en-US')}</td>
-              <td style="color:#6b7280">${component.notes || '-'}</td>
-            </tr>
-          `
-              )
-              .join('')
-          : '<tr><td colspan="4" style="text-align:center;color:#9ca3af">لا توجد مكونات تفصيلية محفوظة</td></tr>'
-
-      // Derive the payroll month from the snapshot's run data (format: "2026-05")
       const rawPayrollMonth = String(
         (selectedSlipSnapshot?.payroll_run as Record<string, unknown> | undefined)?.['payroll_month'] ??
         selectedPayrollRun?.payroll_month ??
         ''
       )
-      const payrollMonth = /^\d{4}-\d{2}/.test(rawPayrollMonth) ? rawPayrollMonth.slice(0, 7) : '-'
-      // Human-readable month for the header, e.g. "May 2026"
-      const monthDisplay =
-        payrollMonth !== '-'
-          ? new Date(payrollMonth + '-01').toLocaleDateString('en-US', { year: 'numeric', month: 'long' })
-          : '-'
+      const slipData: SlipData = {
+        slip: {
+          slip_number: selectedPayrollSlip.slip_number ?? 'payroll-slip',
+          generated_at: selectedPayrollSlip.generated_at ?? null,
+        },
+        entry: selectedSlipEntry,
+        components: selectedSlipComponents,
+        obligationPlans: slipEmployeeObligationPlans,
+        obligationSummary: slipObligationSummary ?? null,
+        payrollRun: /^\d{4}-\d{2}/.test(rawPayrollMonth)
+          ? { payroll_month: rawPayrollMonth.slice(0, 7) }
+          : null,
+        totals: {
+          grossAmount,
+          netAmount,
+          deductionsAmount,
+          installmentAmount,
+        },
+      }
 
-      // obligationTypeLabel + lineStatusLabel → imported from ./payrollDeductionsHelpers
+      const [arCanvas, bnCanvas] = await Promise.all([
+        captureSlip(buildSlipHtml(slipData, 'ar')),
+        captureSlip(buildSlipHtml(slipData, 'bn', bengaliFont)),
+      ])
 
-      // ── build installment schedule HTML ────────────────────────────────────
-      const installmentScheduleHtml = slipEmployeeObligationPlans.length > 0
-        ? slipEmployeeObligationPlans.map((plan) => {
-            const planLines = plan.lines ?? []
-            const rows = planLines.map((line) => {
-              const isCurrent = line.due_month === payrollMonth
-              const remaining = Math.max(0, Number(line.amount_due || 0) - Number(line.amount_paid || 0))
-              const ls = lineStatusLabel(line.line_status)
-              return `<tr style="${isCurrent ? 'background:#fefce8;font-weight:700;' : ''}">
-                <td style="${isCurrent ? 'color:#b45309;' : ''}">${line.due_month}${isCurrent ? ' ◄ الحالي' : ''}</td>
-                <td style="text-align:center">${Number(line.amount_due || 0).toLocaleString('en-US')}</td>
-                <td style="text-align:center;color:#15803d">${Number(line.amount_paid || 0).toLocaleString('en-US')}</td>
-                <td style="text-align:center;color:${remaining > 0 ? '#dc2626' : '#15803d'}">${remaining.toLocaleString('en-US')}</td>
-                <td style="text-align:center;color:${ls.color}">${ls.text}</td>
-              </tr>`
-            }).join('')
-
-            const paidTotal = planLines.reduce((s, l) => s + Number(l.amount_paid || 0), 0)
-            const remainingTotal = Math.max(0, Number(plan.total_amount || 0) - paidTotal)
-
-            return `
-            <div class="plan-block">
-              <div class="plan-header">
-                <div>
-                  <span class="plan-badge">${obligationTypeLabel(plan.obligation_type)}</span>
-                  <span class="plan-title-text">${plan.title || ''}</span>
-                </div>
-                <div class="plan-meta">
-                  <span>الإجمالي: <strong>${Number(plan.total_amount || 0).toLocaleString('en-US')} ر.س</strong></span>
-                  <span>مدفوع: <strong style="color:#15803d">${paidTotal.toLocaleString('en-US')} ر.س</strong></span>
-                  <span>متبقي: <strong style="color:#dc2626">${remainingTotal.toLocaleString('en-US')} ر.س</strong></span>
-                  <span>من: ${plan.start_month}</span>
-                  <span>الأقساط: ${planLines.length}</span>
-                </div>
-              </div>
-              <table class="inst-table">
-                <thead>
-                  <tr>
-                    <th>الشهر</th>
-                    <th style="text-align:center">المبلغ المستحق</th>
-                    <th style="text-align:center">المدفوع</th>
-                    <th style="text-align:center">المتبقي</th>
-                    <th style="text-align:center">الحالة</th>
-                  </tr>
-                </thead>
-                <tbody>${rows || '<tr><td colspan="5" style="text-align:center;color:#9ca3af">لا توجد أقساط</td></tr>'}</tbody>
-              </table>
-            </div>`
-          }).join('')
-        : ''
-
-      const html = `<!DOCTYPE html>
-<html lang="ar" dir="rtl">
-<head>
-<meta charset="UTF-8"/>
-<title>${selectedPayrollSlip.slip_number}</title>
-<style>
-/* System Arabic fonts — no external CDN needed with foreignObjectRendering */
-*{box-sizing:border-box;margin:0;padding:0}
-body{
-  font-family:'Segoe UI','Tahoma','Arial Unicode MS','Arial',sans-serif;
-  background:#fff;color:#0f172a;
-  font-size:14px;line-height:1.6;
-  direction:rtl;unicode-bidi:embed;
-  word-spacing:1px;letter-spacing:0;
-  width:900px;
-}
-/* Page card fills the body width exactly — no auto-margin needed */
-.page{background:#fff;overflow:hidden;width:900px;border:1px solid #cbd5e1}
-/* ── header ── */
-.header{background:#1e293b;color:#fff;padding:24px 28px;display:flex;justify-content:space-between;align-items:flex-start;gap:12px}
-.header-right{flex:1;min-width:0}
-.header-title{font-size:22px;font-weight:700;margin-bottom:4px}
-.header-sub{font-size:12px;color:#94a3b8}
-.header-left{text-align:left;font-size:12px;color:#94a3b8;line-height:2;flex-shrink:0}
-.header-left strong{color:#e2e8f0;font-size:12px}
-/* ── info bar ── */
-.info-bar{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));border-bottom:1px solid #e2e8f0}
-.info-cell{padding:14px 16px;border-left:1px solid #e2e8f0;min-width:0;overflow:hidden}
-.info-cell:last-child{border-left:none}
-.info-label{font-size:11px;color:#94a3b8;margin-bottom:5px;font-weight:600}
-.info-value{font-size:13px;font-weight:700;color:#1e293b;overflow:hidden;text-overflow:ellipsis}
-/* ── totals ── */
-.totals{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));background:#f8fafc;border-bottom:1px solid #e2e8f0}
-.total-cell{padding:18px 8px;border-left:1px solid #e2e8f0;text-align:center;min-width:0}
-.total-cell:last-child{border-left:none}
-.total-label{font-size:11px;color:#64748b;margin-bottom:8px;font-weight:600}
-.total-value{font-size:22px;font-weight:800;line-height:1}
-.total-gross .total-value{color:#1d4ed8}
-.total-deduction .total-value{color:#dc2626}
-.total-installment .total-value{color:#d97706}
-.total-net{background:#f0fdf4}
-.total-net .total-value{color:#15803d}
-/* ── sections ── */
-.section{padding:18px 24px}
-.section-title{font-size:13px;font-weight:700;color:#334155;margin-bottom:12px;padding-bottom:8px;border-bottom:2px solid #e2e8f0}
-/* ── detail grid ── */
-.detail-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;margin-bottom:16px}
-.detail-item{background:#f8fafc;border:1px solid #e2e8f0;border-radius:6px;padding:10px 12px;min-width:0;overflow:hidden}
-.detail-label{font-size:10px;color:#94a3b8;margin-bottom:4px;font-weight:600}
-.detail-value{font-size:14px;font-weight:800;color:#1e293b}
-/* ── obligation summary ── */
-.obligation-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px}
-.ob-card{border-radius:6px;padding:12px 16px;display:flex;justify-content:space-between;align-items:center;gap:8px;min-width:0}
-.ob-remaining{background:#fff7ed;border:1px solid #fed7aa}
-.ob-remaining .ob-label{color:#9a3412;font-size:11px;font-weight:700}
-.ob-remaining .ob-value{color:#ea580c;font-size:18px;font-weight:800;white-space:nowrap}
-.ob-monthly{background:#eff6ff;border:1px solid #bfdbfe}
-.ob-monthly .ob-label{color:#1e40af;font-size:11px;font-weight:700}
-.ob-monthly .ob-value{color:#2563eb;font-size:18px;font-weight:800;white-space:nowrap}
-/* ── tables ── */
-table{width:100%;border-collapse:collapse;table-layout:fixed}
-th{background:#f1f5f9;padding:9px 12px;text-align:right;font-size:11px;font-weight:700;color:#475569;border-bottom:2px solid #e2e8f0;overflow:hidden}
-td{padding:9px 12px;border-bottom:1px solid #f1f5f9;font-size:12px;vertical-align:middle;overflow:hidden;text-overflow:ellipsis}
-tr:last-child td{border-bottom:none}
-/* ── installment plan blocks ── */
-.plan-block{margin-bottom:14px;border:1px solid #e2e8f0;border-radius:6px;overflow:hidden}
-.plan-header{background:#f8fafc;padding:10px 14px;display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid #e2e8f0;gap:10px;flex-wrap:wrap}
-.plan-badge{background:#1e293b;color:#fff;font-size:10px;font-weight:700;padding:2px 8px;border-radius:999px;white-space:nowrap;flex-shrink:0}
-.plan-title-text{font-size:12px;font-weight:700;color:#1e293b;min-width:0;overflow:hidden;text-overflow:ellipsis}
-.plan-meta{display:flex;gap:10px;font-size:10px;color:#64748b;flex-wrap:wrap}
-.plan-meta strong{font-weight:700}
-.inst-table{table-layout:fixed}
-.inst-table th,.inst-table td{font-size:11px;padding:7px 10px}
-/* ── footer ── */
-.footer{background:#f1f5f9;padding:12px 24px;display:flex;justify-content:space-between;align-items:center;border-top:1px solid #e2e8f0;gap:12px}
-.footer-slip{font-size:10px;color:#475569;font-weight:700;overflow:hidden;text-overflow:ellipsis;min-width:0}
-.footer-date{font-size:10px;color:#94a3b8;white-space:nowrap;flex-shrink:0}
-</style>
-</head>
-<body>
-<div class="page">
-  <div class="header">
-    <div class="header-right">
-      <div class="header-title">قسيمة راتب</div>
-      <div class="header-sub">${selectedSlipEntry.company_name_snapshot || selectedSlipEntry.project_name_snapshot || 'زفير'}</div>
-    </div>
-    <div class="header-left">
-      <div>${selectedPayrollSlip.slip_number}</div>
-      <div>الشهر: <strong>${monthDisplay}</strong></div>
-      <div>التاريخ: <strong>${selectedPayrollSlip.generated_at ? new Date(selectedPayrollSlip.generated_at).toLocaleDateString('en-GB') : '-'}</strong></div>
-    </div>
-  </div>
-
-  <div class="info-bar">
-    <div class="info-cell">
-      <div class="info-label">الموظف</div>
-      <div class="info-value">${selectedSlipEntry.employee_name_snapshot || '-'}</div>
-    </div>
-    <div class="info-cell">
-      <div class="info-label">رقم الإقامة</div>
-      <div class="info-value" style="direction:ltr;text-align:right">${selectedSlipEntry.residence_number_snapshot || '-'}</div>
-    </div>
-    <div class="info-cell">
-      <div class="info-label">المؤسسة / المشروع</div>
-      <div class="info-value">${selectedSlipEntry.company_name_snapshot || selectedSlipEntry.project_name_snapshot || '-'}</div>
-    </div>
-    <div class="info-cell">
-      <div class="info-label">الراتب الأساسي</div>
-      <div class="info-value">${Number(selectedSlipEntry.basic_salary_snapshot || 0).toLocaleString('en-US')} ر.س</div>
-    </div>
-  </div>
-
-  <div class="totals">
-    <div class="total-cell total-gross">
-      <div class="total-label">اجمالي الراتب</div>
-      <div class="total-value">${grossAmount.toLocaleString('en-US')}</div>
-    </div>
-    <div class="total-cell total-deduction">
-      <div class="total-label">اجمالي الخصومات</div>
-      <div class="total-value">${(deductionsAmount + installmentAmount).toLocaleString('en-US')}</div>
-    </div>
-    <div class="total-cell total-installment">
-      <div class="total-label">خصم الاقساط</div>
-      <div class="total-value">${installmentAmount.toLocaleString('en-US')}</div>
-    </div>
-    <div class="total-cell total-net">
-      <div class="total-label">صافي الراتب</div>
-      <div class="total-value">${netAmount.toLocaleString('en-US')}</div>
-    </div>
-  </div>
-
-  <div class="section">
-    <div class="section-title">تفاصيل الحضور والاستحقاق</div>
-    <div class="detail-grid">
-      <div class="detail-item">
-        <div class="detail-label">ايام الحضور</div>
-        <div class="detail-value">${Number(selectedSlipEntry.attendance_days || 0)} يوم</div>
-      </div>
-      <div class="detail-item">
-        <div class="detail-label">الاجازات المدفوعة</div>
-        <div class="detail-value">${Number(selectedSlipEntry.paid_leave_days || 0)} يوم</div>
-      </div>
-      <div class="detail-item">
-        <div class="detail-label">الاضافي</div>
-        <div class="detail-value">${Number(selectedSlipEntry.overtime_amount || 0).toLocaleString('en-US')} ر.س</div>
-      </div>
-      <div class="detail-item">
-        <div class="detail-label">الجزاءات / الغرامات</div>
-        <div class="detail-value">${deductionsAmount.toLocaleString('en-US')} ر.س</div>
-      </div>
-    </div>
-
-    ${totalRemaining > 0 || totalMonthly > 0 ? `
-    <div class="section-title">ملخص الالتزامات المالية</div>
-    <div class="obligation-grid">
-      <div class="ob-card ob-remaining">
-        <div><div class="ob-label">اجمالي المتبقي من الالتزامات</div></div>
-        <div class="ob-value">${totalRemaining.toLocaleString('en-US')} ر.س</div>
-      </div>
-      <div class="ob-card ob-monthly">
-        <div><div class="ob-label">القسط الشهري المقرر</div></div>
-        <div class="ob-value">${totalMonthly.toLocaleString('en-US')} ر.س</div>
-      </div>
-    </div>
-    ` : ''}
-
-    <div class="section-title">مكونات القسيمة التفصيلية</div>
-    <table>
-      <thead>
-        <tr>
-          <th>النوع</th>
-          <th>الكود</th>
-          <th>المبلغ (ر.س)</th>
-          <th>الملاحظات</th>
-        </tr>
-      </thead>
-      <tbody>${componentRows}</tbody>
-    </table>
-  </div>
-
-  ${installmentScheduleHtml ? `
-  <div class="section">
-    <div class="section-title">جدول الاقساط التفصيلي</div>
-    ${installmentScheduleHtml}
-  </div>` : ''}
-
-  <div class="footer">
-    <div class="footer-slip">رقم القسيمة: ${selectedPayrollSlip.slip_number}</div>
-    <div class="footer-date">تاريخ الاصدار: ${selectedPayrollSlip.generated_at ? new Date(selectedPayrollSlip.generated_at).toLocaleString('en-GB') : '-'}</div>
-  </div>
-</div>
-</body>
-</html>`
-
-      const iframe = document.createElement('iframe')
-      // Must be on-screen (even if invisible) so getBoundingClientRect returns
-      // positive coordinates — required for foreignObjectRendering to capture correctly.
-      Object.assign(iframe.style, {
-        position: 'fixed',
-        top: '0',
-        left: '0',
-        width: '980px',
-        height: '4000px',
-        visibility: 'hidden',
-        pointerEvents: 'none',
-        border: 'none',
-        zIndex: '-9999',
-      })
-      document.body.appendChild(iframe)
-
-      const iframeDoc = iframe.contentDocument || iframe.contentWindow?.document
-      if (!iframeDoc) throw new Error('iframe document not available')
-
-      iframeDoc.open()
-      iframeDoc.write(html)
-      iframeDoc.close()
-
-      // Brief buffer for layout paint (no external fonts to wait for)
-      await new Promise((resolve) => setTimeout(resolve, 400))
-
-      // Capture the .page element directly so the PDF contains only the card.
-      // The iframe is on-screen (visibility:hidden) so getBoundingClientRect
-      // returns positive coords — required for foreignObjectRendering.
-      const captureTarget = (iframeDoc.querySelector('.page') as HTMLElement) ?? iframeDoc.body
-
-      // foreignObjectRendering routes text through the browser's SVG engine,
-      // which correctly shapes Arabic glyphs and preserves RTL word spacing.
-      const canvas = await html2canvas(captureTarget, {
-        scale: 2,
-        backgroundColor: '#ffffff',
-        foreignObjectRendering: true,
-        windowWidth: 900,
-        scrollY: 0,
-        logging: false,
-      })
-
-      document.body.removeChild(iframe)
-
-      const imageData = canvas.toDataURL('image/png')
+      const arImageData = arCanvas.toDataURL('image/png')
       const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' })
       const pageWidth = pdf.internal.pageSize.getWidth()
       const pageHeight = pdf.internal.pageSize.getHeight()
-      const imgW = pageWidth
-      const imgH = (canvas.height * imgW) / canvas.width
+      const arImgW = pageWidth
+      const arImgH = (arCanvas.height * arImgW) / arCanvas.width
 
-      pdf.addImage(imageData, 'PNG', 0, 0, imgW, imgH)
+      pdf.addImage(arImageData, 'PNG', 0, 0, arImgW, arImgH)
 
-      let remaining = imgH - pageHeight
-      let yOffset = 0
-      while (remaining > 0) {
-        yOffset -= pageHeight
+      let arRemaining = arImgH - pageHeight
+      let arYOffset = 0
+      while (arRemaining > 0) {
+        arYOffset -= pageHeight
         pdf.addPage()
-        pdf.addImage(imageData, 'PNG', 0, yOffset, imgW, imgH)
-        remaining -= pageHeight
+        pdf.addImage(arImageData, 'PNG', 0, arYOffset, arImgW, arImgH)
+        arRemaining -= pageHeight
+      }
+
+      pdf.addPage()
+
+      const bnImageData = bnCanvas.toDataURL('image/png')
+      const bnImgH = (bnCanvas.height * pageWidth) / bnCanvas.width
+      pdf.addImage(bnImageData, 'PNG', 0, 0, pageWidth, bnImgH)
+
+      let bnRemaining = bnImgH - pageHeight
+      let bnYOffset = 0
+      while (bnRemaining > 0) {
+        bnYOffset -= pageHeight
+        pdf.addPage()
+        pdf.addImage(bnImageData, 'PNG', 0, bnYOffset, pageWidth, bnImgH)
+        bnRemaining -= pageHeight
       }
 
       pdf.save(`${selectedPayrollSlip.slip_number}.pdf`)
@@ -2623,6 +2250,9 @@ tr:last-child td{border-bottom:none}
     } catch (error) {
       console.error('Error generating payroll slip PDF:', error)
       toast.error('فشل تنزيل القسيمة بصيغة PDF')
+    } finally {
+      setDownloadingSlipPdf(false)
+      toast.dismiss(toastId)
     }
   }
 
@@ -3369,6 +2999,7 @@ tr:last-child td{border-bottom:none}
     bulkPenaltyMonth, setBulkPenaltyMonth,
     bulkPenaltyNotes, setBulkPenaltyNotes,
     confirmingBulkPenalty,
+    downloadingSlipPdf,
     handleAddObligation, handleOpenEditDetailPlan, handleUpdateDetailPlan, handleDeleteDetailPlan,
     handleObligationImportFile, handleConfirmBulkPenalty, handleConfirmObligationImport,
     handleOpenObligationDetail, handleCloseObligationDetail,
@@ -3376,7 +3007,7 @@ tr:last-child td{border-bottom:none}
     handleUpdateNewPayrollRunRow, handleToggleSelectAllNewPayrollRows,
     handleTogglePayrollRunExportSelection, handleToggleSelectAllPayrollRuns, handleExportSelectedPayrollRuns,
     handleCreatePayrollRun, handleUpsertPayrollEntry, handleUpdatePayrollRunStatus,
-    handlePrintPayrollSlip, handleDownloadPayrollSlipPdf,
+    handleDownloadPayrollSlipPdf,
     handleOpenPayrollExcelImport, handleConfirmPayrollExcelImport, handleClearPayrollImportPreview,
     handleDownloadDaysTemplate, handleOpenDaysExcelImport, handleClearDaysImport,
     handleDaysExcelFile, handleConfirmDaysImport, handlePayrollExcelImport,

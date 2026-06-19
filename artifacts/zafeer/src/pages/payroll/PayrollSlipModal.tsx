@@ -2,12 +2,12 @@ import { createPortal } from 'react-dom'
 import {
   CreditCard,
   Download,
-  ReceiptText,
   X,
 } from 'lucide-react'
 import { type PayrollEntry } from '@/lib/supabase'
 import { type AllObligationsSummaryRow } from '@/hooks/useEmployeeObligations'
 import { normalizePayrollEntryAmounts } from '@/utils/payrollMath'
+import { localizeSlipComponentDisplay } from '@/utils/payslipBengali'
 
 interface PayrollSlip {
   slip_number?: string | null
@@ -30,7 +30,21 @@ interface Props {
   allObligationsSummary: AllObligationsSummaryRow[]
   onClose: () => void
   onDownloadPdf: () => void
-  onPrint: () => void
+  downloadingPdf?: boolean
+}
+
+function formatPayrollMonthLabel(payrollMonth: string): string {
+  if (!/^\d{4}-\d{2}$/.test(payrollMonth)) return '-'
+
+  const parsedDate = new Date(`${payrollMonth}-01T00:00:00`)
+  if (Number.isNaN(parsedDate.getTime())) return '-'
+
+  return new Intl.DateTimeFormat('ar', { month: 'long', year: 'numeric' }).format(parsedDate)
+}
+
+function extractPayrollMonthFromSlipNumber(slipNumber: string | null | undefined): string {
+  const match = String(slipNumber || '').match(/SLIP-(\d{4})(\d{2})-/i)
+  return match ? `${match[1]}-${match[2]}` : ''
 }
 
 export default function PayrollSlipModal({
@@ -41,10 +55,15 @@ export default function PayrollSlipModal({
   allObligationsSummary,
   onClose,
   onDownloadPdf,
-  onPrint,
+  downloadingPdf = false,
 }: Props) {
   if (!selectedPayrollSlip || !selectedSlipEntry) return null
 
+  const payrollRunMeta = (
+    selectedSlipEntry as Partial<PayrollEntry> & {
+      payroll_run?: { payroll_month?: string | null } | null
+    }
+  ).payroll_run
   const slipObligation = allObligationsSummary.find(
     (row) => row.employee_id === selectedSlipEntry.employee_id
   )
@@ -55,7 +74,17 @@ export default function PayrollSlipModal({
   const totalDeducted = slipDeductions + slipInstallment
   const obligRemaining = slipObligation?.total_remaining ?? 0
   const obligMonthly = slipObligation?.total_monthly ?? 0
-  const payrollMonthLabel = selectedPayrollSlip.slip_number?.slice(0, 7) || '-'
+  const payrollMonth = (
+    String(payrollRunMeta?.payroll_month || '').slice(0, 7) ||
+    extractPayrollMonthFromSlipNumber(selectedPayrollSlip.slip_number)
+  )
+  const payrollMonthLabel = formatPayrollMonthLabel(payrollMonth)
+  const localizedSlipComponents = selectedSlipComponents.map((component) => (
+    {
+      ...component,
+      localized: localizeSlipComponentDisplay(component, payrollMonth, 'ar'),
+    }
+  ))
 
   return createPortal(
     <div
@@ -67,47 +96,42 @@ export default function PayrollSlipModal({
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="bg-gradient-to-l from-slate-800 to-slate-700 px-6 py-5 flex items-start justify-between gap-4">
-          <div>
-            <div className="inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/10 px-3 py-1 text-xs font-medium text-slate-200 mb-2">
-              <CreditCard className="w-3 h-3" />
-              قسيمة راتب — {payrollMonthLabel}
+        <div className="bg-gradient-to-l from-teal-800 via-teal-700 to-emerald-700 px-6 py-6">
+          <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+            <div className="min-w-0 flex-1 text-right">
+              <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/10 px-3 py-1 text-xs font-medium text-teal-50">
+                <CreditCard className="w-3 h-3" />
+                {payrollMonthLabel === '-' ? 'قسيمة راتب' : `قسيمة راتب • ${payrollMonthLabel}`}
+              </div>
+              <h2 className="text-2xl font-extrabold leading-tight text-white" dir="auto">
+                {selectedSlipEntry.employee_name_snapshot || 'موظف'}
+              </h2>
+              <p className="mt-2 text-sm text-teal-50/95" dir="auto">
+                {selectedSlipEntry.company_name_snapshot || selectedSlipEntry.project_name_snapshot || '—'}
+                {selectedSlipEntry.residence_number_snapshot
+                  ? ` • ${selectedSlipEntry.residence_number_snapshot}`
+                  : ''}
+              </p>
             </div>
-            <h2 className="text-xl font-bold text-white leading-tight">
-              {selectedSlipEntry.employee_name_snapshot || 'موظف'}
-            </h2>
-            <p className="text-sm text-slate-300 mt-1">
-              {selectedSlipEntry.company_name_snapshot || selectedSlipEntry.project_name_snapshot || '—'}
-              {selectedSlipEntry.residence_number_snapshot
-                ? ` • ${selectedSlipEntry.residence_number_snapshot}`
-                : ''}
-            </p>
-          </div>
-          <div className="flex items-center gap-2 shrink-0">
-            <button
-              type="button"
-              onClick={onDownloadPdf}
-              className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-500 hover:bg-emerald-400 px-3 py-1.5 text-xs font-semibold text-white transition"
-            >
-              <Download className="w-3.5 h-3.5" />
-              PDF
-            </button>
-            <button
-              type="button"
-              onClick={onPrint}
-              className="inline-flex items-center gap-1.5 rounded-lg bg-white/15 hover:bg-white/25 px-3 py-1.5 text-xs font-semibold text-white transition"
-            >
-              <ReceiptText className="w-3.5 h-3.5" />
-              طباعة
-            </button>
-            <button
-              type="button"
-              onClick={onClose}
-              className="rounded-lg bg-white/10 hover:bg-white/20 p-1.5 text-slate-300 hover:text-white transition"
-              aria-label="إغلاق"
-            >
-              <X className="w-4 h-4" />
-            </button>
+            <div className="flex items-center justify-end gap-2 shrink-0">
+              <button
+                type="button"
+                onClick={onDownloadPdf}
+                disabled={downloadingPdf}
+                className="inline-flex items-center gap-1.5 rounded-lg bg-white px-3 py-1.5 text-xs font-semibold text-teal-800 transition hover:bg-teal-50 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                <Download className="w-3.5 h-3.5" />
+                تصدير PDF
+              </button>
+              <button
+                type="button"
+                onClick={onClose}
+                className="rounded-lg bg-white/10 p-1.5 text-white transition hover:bg-white/20"
+                aria-label="إغلاق"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
           </div>
         </div>
 
@@ -218,20 +242,20 @@ export default function PayrollSlipModal({
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-50">
-                    {selectedSlipComponents.map((component, index) => (
+                    {localizedSlipComponents.map((component, index) => (
                       <tr
                         key={`${component.component_code || 'component'}-${index}`}
-                        className="hover:bg-slate-50 transition"
+                        className="transition hover:bg-slate-50"
                       >
-                        <td className="px-4 py-2.5 text-slate-600">{component.component_type || '-'}</td>
-                        <td className="px-4 py-2.5 font-mono text-xs font-medium text-slate-800">
-                          {component.component_code || '-'}
+                        <td className="px-4 py-2.5 text-slate-600">{component.localized.typeLabel}</td>
+                        <td className="px-4 py-2.5 text-xs font-medium text-slate-800">
+                          {component.localized.codeLabel}
                         </td>
                         <td className="px-4 py-2.5 font-semibold text-slate-900">
                           {Number(component.amount || 0).toLocaleString('en-US')}
                         </td>
-                        <td className="px-4 py-2.5 text-slate-500 text-xs">
-                          {component.notes || '—'}
+                        <td className="px-4 py-2.5 text-xs text-slate-500">
+                          {component.localized.noteLabel}
                         </td>
                       </tr>
                     ))}
