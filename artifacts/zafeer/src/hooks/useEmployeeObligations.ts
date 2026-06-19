@@ -437,12 +437,11 @@ export function useAllObligationsSummary() {
         penalty_remaining: number
         advance_remaining: number
         other_remaining: number
-        // earliest unpaid month per type
-        transfer_months: string[]
-        renewal_months: string[]
-        penalty_months: string[]
-        advance_months: string[]
-        other_months: string[]
+        transfer_entries: Array<{ month: string; amount: number }>
+        renewal_entries: Array<{ month: string; amount: number }>
+        penalty_entries: Array<{ month: string; amount: number }>
+        advance_entries: Array<{ month: string; amount: number }>
+        other_entries: Array<{ month: string; amount: number }>
       }
 
       const accByEmployee = new Map<string, TypeTotals>()
@@ -455,11 +454,11 @@ export function useAllObligationsSummary() {
             penalty_remaining: 0,
             advance_remaining: 0,
             other_remaining: 0,
-            transfer_months: [],
-            renewal_months: [],
-            penalty_months: [],
-            advance_months: [],
-            other_months: [],
+            transfer_entries: [],
+            renewal_entries: [],
+            penalty_entries: [],
+            advance_entries: [],
+            other_entries: [],
           })
         }
         return accByEmployee.get(empId)!
@@ -473,24 +472,26 @@ export function useAllObligationsSummary() {
           Number(line.amount_due || 0) - Number(line.amount_paid || 0),
           0
         )
+        if (remaining <= 0) return
+
         const acc = getAcc(line.employee_id as string)
         const month = String(line.due_month || '')
 
         if (obligationType === 'transfer') {
           acc.transfer_remaining += remaining
-          acc.transfer_months.push(month)
+          acc.transfer_entries.push({ month, amount: remaining })
         } else if (obligationType === 'renewal') {
           acc.renewal_remaining += remaining
-          acc.renewal_months.push(month)
+          acc.renewal_entries.push({ month, amount: remaining })
         } else if (obligationType === 'penalty') {
           acc.penalty_remaining += remaining
-          acc.penalty_months.push(month)
+          acc.penalty_entries.push({ month, amount: remaining })
         } else if (obligationType === 'advance') {
           acc.advance_remaining += remaining
-          acc.advance_months.push(month)
+          acc.advance_entries.push({ month, amount: remaining })
         } else {
           acc.other_remaining += remaining
-          acc.other_months.push(month)
+          acc.other_entries.push({ month, amount: remaining })
         }
       })
 
@@ -509,22 +510,23 @@ export function useAllObligationsSummary() {
 
         if (total <= 0) return
 
-        // Monthly installment = count of upcoming lines (next month) per type
-        // We approximate by counting distinct months in upcoming lines (sorted ascending, first month)
-        const earliestMonth = (months: string[]) =>
-          months.length > 0 ? [...months].sort()[0] : null
-
-        const countMonthly = (months: string[]): number => {
-          const earliest = earliestMonth(months)
+        const sumEarliestMonth = (entries: Array<{ month: string; amount: number }>): number => {
+          if (entries.length === 0) return 0
+          const earliest = [...entries]
+            .map((entry) => entry.month)
+            .filter(Boolean)
+            .sort()[0]
           if (!earliest) return 0
-          return months.filter((m) => m === earliest).length
+          return entries
+            .filter((entry) => entry.month === earliest)
+            .reduce((sum, entry) => sum + entry.amount, 0)
         }
 
-        // Actually monthly = the amount due for the nearest upcoming month
-        // Since lines have amount_due per line, we just sum the remaining for current lines
-        // but we want the installment amount per type for the upcoming month.
-        // We'll just compute total remaining per type as the "outstanding" column.
-
+        const transferMonthly = sumEarliestMonth(acc.transfer_entries)
+        const renewalMonthly = sumEarliestMonth(acc.renewal_entries)
+        const penaltyMonthly = sumEarliestMonth(acc.penalty_entries)
+        const advanceMonthly = sumEarliestMonth(acc.advance_entries)
+        const otherMonthly = sumEarliestMonth(acc.other_entries)
         const totalAmt = totalAmountByEmployee.get(empId) ?? 0
         rows.push({
           employee_id: empId,
@@ -542,12 +544,17 @@ export function useAllObligationsSummary() {
           total_amount: totalAmt,
           total_paid: Math.max(0, totalAmt - total),
           min_start_month: minStartMonthByEmployee.get(empId) ?? null,
-          transfer_monthly: countMonthly(acc.transfer_months) > 0 ? acc.transfer_remaining / Math.max(countMonthly(acc.transfer_months), 1) : 0,
-          renewal_monthly: countMonthly(acc.renewal_months) > 0 ? acc.renewal_remaining / Math.max(countMonthly(acc.renewal_months), 1) : 0,
-          penalty_monthly: countMonthly(acc.penalty_months) > 0 ? acc.penalty_remaining / Math.max(countMonthly(acc.penalty_months), 1) : 0,
-          advance_monthly: countMonthly(acc.advance_months) > 0 ? acc.advance_remaining / Math.max(countMonthly(acc.advance_months), 1) : 0,
-          other_monthly: countMonthly(acc.other_months) > 0 ? acc.other_remaining / Math.max(countMonthly(acc.other_months), 1) : 0,
-          total_monthly: 0,
+          transfer_monthly: transferMonthly,
+          renewal_monthly: renewalMonthly,
+          penalty_monthly: penaltyMonthly,
+          advance_monthly: advanceMonthly,
+          other_monthly: otherMonthly,
+          total_monthly:
+            transferMonthly +
+            renewalMonthly +
+            penaltyMonthly +
+            advanceMonthly +
+            otherMonthly,
         })
       })
 

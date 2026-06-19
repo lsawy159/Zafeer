@@ -79,7 +79,8 @@ export default function PayrollDeductionsContent({
     // PayrollSlipModal
     selectedPayrollSlip, selectedSlipEntry, selectedSlipComponents, selectedSlipTotals,
     setSelectedPayrollSlipEntryId,
-    handleDownloadPayrollSlipPdf, handlePrintPayrollSlip,
+    handleDownloadPayrollSlipPdf,
+    downloadingSlipPdf,
     canExport,
   } = ctx
 
@@ -250,7 +251,7 @@ export default function PayrollDeductionsContent({
         allObligationsSummary={allObligationsSummary}
         onClose={() => setSelectedPayrollSlipEntryId(null)}
         onDownloadPdf={handleDownloadPayrollSlipPdf}
-        onPrint={handlePrintPayrollSlip}
+        downloadingPdf={downloadingSlipPdf}
       />
     </div>
   )
