@@ -575,7 +575,7 @@ export function useEmployeeCardLogic({
     (line) => line.line_status === 'unpaid' || line.line_status === 'partial'
   )
   const recentObligationLines = [...allObligationLines]
-    .sort((a, b) => b.due_month.localeCompare(a.due_month))
+    .sort((a, b) => a.due_month.localeCompare(b.due_month))
     .slice(0, 5)
 
   const remainingObligationAmount = openObligationLines.reduce(
