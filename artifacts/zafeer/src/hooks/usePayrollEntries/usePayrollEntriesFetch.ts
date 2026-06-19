@@ -37,6 +37,26 @@ import {
   getBucketForObligationType,
 } from './usePayrollEntriesCalculations'
 
+type ObligationLineWithMeta = {
+  id: string
+  header_id: string | null
+  employee_id: string | null
+  amount_due: number | null
+  amount_paid: number | null
+  payroll_entry_id: string | null
+  due_month: string | null
+}
+
+function getBucketFromAutoNotes(notes: string): PayrollObligationBucketKey {
+  const match = notes.match(/AUTO_PAYROLL_SYNC:(\w+):/)
+  return (match?.[1] ?? 'other') as PayrollObligationBucketKey
+}
+
+function getConvertedObligationTitle(notes: string): string {
+  const bucket = getBucketFromAutoNotes(notes)
+  return `استقطاع متحول - ${getPayrollObligationBucketLabel(bucket)}`
+}
+
 export async function restorePayrollEntryAllocations(entryIds: string[]) {
   if (entryIds.length === 0) return
 
@@ -62,9 +82,9 @@ export async function restorePayrollEntryAllocations(entryIds: string[]) {
   const lineIds = Array.from(amountByLineId.keys())
   if (lineIds.length === 0) return
 
-  const { data: obligationLines, error: obligationLinesError } = await supabase
+  const { data: rawObligationLines, error: obligationLinesError } = await supabase
     .from('employee_obligation_lines')
-    .select('id, amount_due, amount_paid, payroll_entry_id')
+    .select('id, header_id, employee_id, amount_due, amount_paid, payroll_entry_id, due_month')
     .in('id', lineIds)
 
   if (obligationLinesError) {
@@ -72,23 +92,95 @@ export async function restorePayrollEntryAllocations(entryIds: string[]) {
     throw obligationLinesError
   }
 
-  for (const line of obligationLines ?? []) {
-    const amountToRestore = amountByLineId.get(line.id as string) ?? 0
-    const updatedAmountPaid = Math.max((Number(line.amount_paid) || 0) - amountToRestore, 0)
-    const linkedEntryId = line.payroll_entry_id as string | null
+  const obligationLines = (rawObligationLines ?? []) as ObligationLineWithMeta[]
 
-    const { error: updateLineError } = await supabase
-      .from('employee_obligation_lines')
-      .update({
-        amount_paid: Number(updatedAmountPaid.toFixed(2)),
-        payroll_entry_id: linkedEntryId && entryIds.includes(linkedEntryId) ? null : linkedEntryId,
-        line_status: getLineStatus(Number(line.amount_due) || 0, updatedAmountPaid),
-      })
-      .eq('id', line.id)
+  const headerIds = [...new Set(
+    obligationLines
+      .map(l => l.header_id)
+      .filter((id): id is string => !!id)
+  )]
 
-    if (updateLineError) {
-      logger.error('Error restoring obligation line allocation:', updateLineError)
-      throw updateLineError
+  const headerMetaById = new Map<string, { notes: string | null }>()
+
+  if (headerIds.length > 0) {
+    const { data: headers, error: headersError } = await supabase
+      .from('employee_obligation_headers')
+      .select('id, notes')
+      .in('id', headerIds)
+
+    if (headersError) {
+      logger.error('Error fetching obligation headers for restore:', headersError)
+      throw headersError
+    }
+
+    for (const h of headers ?? []) {
+      headerMetaById.set(h.id as string, { notes: h.notes as string | null })
+    }
+  }
+
+  for (const line of obligationLines) {
+    const amountToRestore = amountByLineId.get(line.id) ?? 0
+    const headerMeta = headerMetaById.get(line.header_id ?? '')
+    // marker دايماً uppercase (كتبه ensureAutoPayrollObligationLine) — case-sensitive .includes آمن
+    const isAuto = headerMeta?.notes?.includes('AUTO_PAYROLL_SYNC:') ?? false
+
+    if (isAuto) {
+      const { error: cancelLinesError } = await supabase
+        .from('employee_obligation_lines')
+        .update({ line_status: 'cancelled' })
+        .eq('header_id', line.header_id)
+
+      if (cancelLinesError) {
+        logger.error('Error cancelling AUTO obligation lines:', cancelLinesError)
+        throw cancelLinesError
+      }
+
+      const { error: cancelHeaderError } = await supabase
+        .from('employee_obligation_headers')
+        .update({ status: 'cancelled' })
+        .eq('id', line.header_id)
+
+      if (cancelHeaderError) {
+        logger.error('Error cancelling AUTO obligation header:', cancelHeaderError)
+        throw cancelHeaderError
+      }
+
+      if (amountToRestore > 0) {
+        const notes = headerMeta?.notes ?? ''
+        const { error: createError } = await supabase.rpc('create_employee_obligation_plan', {
+          p_employee_id: line.employee_id,
+          p_obligation_type: getPayrollBucketType(getBucketFromAutoNotes(notes)),
+          p_title: getConvertedObligationTitle(notes),
+          p_total_amount: amountToRestore,
+          p_currency_code: 'SAR',
+          p_start_month: line.due_month,
+          p_installment_amounts: [amountToRestore],
+          p_status: 'active',
+          p_notes: null,
+        })
+
+        if (createError) {
+          logger.error('Error creating converted obligation after payroll delete:', createError)
+          throw createError
+        }
+      }
+    } else {
+      const updatedAmountPaid = Math.max((Number(line.amount_paid) || 0) - amountToRestore, 0)
+      const linkedEntryId = line.payroll_entry_id as string | null
+
+      const { error: updateLineError } = await supabase
+        .from('employee_obligation_lines')
+        .update({
+          amount_paid: Number(updatedAmountPaid.toFixed(2)),
+          payroll_entry_id: linkedEntryId && entryIds.includes(linkedEntryId) ? null : linkedEntryId,
+          line_status: getLineStatus(Number(line.amount_due) || 0, updatedAmountPaid),
+        })
+        .eq('id', line.id)
+
+      if (updateLineError) {
+        logger.error('Error restoring obligation line allocation:', updateLineError)
+        throw updateLineError
+      }
     }
   }
 }
@@ -648,6 +740,7 @@ export function useScopedPayrollEmployees(
       const suggestedInstallments = new Map<string, number>()
       const suggestedBreakdown = new Map<string, PayrollObligationBreakdown>()
       for (const line of obligationLines ?? []) {
+        if (!headerTypeById.has(line.header_id as string)) continue
         const employeeId = line.employee_id as string
         const existing = suggestedInstallments.get(employeeId) ?? 0
         const remaining = Math.max((Number(line.amount_due) || 0) - (Number(line.amount_paid) || 0), 0)
