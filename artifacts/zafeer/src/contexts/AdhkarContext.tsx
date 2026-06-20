@@ -24,13 +24,16 @@ export function AdhkarProvider({ children }: { children: ReactNode }) {
   const { data: adhkar } = useAdhkar()
   const { settings } = useAdhkarSettings()
 
-  // shuffled list lives in a ref so timer callbacks never stale-close over it
+  // shuffled list + current index live in refs so timer callbacks never stale-close over them
   const shuffledRef = useRef<AdhkarItem[]>([])
+  const indexRef = useRef(0)
   const adhkarRef = useRef(adhkar)
   const settingsRef = useRef(settings)
 
-  const [index, setIndex] = useState(0)
-  // cycleKey forces effect re-run even when index stays 0 (single-item / re-shuffle)
+  // current and isPlaying are state (not derived from refs during render) — fixes react-hooks/refs
+  const [current, setCurrent] = useState<AdhkarItem | null>(null)
+  const [isPlaying, setIsPlaying] = useState(false)
+  // cycleKey forces timer effect re-run even when index stays 0 (single-item / re-shuffle)
   const [cycleKey, setCycleKey] = useState(0)
 
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -43,21 +46,23 @@ export function AdhkarProvider({ children }: { children: ReactNode }) {
   }, [])
 
   // re-init shuffle when adhkar list loads or changes
+  /* eslint-disable react-hooks/set-state-in-effect */
   useEffect(() => {
     clearTimer()
     if (!adhkar || adhkar.length === 0) {
       shuffledRef.current = []
-      setIndex(0)
-      setCycleKey(k => k + 1)
+      indexRef.current = 0
+      setCurrent(null)
+      setIsPlaying(false)
       return
     }
     shuffledRef.current = fisherYates(adhkar)
-    setIndex(0)
+    indexRef.current = 0
+    setCurrent(shuffledRef.current[0] ?? null)
+    setIsPlaying(true)
     setCycleKey(k => k + 1)
   }, [adhkar, clearTimer])
-
-  const isPlaying = shuffledRef.current.length > 0
-  const current = shuffledRef.current[index] ?? null
+  /* eslint-enable react-hooks/set-state-in-effect */
 
   // after display_duration_ms advance to next dhikr — no gap between dhikrs
   useEffect(() => {
@@ -66,42 +71,40 @@ export function AdhkarProvider({ children }: { children: ReactNode }) {
 
     timerRef.current = setTimeout(() => {
       timerRef.current = null
-      setIndex(prev => {
-        const nextI = prev + 1
-        if (nextI >= shuffledRef.current.length) {
-          const src = adhkarRef.current
-          if (src && src.length > 0) shuffledRef.current = fisherYates(src)
-          return 0
-        }
-        return nextI
-      })
+      let nextI = indexRef.current + 1
+      if (nextI >= shuffledRef.current.length) {
+        const src = adhkarRef.current
+        if (src && src.length > 0) shuffledRef.current = fisherYates(src)
+        nextI = 0
+      }
+      indexRef.current = nextI
+      setCurrent(shuffledRef.current[nextI] ?? null)
       setCycleKey(k => k + 1)
     }, settingsRef.current.display_duration_ms)
 
     return clearTimer
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isPlaying, index, cycleKey])
+  }, [isPlaying, cycleKey, clearTimer])
 
   const next = useCallback(() => {
     clearTimer()
-    setIndex(prev => {
-      const nextI = prev + 1
-      if (nextI >= shuffledRef.current.length) {
-        const src = adhkarRef.current
-        if (src && src.length > 0) shuffledRef.current = fisherYates(src)
-        return 0
-      }
-      return nextI
-    })
+    let nextI = indexRef.current + 1
+    if (nextI >= shuffledRef.current.length) {
+      const src = adhkarRef.current
+      if (src && src.length > 0) shuffledRef.current = fisherYates(src)
+      nextI = 0
+    }
+    indexRef.current = nextI
+    setCurrent(shuffledRef.current[nextI] ?? null)
     setCycleKey(k => k + 1)
   }, [clearTimer])
 
   const prev = useCallback(() => {
     clearTimer()
-    setIndex(p => {
-      if (shuffledRef.current.length <= 1) return 0
-      return p <= 0 ? shuffledRef.current.length - 1 : p - 1
-    })
+    const len = shuffledRef.current.length
+    if (len <= 1) return
+    const prevI = indexRef.current <= 0 ? len - 1 : indexRef.current - 1
+    indexRef.current = prevI
+    setCurrent(shuffledRef.current[prevI] ?? null)
     setCycleKey(k => k + 1)
   }, [clearTimer])
 
