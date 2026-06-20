@@ -34,6 +34,7 @@ export interface PermissionMatrix {
   activityLogs: { view: boolean }
   dashboard: { view: boolean }
   employeeLeaves: { view: boolean; create: boolean; edit: boolean; delete: boolean }
+  adhkar: { view: boolean; create: boolean; edit: boolean; delete: boolean }
 }
 
 /**

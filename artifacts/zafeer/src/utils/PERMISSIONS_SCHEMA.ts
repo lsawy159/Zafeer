@@ -134,6 +134,13 @@ export const PERMISSION_SECTIONS = {
     description: 'تسجيل إجازات الموظفين وعرض سجل الإجازات.',
     actions: ['view', 'create', 'edit', 'delete'] as const,
   },
+  // [catalog-only] — adhkar.{view,create,edit,delete}: مُسجَّل بدون فرض RLS على دور غير admin؛
+  // الوصول الفعلي لـ CRUD محدود لـ admin فقط عبر RLS. يظهر في إدارة الصلاحيات للاطلاع.
+  adhkar: {
+    label: 'الأذكار',
+    description: 'إدارة الأذكار وإعدادات عرضها. الوصول الفعلي للـ CRUD مقيَّد بدور admin عبر RLS.',
+    actions: ['view', 'create', 'edit', 'delete'] as const,
+  },
   // [orphaned] — centralizedSettings.{view,edit}: old /centralized-settings route redirected into
   // /admin-settings umbrella; no active RLS/RPC enforcement; subsumed by adminSettings.
   // Removed from editable catalog per T007 (see research.md Audit Catalog).
