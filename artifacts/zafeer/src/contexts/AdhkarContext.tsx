@@ -99,9 +99,9 @@ export function AdhkarProvider({ children }: { children: ReactNode }) {
   }, [clearTimer])
 
   const prev = useCallback(() => {
-    clearTimer()
     const len = shuffledRef.current.length
     if (len <= 1) return
+    clearTimer()
     const prevI = indexRef.current <= 0 ? len - 1 : indexRef.current - 1
     indexRef.current = prevI
     setCurrent(shuffledRef.current[prevI] ?? null)
