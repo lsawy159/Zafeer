@@ -52,7 +52,7 @@ export default function ImportExport() {
         .select(
           'name,profession,nationality,birth_date,phone,passport_number,residence_number,' +
           'joining_date,contract_expiry,hired_worker_contract_expiry,residence_expiry,' +
-          'project_name,bank_account,residence_image_url,health_insurance_expiry,' +
+          'project_name,bank_account,residence_image_url,health_certificate_url,ajeer_contract_url,health_insurance_expiry,' +
           'salary,notes,additional_fields,' +
           'company:companies(name,unified_number),project:projects(name)'
         )

@@ -2,6 +2,8 @@ import { useState, useCallback, useEffect, useRef } from 'react'
 import { useModalScrollLock } from '@/hooks/useModalScrollLock'
 import { supabase, Company, Project, Employee, EmployeeWithRelations } from '@/lib/supabase'
 import { useUploadResidenceFile } from '@/hooks/useResidenceFile'
+import { useUploadEmployeeDoc } from '@/hooks/useEmployeeDocFile'
+import { EMPLOYEE_DOC_TYPES } from '@/lib/employeeDocFile'
 import { toast } from 'sonner'
 import { parseDate, normalizeDate } from '@/utils/dateParser'
 import {
@@ -97,12 +99,14 @@ export function useAddEmployeeForm({ isOpen, onClose, onSuccess, initialData }: 
   const [formData, setFormData] = useState(buildInitialFormData(initialData))
   const [isDirty, setIsDirty] = useState(false)
   const [pendingFile, setPendingFile] = useState<File | null>(null)
-  const [pendingFileError, setPendingFileError] = useState<string | null>(null)
+  const [pendingHealthCert, setPendingHealthCert] = useState<File | null>(null)
+  const [pendingAjeer, setPendingAjeer] = useState<File | null>(null)
 
-  const residenceFileInputRef = useRef<HTMLInputElement>(null)
   const companyDropdownRef = useRef<HTMLDivElement>(null)
   const projectDropdownRef = useRef<HTMLDivElement>(null)
   const uploadResidenceFile = useUploadResidenceFile()
+  const uploadHealthCert = useUploadEmployeeDoc(EMPLOYEE_DOC_TYPES.health)
+  const uploadAjeer = useUploadEmployeeDoc(EMPLOYEE_DOC_TYPES.ajeer)
 
   const loadCompanies = async () => {
     try {
@@ -431,7 +435,7 @@ export function useAddEmployeeForm({ isOpen, onClose, onSuccess, initialData }: 
         .from('employees')
         .insert([employeeData])
         .select(
-          'id,company_id,name,profession,nationality,birth_date,phone,passport_number,residence_number,joining_date,contract_expiry,hired_worker_contract_expiry,residence_expiry,project_id,project_name,bank_account,residence_image_url,health_insurance_expiry,salary,notes,additional_fields,is_deleted,deleted_at,created_at,updated_at, company:companies(id,name,unified_number,labor_subscription_number,commercial_registration_expiry,social_insurance_number,commercial_registration_status,additional_fields,ending_subscription_power_date,ending_subscription_moqeem_date,employee_count,max_employees,notes,exemptions,company_type,created_at,updated_at), project:projects(id,name,description,status,created_at,updated_at)'
+          'id,company_id,name,profession,nationality,birth_date,phone,passport_number,residence_number,joining_date,contract_expiry,hired_worker_contract_expiry,residence_expiry,project_id,project_name,bank_account,residence_image_url,health_certificate_url,ajeer_contract_url,health_insurance_expiry,salary,notes,additional_fields,is_deleted,deleted_at,created_at,updated_at, company:companies(id,name,unified_number,labor_subscription_number,commercial_registration_expiry,social_insurance_number,commercial_registration_status,additional_fields,ending_subscription_power_date,ending_subscription_moqeem_date,employee_count,max_employees,notes,exemptions,company_type,created_at,updated_at), project:projects(id,name,description,status,created_at,updated_at)'
         )
         .single()
 
@@ -444,10 +448,33 @@ export function useAddEmployeeForm({ isOpen, onClose, onSuccess, initialData }: 
         throw error
       }
 
-      if (pendingFile && insertedEmployee?.id) {
-        try {
-          await uploadResidenceFile.mutateAsync({ employeeId: insertedEmployee.id, file: pendingFile })
-        } catch { /* خطأ الرفع يُعرض عبر toast في الـ hook */ }
+      // رفع الملفات بعد الإدراج — best-effort: فشل الرفع لا يلغي إنشاء الموظف
+      if (insertedEmployee?.id) {
+        const uploads: Array<{ label: string; fn: () => Promise<unknown> }> = []
+        if (pendingFile) {
+          uploads.push({
+            label: 'صورة الإقامة',
+            fn: () => uploadResidenceFile.mutateAsync({ employeeId: insertedEmployee.id, file: pendingFile }),
+          })
+        }
+        if (pendingHealthCert) {
+          uploads.push({
+            label: 'الشهادة الصحية',
+            fn: () => uploadHealthCert.mutateAsync({ employeeId: insertedEmployee.id, file: pendingHealthCert }),
+          })
+        }
+        if (pendingAjeer) {
+          uploads.push({
+            label: 'عقد الأجير',
+            fn: () => uploadAjeer.mutateAsync({ employeeId: insertedEmployee.id, file: pendingAjeer }),
+          })
+        }
+        const results = await Promise.allSettled(uploads.map((u) => u.fn()))
+        results.forEach((result, i) => {
+          if (result.status === 'rejected') {
+            toast.warning(`تعذّر رفع ملف ${uploads[i].label} — يمكن إعادة الرفع لاحقاً`)
+          }
+        })
       }
 
       toast.success('تم إضافة الموظف بنجاح')
@@ -469,7 +496,8 @@ export function useAddEmployeeForm({ isOpen, onClose, onSuccess, initialData }: 
 
       setFormData(createDefaultFormData())
       setPendingFile(null)
-      setPendingFileError(null)
+      setPendingHealthCert(null)
+      setPendingAjeer(null)
       setProjectSearchQuery('')
       setIsProjectDropdownOpen(false)
 
@@ -531,10 +559,11 @@ export function useAddEmployeeForm({ isOpen, onClose, onSuccess, initialData }: 
     newProjectName, setNewProjectName,
     creatingProject,
     pendingFile, setPendingFile,
-    pendingFileError, setPendingFileError,
+    pendingHealthCert, setPendingHealthCert,
+    pendingAjeer, setPendingAjeer,
     uploadResidenceFile,
     // refs
-    residenceFileInputRef, companyDropdownRef, projectDropdownRef,
+    companyDropdownRef, projectDropdownRef,
     // computed
     filteredCompanies, filteredProjects, hasExactMatch, showCreateOption,
     // helpers

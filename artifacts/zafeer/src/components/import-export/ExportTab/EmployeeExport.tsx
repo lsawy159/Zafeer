@@ -24,7 +24,8 @@ import {
   getPayrollObligationBucketFromType,
   normalizePayrollObligationBreakdown,
 } from '@/utils/payrollObligationBuckets'
-import { RESIDENCE_BUCKET, isLegacyExternalUrl } from '@/lib/residenceFile'
+import { isLegacyExternalUrl } from '@/lib/residenceFile'
+import { EMPLOYEE_DOC_BUCKET } from '@/lib/employeeDocFile'
 import {
   CompanyWithStats,
   EmployeeWithRelations,
@@ -333,19 +334,28 @@ export function EmployeeExport({ employees, companies, dataLoading }: EmployeeEx
         })
       }
 
-      const storagePaths = selectedData
-        .map((emp) => emp.residence_image_url)
-        .filter((p): p is string => !!p && !isLegacyExternalUrl(p))
+      // جمع مسارات الملفات الثلاثة في batch واحد:
+      // الإقامة + الشهادة الصحية + عقد الأجير — كلها في bucket واحد (employee-documents).
+      // RESIDENCE_BUCKET === EMPLOYEE_DOC_BUCKET === 'employee-documents'، لذا batch واحد يكفي.
+      const allDocPaths = Array.from(
+        new Set(
+          selectedData.flatMap((emp) => [
+            emp.residence_image_url,
+            emp.health_certificate_url,
+            emp.ajeer_contract_url,
+          ]).filter((p): p is string => !!p && !isLegacyExternalUrl(p))
+        )
+      )
 
       const signedUrlMap = new Map<string, string>()
-      if (storagePaths.length > 0) {
-        for (let i = 0; i < storagePaths.length; i += 100) {
-          const chunk = storagePaths.slice(i, i + 100)
+      if (allDocPaths.length > 0) {
+        for (let i = 0; i < allDocPaths.length; i += 100) {
+          const chunk = allDocPaths.slice(i, i + 100)
           const { data: signedResults, error: signErr } = await supabase.storage
-            .from(RESIDENCE_BUCKET)
+            .from(EMPLOYEE_DOC_BUCKET)
             .createSignedUrls(chunk, 604800)
           if (signErr) {
-            toast.warning('تعذّر توليد روابط صور الإقامة — سيُصدَّر الملف بدونها')
+            toast.warning('تعذّر توليد روابط ملفات الموظفين — سيُصدَّر الملف بدونها')
             break
           }
           if (signedResults) {
@@ -402,6 +412,18 @@ export function EmployeeExport({ employees, companies, dataLoading }: EmployeeEx
             if (isLegacyExternalUrl(p)) return p
             return signedUrlMap.get(p) ?? ''
           })(),
+          'رابط ملف الشهادة الصحية': (() => {
+            const p = emp.health_certificate_url
+            if (!p) return ''
+            if (isLegacyExternalUrl(p)) return p
+            return signedUrlMap.get(p) ?? ''
+          })(),
+          'رابط ملف عقد الأجير': (() => {
+            const p = emp.ajeer_contract_url
+            if (!p) return ''
+            if (isLegacyExternalUrl(p)) return p
+            return signedUrlMap.get(p) ?? ''
+          })(),
           الملاحظات: emp.notes || '',
         }
 
@@ -430,19 +452,27 @@ export function EmployeeExport({ employees, companies, dataLoading }: EmployeeEx
       const wsRef = ws['!ref']
       if (wsRef) {
         const wsRange = XLSX.utils.decode_range(wsRef)
-        let linkColIdx = -1
-        for (let c = wsRange.s.c; c <= wsRange.e.c; c++) {
-          if (ws[XLSX.utils.encode_cell({ r: wsRange.s.r, c })]?.v === 'رابط صورة الإقامة') {
-            linkColIdx = c; break
+        // تعريف رؤوس الأعمدة التي تحتوي روابط + نص الـ hyperlink لكل منها
+        const linkHeaders: { header: string; label: string; tooltip: string }[] = [
+          { header: 'رابط صورة الإقامة', label: 'اضغط هنا لعرض الإقامة', tooltip: 'فتح صورة الإقامة' },
+          { header: 'رابط ملف الشهادة الصحية', label: 'اضغط هنا لعرض الملف', tooltip: 'فتح الملف' },
+          { header: 'رابط ملف عقد الأجير', label: 'اضغط هنا لعرض الملف', tooltip: 'فتح الملف' },
+        ]
+        for (const { header, label, tooltip } of linkHeaders) {
+          let colIdx = -1
+          for (let c = wsRange.s.c; c <= wsRange.e.c; c++) {
+            if (ws[XLSX.utils.encode_cell({ r: wsRange.s.r, c })]?.v === header) {
+              colIdx = c; break
+            }
           }
-        }
-        if (linkColIdx !== -1) {
-          for (let r = wsRange.s.r + 1; r <= wsRange.e.r; r++) {
-            const cRef = XLSX.utils.encode_cell({ r, c: linkColIdx })
-            const rawUrl = typeof ws[cRef]?.v === 'string' ? (ws[cRef].v as string) : ''
-            ws[cRef] = rawUrl.startsWith('http')
-              ? { t: 's', v: 'اضغط هنا لعرض الإقامة', l: { Target: rawUrl, Tooltip: 'فتح صورة الإقامة' } }
-              : { t: 's', v: rawUrl }
+          if (colIdx !== -1) {
+            for (let r = wsRange.s.r + 1; r <= wsRange.e.r; r++) {
+              const cRef = XLSX.utils.encode_cell({ r, c: colIdx })
+              const rawUrl = typeof ws[cRef]?.v === 'string' ? (ws[cRef].v as string) : ''
+              ws[cRef] = rawUrl.startsWith('http')
+                ? { t: 's', v: label, l: { Target: rawUrl, Tooltip: tooltip } }
+                : { t: 's', v: rawUrl }
+            }
           }
         }
       }
@@ -460,15 +490,15 @@ export function EmployeeExport({ employees, companies, dataLoading }: EmployeeEx
               { wch: 25 }, { wch: 25 }, { wch: 14 }, { wch: 14 }, { wch: 16 },
               { wch: 14 }, { wch: 14 }, { wch: 20 }, { wch: 24 }, { wch: 16 },
               { wch: 15 }, { wch: 15 }, { wch: 15 }, { wch: 15 }, { wch: 18 },
-              { wch: 20 }, { wch: 20 }, { wch: 18 }, { wch: 28 }, { wch: 28 },
-              { wch: 22 }, { wch: 22 },
+              { wch: 20 }, { wch: 20 }, { wch: 18 }, { wch: 28 }, { wch: 25 }, { wch: 25 },
+              { wch: 28 }, { wch: 22 }, { wch: 22 },
             ]
           : [
               { wch: 20 }, { wch: 20 }, { wch: 15 }, { wch: 15 }, { wch: 15 },
               { wch: 15 }, { wch: 25 }, { wch: 15 }, { wch: 14 }, { wch: 18 },
               { wch: 16 }, { wch: 14 }, { wch: 14 }, { wch: 20 }, { wch: 25 },
               { wch: 15 }, { wch: 15 }, { wch: 15 }, { wch: 15 }, { wch: 15 },
-              { wch: 20 }, { wch: 25 }, { wch: 25 },
+              { wch: 20 }, { wch: 25 }, { wch: 25 }, { wch: 25 }, { wch: 25 },
             ]
 
       const excelBuffer = XLSX.write(wb, { bookType: 'xlsx', type: 'array' })

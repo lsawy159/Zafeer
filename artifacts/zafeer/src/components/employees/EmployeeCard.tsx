@@ -92,6 +92,10 @@ export default function EmployeeCard({
                 thumbnailPreviewUrl={logic.thumbnailPreviewUrl}
                 hasPendingResidenceFile={logic.hasPendingResidenceFile}
                 handleFilesReady={logic.handleFilesReady}
+                hasPendingHealthCert={logic.hasPendingHealthCert}
+                hasPendingAjeer={logic.hasPendingAjeer}
+                handleHealthCertReady={logic.handleHealthCertReady}
+                handleAjeerReady={logic.handleAjeerReady}
               />
             </div>
 

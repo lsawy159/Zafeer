@@ -26,6 +26,8 @@ export const employeesTable = pgTable('employees', {
   health_insurance_expiry: date('health_insurance_expiry'),
   bank_account: text('bank_account'),
   residence_image_url: text('residence_image_url'),
+  health_certificate_url: text('health_certificate_url'),
+  ajeer_contract_url: text('ajeer_contract_url'),
   salary: numeric('salary'),
   notes: text('notes'),
   project_name: text('project_name'),

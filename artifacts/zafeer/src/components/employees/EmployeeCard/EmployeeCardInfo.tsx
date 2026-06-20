@@ -16,6 +16,9 @@ import { Employee, Company, Project } from '@/lib/supabase'
 import { HIRED_WORKER_CONTRACT_STATUS_OPTIONS } from '@/utils/employeeBusinessFields'
 import { ResidenceFileField } from '../ResidenceFileField'
 import { ResidenceFileViewer } from '../ResidenceFileViewer'
+import { EmployeeDocumentField } from '../EmployeeDocumentField'
+import { EmployeeDocViewer } from '../EmployeeDocViewer'
+import { EMPLOYEE_DOC_TYPES } from '@/lib/employeeDocFile'
 import type { EmployeeFormData } from './useEmployeeCardLogic'
 import type { getEmployeeBusinessFields } from '@/utils/employeeBusinessFields'
 
@@ -47,6 +50,10 @@ interface EmployeeCardInfoProps {
   thumbnailPreviewUrl: string | null
   hasPendingResidenceFile: boolean
   handleFilesReady: (original: File, thumbnail: File | null) => void
+  hasPendingHealthCert: boolean
+  hasPendingAjeer: boolean
+  handleHealthCertReady: (file: File) => void
+  handleAjeerReady: (file: File) => void
 }
 
 export function EmployeeCardInfo({
@@ -77,6 +84,10 @@ export function EmployeeCardInfo({
   thumbnailPreviewUrl,
   hasPendingResidenceFile,
   handleFilesReady,
+  hasPendingHealthCert,
+  hasPendingAjeer,
+  handleHealthCertReady,
+  handleAjeerReady,
 }: EmployeeCardInfoProps) {
   const inputClass = (disabled: boolean) =>
     `app-input py-2 ${disabled ? 'border-slate-200 bg-slate-50 text-slate-600 cursor-not-allowed' : ''}`
@@ -540,6 +551,66 @@ export function EmployeeCardInfo({
                 <ResidenceFileViewer path={formData.residence_image_url} />
               ) : (
                 <p className="text-sm text-slate-400">لا يوجد ملف إقامة</p>
+              )}
+            </>
+          )}
+        </div>
+
+        {/* الشهادة الصحية */}
+        <div>
+          {isEditMode ? (
+            <EmployeeDocumentField
+              meta={EMPLOYEE_DOC_TYPES.health}
+              employeeId={employee.id}
+              currentPath={formData.health_certificate_url || null}
+              disabled={false}
+              isDeleted={employee.is_deleted ?? false}
+              onFileReady={handleHealthCertReady}
+              onPathChange={(newPath) =>
+                setFormData({ ...formData, health_certificate_url: newPath ?? '' })
+              }
+              hasPendingFile={hasPendingHealthCert}
+            />
+          ) : (
+            <>
+              <label className="block text-sm font-medium text-neutral-700 mb-2 flex items-center gap-2">
+                <FileText className="w-4 h-4" />
+                الشهادة الصحية
+              </label>
+              {formData.health_certificate_url ? (
+                <EmployeeDocViewer path={formData.health_certificate_url} meta={EMPLOYEE_DOC_TYPES.health} />
+              ) : (
+                <p className="text-sm text-slate-400">لا يوجد ملف</p>
+              )}
+            </>
+          )}
+        </div>
+
+        {/* عقد الأجير */}
+        <div>
+          {isEditMode ? (
+            <EmployeeDocumentField
+              meta={EMPLOYEE_DOC_TYPES.ajeer}
+              employeeId={employee.id}
+              currentPath={formData.ajeer_contract_url || null}
+              disabled={false}
+              isDeleted={employee.is_deleted ?? false}
+              onFileReady={handleAjeerReady}
+              onPathChange={(newPath) =>
+                setFormData({ ...formData, ajeer_contract_url: newPath ?? '' })
+              }
+              hasPendingFile={hasPendingAjeer}
+            />
+          ) : (
+            <>
+              <label className="block text-sm font-medium text-neutral-700 mb-2 flex items-center gap-2">
+                <FileText className="w-4 h-4" />
+                عقد الأجير
+              </label>
+              {formData.ajeer_contract_url ? (
+                <EmployeeDocViewer path={formData.ajeer_contract_url} meta={EMPLOYEE_DOC_TYPES.ajeer} />
+              ) : (
+                <p className="text-sm text-slate-400">لا يوجد ملف</p>
               )}
             </>
           )}
