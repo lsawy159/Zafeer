@@ -18,6 +18,7 @@ import { PermissionsPanel } from '@/pages/Permissions'
 import UnifiedSettings from '@/components/settings/UnifiedSettings'
 import { SystemDefaultsInfo } from './settings/SystemDefaultsInfo'
 import { EmailSettingsTab } from '@/components/settings/tabs/EmailSettingsTab'
+import { AdhkarTab } from '@/components/adhkar/AdhkarTab'
 import {
   buildSettingsCategories,
   ALLOWED_TABS,
@@ -46,6 +47,7 @@ export default function GeneralSettings() {
     'email-settings': canView('emailSettings'),
     'alert-settings': canView('alertsSettings'),
     'activity-logs': canView('activityLogs'),
+    'adhkar-settings': user?.role === 'admin',
   }
 
   const hasAnyTabAccess = Object.values(tabPermissions).some(Boolean)
@@ -121,7 +123,8 @@ export default function GeneralSettings() {
     PermissionsPanel,
     UnifiedSettings,
     ActivityLogsEmbedded,
-    EmailSettingsTab
+    EmailSettingsTab,
+    AdhkarTab
   )
 
   const settingsCategories = allSettingsCategories.filter(

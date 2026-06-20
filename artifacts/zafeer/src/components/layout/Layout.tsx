@@ -19,6 +19,8 @@ import { useThemeMode, useFontMode } from '@/hooks/useUiPreferences'
 import { MobileBottomNav } from './MobileBottomNav'
 import { PillHeader } from './PillHeader'
 import { useNavItems } from '@/hooks/useNavItems'
+import { AdhkarProvider } from '@/contexts/AdhkarContext'
+import { SidebarAdhkarControls } from '@/components/adhkar/SidebarAdhkarControls'
 
 export default function Layout({ children }: { children: ReactNode }) {
   const location = useLocation()
@@ -82,6 +84,7 @@ export default function Layout({ children }: { children: ReactNode }) {
 
 
   return (
+    <AdhkarProvider>
     <TooltipProvider delayDuration={300}>
       <div className="min-h-screen bg-background text-foreground" dir="rtl">
         <PillHeader
@@ -358,6 +361,9 @@ export default function Layout({ children }: { children: ReactNode }) {
                 })}
             </nav>
 
+            {/* Adhkar Controls */}
+            <SidebarAdhkarControls isCollapsed={isCollapsed} />
+
             {/* User Actions Section at Bottom */}
             <div className="mt-auto border-t border-border bg-surface/80 p-2">
               {!isCollapsed ? (
@@ -442,7 +448,9 @@ export default function Layout({ children }: { children: ReactNode }) {
 
         {/* Mobile Bottom Navigation */}
         <MobileBottomNav navItems={navItems} />
+
       </div>
     </TooltipProvider>
+    </AdhkarProvider>
   )
 }

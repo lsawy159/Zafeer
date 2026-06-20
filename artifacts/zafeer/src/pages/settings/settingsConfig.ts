@@ -8,6 +8,7 @@ import {
   Users,
   AlertTriangle,
   Mail,
+  BookOpen,
 } from 'lucide-react'
 
 export interface SettingsCategory {
@@ -28,6 +29,7 @@ export type TabType =
   | 'alert-settings'
   | 'backup'
   | 'activity-logs'
+  | 'adhkar-settings'
 
 export const ALLOWED_TABS: TabType[] = [
   'system',
@@ -38,6 +40,7 @@ export const ALLOWED_TABS: TabType[] = [
   'alert-settings',
   'backup',
   'activity-logs',
+  'adhkar-settings',
 ]
 
 export function buildSettingsCategories(
@@ -48,7 +51,8 @@ export function buildSettingsCategories(
   PermissionsPanel: React.ComponentType,
   UnifiedSettings: React.ComponentType,
   ActivityLogsEmbedded: React.ComponentType,
-  EmailSettingsTab: React.ComponentType
+  EmailSettingsTab: React.ComponentType,
+  AdhkarTab: React.ComponentType
 ): SettingsCategory[] {
   return [
     {
@@ -107,6 +111,13 @@ export function buildSettingsCategories(
       description: 'عرض كامل لسجل الإجراءات والعمليات التي تمت في النظام مع التوقيت والمستخدم المسؤول.',
       icon: Clock,
       component: ActivityLogsEmbedded,
+    },
+    {
+      key: 'adhkar-settings',
+      label: 'الأذكار',
+      description: 'إضافة وتعديل وحذف الأذكار المعروضة في التطبيق، وضبط مدة العرض والفاصل الزمني بين الأذكار.',
+      icon: BookOpen,
+      component: AdhkarTab,
     },
   ]
 }
