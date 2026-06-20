@@ -1,13 +1,15 @@
 import { createPortal } from 'react-dom'
 import { EmployeeWithRelations } from '@/lib/supabase'
-import { validateResidenceFile } from '@/lib/residenceFile'
 import {
   X, UserPlus, Users, Search, ChevronDown,
-  FolderKanban, Plus, Loader2, Upload, FileText,
+  FolderKanban, Plus, Loader2,
 } from 'lucide-react'
 import { HIRED_WORKER_CONTRACT_STATUS_OPTIONS } from '@/utils/employeeBusinessFields'
 import { useAddEmployeeForm } from './AddEmployeeModal/useAddEmployeeForm'
 import ConfirmationDialog from '@/components/dialogs/ConfirmationDialog'
+import { ResidenceFileField } from './ResidenceFileField'
+import { EmployeeDocumentField } from './EmployeeDocumentField'
+import { EMPLOYEE_DOC_TYPES } from '@/lib/employeeDocFile'
 
 interface AddEmployeeModalProps {
   isOpen: boolean
@@ -30,8 +32,10 @@ export default function AddEmployeeModal(props: AddEmployeeModalProps) {
     companySearchQuery, setCompanySearchQuery, isCompanyDropdownOpen, setIsCompanyDropdownOpen,
     projectSearchQuery, setProjectSearchQuery, isProjectDropdownOpen, setIsProjectDropdownOpen,
     showCreateProjectModal, setShowCreateProjectModal, newProjectName, setNewProjectName,
-    creatingProject, pendingFile, setPendingFile, pendingFileError, setPendingFileError,
-    residenceFileInputRef, companyDropdownRef, projectDropdownRef,
+    creatingProject, pendingFile, setPendingFile,
+    pendingHealthCert, setPendingHealthCert,
+    pendingAjeer, setPendingAjeer,
+    companyDropdownRef, projectDropdownRef,
     filteredCompanies, filteredProjects, showCreateOption,
     handleChange, handleSubmit, handleOverlayClick, handleCreateProject,
     selectCompany, selectProject, clearProject,
@@ -247,27 +251,37 @@ export default function AddEmployeeModal(props: AddEmployeeModalProps) {
             </div>
           </div>
 
-          {/* ملف الإقامة */}
-          <div className="mt-6">
-            <label className="block text-sm font-medium text-neutral-700 mb-2 flex items-center gap-2">
-              <FileText className="w-4 h-4" />ملف الإقامة (اختياري — يُرفع بعد حفظ الموظف)
-            </label>
-            <input ref={residenceFileInputRef} type="file" accept="image/jpeg,image/png,image/webp,application/pdf" className="hidden" disabled={loading}
-              onChange={(e) => {
-                const file = e.target.files?.[0] ?? null
-                setPendingFileError(null)
-                if (!file) { setPendingFile(null); return }
-                const result = validateResidenceFile(file)
-                if (!result.ok) { setPendingFileError(result.messageAr); e.target.value = ''; return }
-                setPendingFile(file)
-              }} />
-            <button type="button" onClick={() => residenceFileInputRef.current?.click()} disabled={loading} className="flex items-center gap-2 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700 hover:bg-slate-50 disabled:opacity-50 transition-colors">
-              <Upload className="w-4 h-4" />{pendingFile ? pendingFile.name : 'اختر ملف الإقامة'}
-            </button>
-            {pendingFileError && <p className="mt-1.5 text-xs text-red-600">{pendingFileError}</p>}
-            {pendingFile && <p className="mt-1 text-xs text-slate-500">سيُرفع الملف تلقائياً بعد إنشاء الموظف</p>}
-          </div>
+          {/* ملفات المستندات */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-6">
+            {/* ملف الإقامة — drag-drop مؤجّل (crop/thumbnail عبر onFilesReady) */}
+            <ResidenceFileField
+              employeeId=""
+              currentPath={null}
+              disabled={loading}
+              onFilesReady={(original, _thumbnail) => setPendingFile(original)}
+              hasPendingFile={!!pendingFile}
+            />
 
+            {/* الشهادة الصحية — drag-drop مؤجّل بدون اقتصاص */}
+            <EmployeeDocumentField
+              meta={EMPLOYEE_DOC_TYPES.health}
+              employeeId=""
+              currentPath={null}
+              disabled={loading}
+              onFileReady={(file) => setPendingHealthCert(file)}
+              hasPendingFile={!!pendingHealthCert}
+            />
+
+            {/* عقد الأجير — drag-drop مؤجّل بدون اقتصاص */}
+            <EmployeeDocumentField
+              meta={EMPLOYEE_DOC_TYPES.ajeer}
+              employeeId=""
+              currentPath={null}
+              disabled={loading}
+              onFileReady={(file) => setPendingAjeer(file)}
+              hasPendingFile={!!pendingAjeer}
+            />
+          </div>
           {/* الملاحظات */}
           <div className="mt-6">
             <label className="block text-sm font-medium text-neutral-700 mb-2">الملاحظات</label>

@@ -6,6 +6,11 @@ import {
   buildResidenceThumbnailPath,
   isLegacyExternalUrl,
 } from '@/lib/residenceFile'
+import {
+  EMPLOYEE_DOC_BUCKET,
+  EMPLOYEE_DOC_TYPES,
+  buildEmployeeDocPath,
+} from '@/lib/employeeDocFile'
 import { useEmployeeCardData } from '@/hooks/useEmployeeCardData'
 import { toast } from 'sonner'
 import { logger } from '@/utils/logger'
@@ -64,6 +69,8 @@ export type EmployeeFormData = {
   bank_account?: string
   residence_image_url: string
   residence_thumbnail_url: string
+  health_certificate_url: string
+  ajeer_contract_url: string
   health_insurance_expiry: string
   salary: number
   notes: string
@@ -102,6 +109,8 @@ export function useEmployeeCardLogic({
     notes: employee?.notes ?? '',
     residence_image_url: employee?.residence_image_url ?? '',
     residence_thumbnail_url: employee?.residence_thumbnail_url ?? '',
+    health_certificate_url: employee?.health_certificate_url ?? '',
+    ajeer_contract_url: employee?.ajeer_contract_url ?? '',
     birth_date: employee?.birth_date ?? '',
     joining_date: employee?.joining_date ?? '',
     residence_expiry: employee?.residence_expiry ?? '',
@@ -115,6 +124,23 @@ export function useEmployeeCardLogic({
   const pendingFilesRef = useRef<{ original: File; thumbnail: File | null } | null>(null)
   const [thumbnailPreviewUrl, setThumbnailPreviewUrl] = useState<string | null>(null)
   const [hasPendingResidenceFile, setHasPendingResidenceFile] = useState(false)
+
+  // ملفات المستندات الإضافية (مؤجّلة — بدون thumbnail)
+  const pendingHealthCertRef = useRef<File | null>(null)
+  const pendingAjeerRef = useRef<File | null>(null)
+  const [hasPendingHealthCert, setHasPendingHealthCert] = useState(false)
+  const [hasPendingAjeer, setHasPendingAjeer] = useState(false)
+
+  function handleHealthCertReady(file: File) {
+    pendingHealthCertRef.current = file
+    setHasPendingHealthCert(true)
+  }
+
+  function handleAjeerReady(file: File) {
+    pendingAjeerRef.current = file
+    setHasPendingAjeer(true)
+  }
+
   const [isEditMode, setIsEditMode] = useState(false)
   const [showUnsavedConfirm, setShowUnsavedConfirm] = useState(false)
   const [companySearchQuery, setCompanySearchQuery] = useState('')
@@ -415,14 +441,69 @@ export function useEmployeeCardLogic({
         }
         const oldPath = formData.residence_image_url
         const oldThumb = formData.residence_thumbnail_url
-        if (oldPath && !isLegacyExternalUrl(oldPath)) await supabase.storage.from(RESIDENCE_BUCKET).remove([oldPath]).catch(() => {})
-        if (oldThumb && !isLegacyExternalUrl(oldThumb)) await supabase.storage.from(RESIDENCE_BUCKET).remove([oldThumb]).catch(() => {})
+        if (oldPath && !isLegacyExternalUrl(oldPath)) await supabase.storage.from(RESIDENCE_BUCKET).remove([oldPath]).catch((err: unknown) => logger.warn('فشل حذف الملف القديم — تجاهل:', err))
+        if (oldThumb && !isLegacyExternalUrl(oldThumb)) await supabase.storage.from(RESIDENCE_BUCKET).remove([oldThumb]).catch((err: unknown) => logger.warn('فشل حذف الملف القديم — تجاهل:', err))
         actualUpdateData['residence_image_url'] = newPath
         actualUpdateData['residence_thumbnail_url'] = newThumbnailPath
         pendingFilesRef.current = null
         if (thumbnailPreviewUrl) URL.revokeObjectURL(thumbnailPreviewUrl)
         setThumbnailPreviewUrl(null)
         setHasPendingResidenceFile(false)
+      }
+
+      // رفع ملفات المستندات المؤجّلة (شهادة صحية + عقد أجير) عبر helper مشترك
+      const uploadPendingDoc = async (
+        file: File,
+        meta: typeof EMPLOYEE_DOC_TYPES.health,
+        oldPath: string,
+      ): Promise<string> => {
+        const newPath = buildEmployeeDocPath(meta.folder, employee.id, file)
+        const { error: uploadErr } = await supabase.storage
+          .from(EMPLOYEE_DOC_BUCKET)
+          .upload(newPath, file, { upsert: false })
+        if (uploadErr) {
+          logger.error(`فشل رفع ملف ${meta.labelAr}:`, uploadErr)
+          throw new Error(`فشل رفع ملف ${meta.labelAr}`)
+        }
+        if (oldPath && !isLegacyExternalUrl(oldPath)) {
+          await supabase.storage.from(EMPLOYEE_DOC_BUCKET).remove([oldPath])
+            .catch((err: unknown) => logger.warn('فشل حذف الملف القديم — تجاهل:', err))
+        }
+        return newPath
+      }
+
+      if (pendingHealthCertRef.current) {
+        try {
+          const newPath = await uploadPendingDoc(
+            pendingHealthCertRef.current,
+            EMPLOYEE_DOC_TYPES.health,
+            formData.health_certificate_url,
+          )
+          actualUpdateData['health_certificate_url'] = newPath
+          pendingHealthCertRef.current = null
+          setHasPendingHealthCert(false)
+        } catch (err) {
+          toast.error(err instanceof Error ? err.message : 'فشل رفع ملف الشهادة الصحية')
+          setSaving(false)
+          return
+        }
+      }
+
+      if (pendingAjeerRef.current) {
+        try {
+          const newPath = await uploadPendingDoc(
+            pendingAjeerRef.current,
+            EMPLOYEE_DOC_TYPES.ajeer,
+            formData.ajeer_contract_url,
+          )
+          actualUpdateData['ajeer_contract_url'] = newPath
+          pendingAjeerRef.current = null
+          setHasPendingAjeer(false)
+        } catch (err) {
+          toast.error(err instanceof Error ? err.message : 'فشل رفع ملف عقد الأجير')
+          setSaving(false)
+          return
+        }
       }
 
       const normalizedAdditionalFields = buildEmployeeBusinessAdditionalFields(
@@ -525,6 +606,10 @@ export function useEmployeeCardLogic({
     if (thumbnailPreviewUrl) URL.revokeObjectURL(thumbnailPreviewUrl)
     setThumbnailPreviewUrl(null)
     setHasPendingResidenceFile(false)
+    pendingHealthCertRef.current = null
+    pendingAjeerRef.current = null
+    setHasPendingHealthCert(false)
+    setHasPendingAjeer(false)
     setFormData({
       ...employee,
       company_id: employee.company_id,
@@ -536,6 +621,8 @@ export function useEmployeeCardLogic({
       notes: employee.notes || '',
       residence_image_url: employee.residence_image_url || '',
       residence_thumbnail_url: employee.residence_thumbnail_url || '',
+      health_certificate_url: employee.health_certificate_url || '',
+      ajeer_contract_url: employee.ajeer_contract_url || '',
       residence_number: employee.residence_number || 0,
     })
     setIsEditMode(false)
@@ -773,6 +860,10 @@ export function useEmployeeCardLogic({
     pendingFilesRef,
     thumbnailPreviewUrl,
     hasPendingResidenceFile,
+    hasPendingHealthCert,
+    hasPendingAjeer,
+    handleHealthCertReady,
+    handleAjeerReady,
     isEditMode,
     showUnsavedConfirm, setShowUnsavedConfirm,
     companySearchQuery, setCompanySearchQuery,

@@ -91,6 +91,8 @@ export interface Employee {
   bank_account?: string
   residence_image_url?: string
   residence_thumbnail_url?: string
+  health_certificate_url?: string
+  ajeer_contract_url?: string
   // التأمين الصحي للموظف
   health_insurance_expiry?: string // بدلاً من ending_subscription_insurance_date
   salary?: number
