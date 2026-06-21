@@ -209,7 +209,7 @@ describe('TransferProceduresTab conversion flow', () => {
     const user = userEvent.setup()
     render(
       <MemoryRouter>
-        <TransferProceduresTab canImport={false} canExport={false} />
+        <TransferProceduresTab canImport={false} canExport={false} canEdit canDelete />
       </MemoryRouter>
     )
 
