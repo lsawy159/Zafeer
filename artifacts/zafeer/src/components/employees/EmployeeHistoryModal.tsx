@@ -1,8 +1,10 @@
+import { useState } from 'react'
 import { X, FolderKanban, History, Loader2, ArrowLeft, Trash2 } from 'lucide-react'
 import { createPortal } from 'react-dom'
 import { toast } from 'sonner'
 import { useEmployeeProjectHistory, useDeleteProjectTransfer } from '@/hooks/useEmployeeProjectHistory'
 import { useAuth } from '@/contexts/AuthContext'
+import { ConfirmModal } from '@/components/ui/ConfirmModal'
 import { Employee } from '@/lib/supabase'
 
 interface EmployeeHistoryModalProps {
@@ -14,11 +16,15 @@ export function EmployeeHistoryModal({ employee, onClose }: EmployeeHistoryModal
   const { data: history, isLoading, isError } = useEmployeeProjectHistory(employee.id)
   const { isAdmin } = useAuth()
   const deleteTransfer = useDeleteProjectTransfer(employee.id)
+  const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null)
 
-  const handleDelete = (recordId: string) => {
-    if (!window.confirm('هل تريد حذف هذا السجل من سجل نقل المشاريع؟')) return
-    deleteTransfer.mutate(recordId, {
-      onSuccess: () => toast.success('تم حذف السجل'),
+  const confirmDelete = () => {
+    if (!pendingDeleteId) return
+    deleteTransfer.mutate(pendingDeleteId, {
+      onSuccess: () => {
+        toast.success('تم حذف السجل')
+        setPendingDeleteId(null)
+      },
       onError: () => toast.error('فشل حذف السجل'),
     })
   }
@@ -107,7 +113,7 @@ export function EmployeeHistoryModal({ employee, onClose }: EmployeeHistoryModal
                         </p>
                         {isAdmin && (
                           <button
-                            onClick={() => handleDelete(record.id)}
+                            onClick={() => setPendingDeleteId(record.id)}
                             disabled={deleteTransfer.isPending}
                             className="rounded-lg p-1.5 text-neutral-400 transition hover:bg-red-50 hover:text-red-500 disabled:opacity-50"
                             title="حذف السجل"
@@ -152,5 +158,19 @@ export function EmployeeHistoryModal({ employee, onClose }: EmployeeHistoryModal
     </div>
   )
 
-  return createPortal(modal, document.body)
+  return (
+    <>
+      {createPortal(modal, document.body)}
+      <ConfirmModal
+        open={!!pendingDeleteId}
+        title="تأكيد الحذف"
+        message="هل تريد حذف هذا السجل من سجل نقل المشاريع؟ لا يمكن التراجع عن هذه العملية."
+        confirmLabel="حذف"
+        danger
+        loading={deleteTransfer.isPending}
+        onConfirm={confirmDelete}
+        onCancel={() => setPendingDeleteId(null)}
+      />
+    </>
+  )
 }
