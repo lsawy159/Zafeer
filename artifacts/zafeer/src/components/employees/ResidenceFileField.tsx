@@ -220,7 +220,7 @@ export function ResidenceFileField({
               </p>
               {hasPendingFile && (
                 <p className="text-xs text-green-600 mt-1">
-                  الملف الأصلي كامل محفوظ — الجزء المقتطع كصورة الكارت
+                  الملف الأصلي كامل محفوظ
                 </p>
               )}
             </div>
