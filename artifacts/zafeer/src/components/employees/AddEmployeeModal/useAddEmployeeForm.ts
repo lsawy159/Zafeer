@@ -4,6 +4,7 @@ import { supabase, Company, Project, Employee, EmployeeWithRelations } from '@/l
 import { useUploadResidenceFile } from '@/hooks/useResidenceFile'
 import { useUploadEmployeeDoc } from '@/hooks/useEmployeeDocFile'
 import { EMPLOYEE_DOC_TYPES } from '@/lib/employeeDocFile'
+import { buildResidenceThumbnailPath, RESIDENCE_BUCKET } from '@/lib/residenceFile'
 import { toast } from 'sonner'
 import { parseDate, normalizeDate } from '@/utils/dateParser'
 import {
@@ -99,6 +100,7 @@ export function useAddEmployeeForm({ isOpen, onClose, onSuccess, initialData }: 
   const [formData, setFormData] = useState(buildInitialFormData(initialData))
   const [isDirty, setIsDirty] = useState(false)
   const [pendingFile, setPendingFile] = useState<File | null>(null)
+  const [pendingThumbnail, setPendingThumbnail] = useState<File | null>(null)
   const [pendingHealthCert, setPendingHealthCert] = useState<File | null>(null)
   const [pendingAjeer, setPendingAjeer] = useState<File | null>(null)
 
@@ -176,6 +178,7 @@ export function useAddEmployeeForm({ isOpen, onClose, onSuccess, initialData }: 
       setIsProjectDropdownOpen(false)
       setShowCreateProjectModal(false)
       setNewProjectName('')
+      setPendingThumbnail(null)
     }
   }, [isOpen, initialData])
   /* eslint-enable react-hooks/set-state-in-effect */
@@ -452,9 +455,28 @@ export function useAddEmployeeForm({ isOpen, onClose, onSuccess, initialData }: 
       if (insertedEmployee?.id) {
         const uploads: Array<{ label: string; fn: () => Promise<unknown> }> = []
         if (pendingFile) {
+          const capturedThumbnail = pendingThumbnail
           uploads.push({
             label: 'صورة الإقامة',
-            fn: () => uploadResidenceFile.mutateAsync({ employeeId: insertedEmployee.id, file: pendingFile }),
+            fn: async () => {
+              await uploadResidenceFile.mutateAsync({ employeeId: insertedEmployee.id, file: pendingFile })
+              if (capturedThumbnail) {
+                try {
+                  const thumbPath = buildResidenceThumbnailPath(insertedEmployee.id, capturedThumbnail)
+                  const { error: thumbErr } = await supabase.storage
+                    .from(RESIDENCE_BUCKET)
+                    .upload(thumbPath, capturedThumbnail, { upsert: false })
+                  if (!thumbErr) {
+                    await supabase
+                      .from('employees')
+                      .update({ residence_thumbnail_url: thumbPath })
+                      .eq('id', insertedEmployee.id)
+                  }
+                } catch (thumbEx) {
+                  console.warn('تعذّر رفع thumbnail الإقامة:', thumbEx)
+                }
+              }
+            },
           })
         }
         if (pendingHealthCert) {
@@ -496,6 +518,7 @@ export function useAddEmployeeForm({ isOpen, onClose, onSuccess, initialData }: 
 
       setFormData(createDefaultFormData())
       setPendingFile(null)
+      setPendingThumbnail(null)
       setPendingHealthCert(null)
       setPendingAjeer(null)
       setProjectSearchQuery('')
@@ -559,6 +582,7 @@ export function useAddEmployeeForm({ isOpen, onClose, onSuccess, initialData }: 
     newProjectName, setNewProjectName,
     creatingProject,
     pendingFile, setPendingFile,
+    pendingThumbnail, setPendingThumbnail,
     pendingHealthCert, setPendingHealthCert,
     pendingAjeer, setPendingAjeer,
     uploadResidenceFile,

@@ -40,6 +40,7 @@ export default function AddEmployeeModal(props: AddEmployeeModalProps) {
     handleChange, handleSubmit, handleOverlayClick, handleCreateProject,
     selectCompany, selectProject, clearProject,
     showUnsavedConfirm, handleUnsavedConfirm, handleUnsavedCancel,
+    setPendingThumbnail,
   } = useAddEmployeeForm(props)
 
   if (!props.isOpen) return null
@@ -258,7 +259,7 @@ export default function AddEmployeeModal(props: AddEmployeeModalProps) {
               employeeId=""
               currentPath={null}
               disabled={loading}
-              onFilesReady={(original, _thumbnail) => setPendingFile(original)}
+              onFilesReady={(original, thumbnail) => { setPendingFile(original); setPendingThumbnail(thumbnail) }}
               hasPendingFile={!!pendingFile}
             />
 
