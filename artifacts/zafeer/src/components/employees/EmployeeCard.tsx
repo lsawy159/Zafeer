@@ -94,8 +94,10 @@ export default function EmployeeCard({
                 handleFilesReady={logic.handleFilesReady}
                 hasPendingHealthCert={logic.hasPendingHealthCert}
                 hasPendingAjeer={logic.hasPendingAjeer}
+                hasPendingMuqeem={logic.hasPendingMuqeem}
                 handleHealthCertReady={logic.handleHealthCertReady}
                 handleAjeerReady={logic.handleAjeerReady}
+                handleMuqeemReady={logic.handleMuqeemReady}
               />
             </div>
 

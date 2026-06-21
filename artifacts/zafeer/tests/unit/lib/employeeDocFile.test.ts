@@ -147,4 +147,26 @@ describe('EMPLOYEE_DOC_TYPES', () => {
   it('ajeer.exportHeaderAr يساوي رابط ملف عقد الأجير', () => {
     expect(EMPLOYEE_DOC_TYPES.ajeer.exportHeaderAr).toBe('رابط ملف عقد الأجير')
   })
+
+  it('muqeem.column يساوي muqeem_document_url', () => {
+    expect(EMPLOYEE_DOC_TYPES.muqeem.column).toBe('muqeem_document_url')
+  })
+
+  it('muqeem.folder يساوي muqeem-document', () => {
+    expect(EMPLOYEE_DOC_TYPES.muqeem.folder).toBe('muqeem-document')
+  })
+
+  it('muqeem.labelAr يساوي وثيقة مقيم', () => {
+    expect(EMPLOYEE_DOC_TYPES.muqeem.labelAr).toBe('وثيقة مقيم')
+  })
+
+  it('muqeem.exportHeaderAr يساوي رابط ملف وثيقة مقيم', () => {
+    expect(EMPLOYEE_DOC_TYPES.muqeem.exportHeaderAr).toBe('رابط ملف وثيقة مقيم')
+  })
+
+  it('يبني مسار وثيقة مقيم بصيغة muqeem-document/{id}/{ts}.{ext}', () => {
+    const file = makeFile('doc.pdf', 'application/pdf', 100)
+    const path = buildEmployeeDocPath(EMPLOYEE_DOC_TYPES.muqeem.folder, 'emp-id-789', file)
+    expect(path).toMatch(/^muqeem-document\/emp-id-789\/\d+\.pdf$/)
+  })
 })

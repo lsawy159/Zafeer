@@ -343,6 +343,7 @@ export function EmployeeExport({ employees, companies, dataLoading }: EmployeeEx
             emp.residence_image_url,
             emp.health_certificate_url,
             emp.ajeer_contract_url,
+            emp.muqeem_document_url,
           ]).filter((p): p is string => !!p && !isLegacyExternalUrl(p))
         )
       )
@@ -424,6 +425,12 @@ export function EmployeeExport({ employees, companies, dataLoading }: EmployeeEx
             if (isLegacyExternalUrl(p)) return p
             return signedUrlMap.get(p) ?? ''
           })(),
+          'رابط ملف وثيقة مقيم': (() => {
+            const p = emp.muqeem_document_url
+            if (!p) return ''
+            if (isLegacyExternalUrl(p)) return p
+            return signedUrlMap.get(p) ?? ''
+          })(),
           الملاحظات: emp.notes || '',
         }
 
@@ -457,6 +464,7 @@ export function EmployeeExport({ employees, companies, dataLoading }: EmployeeEx
           { header: 'رابط صورة الإقامة', label: 'اضغط هنا لعرض الإقامة', tooltip: 'فتح صورة الإقامة' },
           { header: 'رابط ملف الشهادة الصحية', label: 'اضغط هنا لعرض الملف', tooltip: 'فتح الملف' },
           { header: 'رابط ملف عقد الأجير', label: 'اضغط هنا لعرض الملف', tooltip: 'فتح الملف' },
+          { header: 'رابط ملف وثيقة مقيم', label: 'اضغط هنا لعرض الملف', tooltip: 'فتح الملف' },
         ]
         for (const { header, label, tooltip } of linkHeaders) {
           let colIdx = -1
@@ -491,14 +499,14 @@ export function EmployeeExport({ employees, companies, dataLoading }: EmployeeEx
               { wch: 14 }, { wch: 14 }, { wch: 20 }, { wch: 24 }, { wch: 16 },
               { wch: 15 }, { wch: 15 }, { wch: 15 }, { wch: 15 }, { wch: 18 },
               { wch: 20 }, { wch: 20 }, { wch: 18 }, { wch: 28 }, { wch: 25 }, { wch: 25 },
-              { wch: 28 }, { wch: 22 }, { wch: 22 },
+              { wch: 28 }, { wch: 22 }, { wch: 22 }, { wch: 25 },
             ]
           : [
               { wch: 20 }, { wch: 20 }, { wch: 15 }, { wch: 15 }, { wch: 15 },
               { wch: 15 }, { wch: 25 }, { wch: 15 }, { wch: 14 }, { wch: 18 },
               { wch: 16 }, { wch: 14 }, { wch: 14 }, { wch: 20 }, { wch: 25 },
               { wch: 15 }, { wch: 15 }, { wch: 15 }, { wch: 15 }, { wch: 15 },
-              { wch: 20 }, { wch: 25 }, { wch: 25 }, { wch: 25 }, { wch: 25 },
+              { wch: 20 }, { wch: 25 }, { wch: 25 }, { wch: 25 }, { wch: 25 }, { wch: 25 },
             ]
 
       const excelBuffer = XLSX.write(wb, { bookType: 'xlsx', type: 'array' })

@@ -71,6 +71,7 @@ export type EmployeeFormData = {
   residence_thumbnail_url: string
   health_certificate_url: string
   ajeer_contract_url: string
+  muqeem_document_url: string
   health_insurance_expiry: string
   salary: number
   notes: string
@@ -111,6 +112,7 @@ export function useEmployeeCardLogic({
     residence_thumbnail_url: employee?.residence_thumbnail_url ?? '',
     health_certificate_url: employee?.health_certificate_url ?? '',
     ajeer_contract_url: employee?.ajeer_contract_url ?? '',
+    muqeem_document_url: employee?.muqeem_document_url ?? '',
     birth_date: employee?.birth_date ?? '',
     joining_date: employee?.joining_date ?? '',
     residence_expiry: employee?.residence_expiry ?? '',
@@ -128,8 +130,10 @@ export function useEmployeeCardLogic({
   // ملفات المستندات الإضافية (مؤجّلة — بدون thumbnail)
   const pendingHealthCertRef = useRef<File | null>(null)
   const pendingAjeerRef = useRef<File | null>(null)
+  const pendingMuqeemRef = useRef<File | null>(null)
   const [hasPendingHealthCert, setHasPendingHealthCert] = useState(false)
   const [hasPendingAjeer, setHasPendingAjeer] = useState(false)
+  const [hasPendingMuqeem, setHasPendingMuqeem] = useState(false)
 
   function handleHealthCertReady(file: File) {
     pendingHealthCertRef.current = file
@@ -139,6 +143,11 @@ export function useEmployeeCardLogic({
   function handleAjeerReady(file: File) {
     pendingAjeerRef.current = file
     setHasPendingAjeer(true)
+  }
+
+  function handleMuqeemReady(file: File) {
+    pendingMuqeemRef.current = file
+    setHasPendingMuqeem(true)
   }
 
   const [isEditMode, setIsEditMode] = useState(false)
@@ -506,6 +515,23 @@ export function useEmployeeCardLogic({
         }
       }
 
+      if (pendingMuqeemRef.current) {
+        try {
+          const newPath = await uploadPendingDoc(
+            pendingMuqeemRef.current,
+            EMPLOYEE_DOC_TYPES.muqeem,
+            formData.muqeem_document_url,
+          )
+          actualUpdateData['muqeem_document_url'] = newPath
+          pendingMuqeemRef.current = null
+          setHasPendingMuqeem(false)
+        } catch (err) {
+          toast.error(err instanceof Error ? err.message : 'فشل رفع ملف وثيقة مقيم')
+          setSaving(false)
+          return
+        }
+      }
+
       const normalizedAdditionalFields = buildEmployeeBusinessAdditionalFields(
         formData.additional_fields,
         {
@@ -623,6 +649,7 @@ export function useEmployeeCardLogic({
       residence_thumbnail_url: employee.residence_thumbnail_url || '',
       health_certificate_url: employee.health_certificate_url || '',
       ajeer_contract_url: employee.ajeer_contract_url || '',
+      muqeem_document_url: employee.muqeem_document_url || '',
       residence_number: employee.residence_number || 0,
     })
     setIsEditMode(false)
@@ -862,8 +889,10 @@ export function useEmployeeCardLogic({
     hasPendingResidenceFile,
     hasPendingHealthCert,
     hasPendingAjeer,
+    hasPendingMuqeem,
     handleHealthCertReady,
     handleAjeerReady,
+    handleMuqeemReady,
     isEditMode,
     showUnsavedConfirm, setShowUnsavedConfirm,
     companySearchQuery, setCompanySearchQuery,

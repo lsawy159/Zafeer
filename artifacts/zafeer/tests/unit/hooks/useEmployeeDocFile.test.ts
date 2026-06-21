@@ -143,6 +143,27 @@ describe('useUploadEmployeeDoc — رفع ملف المستند', () => {
     const updateRes = await sb.from('employees').update({ ajeer_contract_url: path }).eq('id', employeeId)
     expect(updateRes.error).toBeNull()
   })
+
+  it('ينجح رفع وثيقة مقيم ويكتب muqeem_document_url', async () => {
+    const file = makeFile('muqeem.pdf', 'application/pdf', 1000)
+    const employeeId = 'emp-789'
+    const meta = EMPLOYEE_DOC_TYPES.muqeem
+
+    mockStorageFrom({ error: null })
+    mockDbFrom({ error: null })
+
+    const { supabase: sb } = await import('@/lib/supabase')
+    const { buildEmployeeDocPath: bPath, EMPLOYEE_DOC_BUCKET: BUCKET } = await import('@/lib/employeeDocFile')
+
+    const path = bPath(meta.folder, employeeId, file)
+    expect(path).toMatch(/^muqeem-document\/emp-789\/\d+\.pdf$/)
+
+    const uploadRes = await sb.storage.from(BUCKET).upload(path, file, { upsert: false })
+    expect(uploadRes.error).toBeNull()
+
+    const updateRes = await sb.from('employees').update({ muqeem_document_url: path }).eq('id', employeeId)
+    expect(updateRes.error).toBeNull()
+  })
 })
 
 describe('useDeleteEmployeeDoc — حذف ملف المستند', () => {

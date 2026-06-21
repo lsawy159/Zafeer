@@ -52,8 +52,10 @@ interface EmployeeCardInfoProps {
   handleFilesReady: (original: File, thumbnail: File | null) => void
   hasPendingHealthCert: boolean
   hasPendingAjeer: boolean
+  hasPendingMuqeem: boolean
   handleHealthCertReady: (file: File) => void
   handleAjeerReady: (file: File) => void
+  handleMuqeemReady: (file: File) => void
 }
 
 export function EmployeeCardInfo({
@@ -86,8 +88,10 @@ export function EmployeeCardInfo({
   handleFilesReady,
   hasPendingHealthCert,
   hasPendingAjeer,
+  hasPendingMuqeem,
   handleHealthCertReady,
   handleAjeerReady,
+  handleMuqeemReady,
 }: EmployeeCardInfoProps) {
   const inputClass = (disabled: boolean) =>
     `app-input py-2 ${disabled ? 'border-slate-200 bg-slate-50 text-slate-600 cursor-not-allowed' : ''}`
@@ -609,6 +613,36 @@ export function EmployeeCardInfo({
               </label>
               {formData.ajeer_contract_url ? (
                 <EmployeeDocViewer path={formData.ajeer_contract_url} meta={EMPLOYEE_DOC_TYPES.ajeer} />
+              ) : (
+                <p className="text-sm text-slate-400">لا يوجد ملف</p>
+              )}
+            </>
+          )}
+        </div>
+
+        {/* وثيقة مقيم */}
+        <div>
+          {isEditMode ? (
+            <EmployeeDocumentField
+              meta={EMPLOYEE_DOC_TYPES.muqeem}
+              employeeId={employee.id}
+              currentPath={formData.muqeem_document_url || null}
+              disabled={false}
+              isDeleted={employee.is_deleted ?? false}
+              onFileReady={handleMuqeemReady}
+              onPathChange={(newPath) =>
+                setFormData({ ...formData, muqeem_document_url: newPath ?? '' })
+              }
+              hasPendingFile={hasPendingMuqeem}
+            />
+          ) : (
+            <>
+              <label className="block text-sm font-medium text-neutral-700 mb-2 flex items-center gap-2">
+                <FileText className="w-4 h-4" />
+                وثيقة مقيم
+              </label>
+              {formData.muqeem_document_url ? (
+                <EmployeeDocViewer path={formData.muqeem_document_url} meta={EMPLOYEE_DOC_TYPES.muqeem} />
               ) : (
                 <p className="text-sm text-slate-400">لا يوجد ملف</p>
               )}
