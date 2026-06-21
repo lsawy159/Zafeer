@@ -1,4 +1,4 @@
-import { describe, it, expect, vi } from 'vitest'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import {
   validateConfig,
   getRecipientsForNotificationType,
@@ -166,6 +166,14 @@ describe('getRecipientsForNotificationType', () => {
 // ─── safeParseConfig ──────────────────────────────────────────────────────────
 
 describe('safeParseConfig', () => {
+  beforeEach(() => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2026-01-01T00:00:00.000Z'))
+  })
+  afterEach(() => {
+    vi.useRealTimers()
+  })
+
   it('null → default config', () => {
     const result = safeParseConfig(null)
     expect(result).toEqual(createDefaultConfig())
