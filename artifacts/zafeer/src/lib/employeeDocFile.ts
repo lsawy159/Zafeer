@@ -2,7 +2,7 @@
 // مرفقات مستندية فقط — لا تُستخدم لاستخراج صورة/أفاتار
 export { isLegacyExternalUrl, residenceKindFromPath } from '@/lib/residenceFile'
 
-export type EmployeeDocColumn = 'health_certificate_url' | 'ajeer_contract_url'
+export type EmployeeDocColumn = 'health_certificate_url' | 'ajeer_contract_url' | 'muqeem_document_url'
 
 export const EMPLOYEE_DOC_MAX_BYTES = 512000 // 500 KB شامل
 export const EMPLOYEE_DOC_ALLOWED_MIME = [
@@ -15,12 +15,12 @@ export const EMPLOYEE_DOC_BUCKET = 'employee-documents'
 
 export interface EmployeeDocMeta {
   column: EmployeeDocColumn
-  folder: 'health-certificate' | 'ajeer-contract'
-  labelAr: string         // 'الشهادة الصحية' | 'عقد الأجير'
-  exportHeaderAr: string  // 'رابط ملف الشهادة الصحية' | 'رابط ملف عقد الأجير'
+  folder: 'health-certificate' | 'ajeer-contract' | 'muqeem-document'
+  labelAr: string         // 'الشهادة الصحية' | 'عقد الأجير' | 'وثيقة مقيم'
+  exportHeaderAr: string  // 'رابط ملف الشهادة الصحية' | 'رابط ملف عقد الأجير' | 'رابط ملف وثيقة مقيم'
 }
 
-export const EMPLOYEE_DOC_TYPES: Record<'health' | 'ajeer', EmployeeDocMeta> = {
+export const EMPLOYEE_DOC_TYPES: Record<'health' | 'ajeer' | 'muqeem', EmployeeDocMeta> = {
   health: {
     column: 'health_certificate_url',
     folder: 'health-certificate',
@@ -32,6 +32,12 @@ export const EMPLOYEE_DOC_TYPES: Record<'health' | 'ajeer', EmployeeDocMeta> = {
     folder: 'ajeer-contract',
     labelAr: 'عقد الأجير',
     exportHeaderAr: 'رابط ملف عقد الأجير',
+  },
+  muqeem: {
+    column: 'muqeem_document_url',
+    folder: 'muqeem-document',
+    labelAr: 'وثيقة مقيم',
+    exportHeaderAr: 'رابط ملف وثيقة مقيم',
   },
 }
 

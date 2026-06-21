@@ -93,6 +93,7 @@ export interface Employee {
   residence_thumbnail_url?: string
   health_certificate_url?: string
   ajeer_contract_url?: string
+  muqeem_document_url?: string
   // التأمين الصحي للموظف
   health_insurance_expiry?: string // بدلاً من ending_subscription_insurance_date
   salary?: number

@@ -352,6 +352,7 @@ export function useImportBase({
         // إخفاء أعمدة روابط المستندات الجديدة
         if (normalized === normalizeColumnName('رابط ملف الشهادة الصحية')) return true
         if (normalized === normalizeColumnName('رابط ملف عقد الأجير')) return true
+        if (normalized === normalizeColumnName('رابط ملف وثيقة مقيم')) return true
         // إخفاء الأعمدة المحددة
         return hiddenColumnNames.some((hidden) => {
           const normalizedHidden = normalizeColumnName(hidden)

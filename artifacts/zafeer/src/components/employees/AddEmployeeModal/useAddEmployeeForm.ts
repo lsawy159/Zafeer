@@ -103,12 +103,14 @@ export function useAddEmployeeForm({ isOpen, onClose, onSuccess, initialData }: 
   const [pendingThumbnail, setPendingThumbnail] = useState<File | null>(null)
   const [pendingHealthCert, setPendingHealthCert] = useState<File | null>(null)
   const [pendingAjeer, setPendingAjeer] = useState<File | null>(null)
+  const [pendingMuqeem, setPendingMuqeem] = useState<File | null>(null)
 
   const companyDropdownRef = useRef<HTMLDivElement>(null)
   const projectDropdownRef = useRef<HTMLDivElement>(null)
   const uploadResidenceFile = useUploadResidenceFile()
   const uploadHealthCert = useUploadEmployeeDoc(EMPLOYEE_DOC_TYPES.health)
   const uploadAjeer = useUploadEmployeeDoc(EMPLOYEE_DOC_TYPES.ajeer)
+  const uploadMuqeem = useUploadEmployeeDoc(EMPLOYEE_DOC_TYPES.muqeem)
 
   const loadCompanies = async () => {
     try {
@@ -438,7 +440,7 @@ export function useAddEmployeeForm({ isOpen, onClose, onSuccess, initialData }: 
         .from('employees')
         .insert([employeeData])
         .select(
-          'id,company_id,name,profession,nationality,birth_date,phone,passport_number,residence_number,joining_date,contract_expiry,hired_worker_contract_expiry,residence_expiry,project_id,project_name,bank_account,residence_image_url,health_certificate_url,ajeer_contract_url,health_insurance_expiry,salary,notes,additional_fields,is_deleted,deleted_at,created_at,updated_at, company:companies(id,name,unified_number,labor_subscription_number,commercial_registration_expiry,social_insurance_number,commercial_registration_status,additional_fields,ending_subscription_power_date,ending_subscription_moqeem_date,employee_count,max_employees,notes,exemptions,company_type,created_at,updated_at), project:projects(id,name,description,status,created_at,updated_at)'
+          'id,company_id,name,profession,nationality,birth_date,phone,passport_number,residence_number,joining_date,contract_expiry,hired_worker_contract_expiry,residence_expiry,project_id,project_name,bank_account,residence_image_url,health_certificate_url,ajeer_contract_url,muqeem_document_url,health_insurance_expiry,salary,notes,additional_fields,is_deleted,deleted_at,created_at,updated_at, company:companies(id,name,unified_number,labor_subscription_number,commercial_registration_expiry,social_insurance_number,commercial_registration_status,additional_fields,ending_subscription_power_date,ending_subscription_moqeem_date,employee_count,max_employees,notes,exemptions,company_type,created_at,updated_at), project:projects(id,name,description,status,created_at,updated_at)'
         )
         .single()
 
@@ -491,6 +493,12 @@ export function useAddEmployeeForm({ isOpen, onClose, onSuccess, initialData }: 
             fn: () => uploadAjeer.mutateAsync({ employeeId: insertedEmployee.id, file: pendingAjeer }),
           })
         }
+        if (pendingMuqeem) {
+          uploads.push({
+            label: 'وثيقة مقيم',
+            fn: () => uploadMuqeem.mutateAsync({ employeeId: insertedEmployee.id, file: pendingMuqeem }),
+          })
+        }
         const results = await Promise.allSettled(uploads.map((u) => u.fn()))
         results.forEach((result, i) => {
           if (result.status === 'rejected') {
@@ -521,6 +529,7 @@ export function useAddEmployeeForm({ isOpen, onClose, onSuccess, initialData }: 
       setPendingThumbnail(null)
       setPendingHealthCert(null)
       setPendingAjeer(null)
+      setPendingMuqeem(null)
       setProjectSearchQuery('')
       setIsProjectDropdownOpen(false)
 
@@ -585,6 +594,7 @@ export function useAddEmployeeForm({ isOpen, onClose, onSuccess, initialData }: 
     pendingThumbnail, setPendingThumbnail,
     pendingHealthCert, setPendingHealthCert,
     pendingAjeer, setPendingAjeer,
+    pendingMuqeem, setPendingMuqeem,
     uploadResidenceFile,
     // refs
     companyDropdownRef, projectDropdownRef,

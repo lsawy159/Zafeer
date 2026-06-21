@@ -35,6 +35,7 @@ export default function AddEmployeeModal(props: AddEmployeeModalProps) {
     creatingProject, pendingFile, setPendingFile,
     pendingHealthCert, setPendingHealthCert,
     pendingAjeer, setPendingAjeer,
+    pendingMuqeem, setPendingMuqeem,
     companyDropdownRef, projectDropdownRef,
     filteredCompanies, filteredProjects, showCreateOption,
     handleChange, handleSubmit, handleOverlayClick, handleCreateProject,
@@ -253,7 +254,7 @@ export default function AddEmployeeModal(props: AddEmployeeModalProps) {
           </div>
 
           {/* ملفات المستندات */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
             {/* ملف الإقامة — drag-drop مؤجّل (crop/thumbnail عبر onFilesReady) */}
             <ResidenceFileField
               employeeId=""
@@ -281,6 +282,16 @@ export default function AddEmployeeModal(props: AddEmployeeModalProps) {
               disabled={loading}
               onFileReady={(file) => setPendingAjeer(file)}
               hasPendingFile={!!pendingAjeer}
+            />
+
+            {/* وثيقة مقيم — drag-drop مؤجّل بدون اقتصاص */}
+            <EmployeeDocumentField
+              meta={EMPLOYEE_DOC_TYPES.muqeem}
+              employeeId=""
+              currentPath={null}
+              disabled={loading}
+              onFileReady={(file) => setPendingMuqeem(file)}
+              hasPendingFile={!!pendingMuqeem}
             />
           </div>
           {/* الملاحظات */}

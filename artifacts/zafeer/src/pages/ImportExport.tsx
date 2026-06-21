@@ -52,7 +52,7 @@ export default function ImportExport() {
         .select(
           'name,profession,nationality,birth_date,phone,passport_number,residence_number,' +
           'joining_date,contract_expiry,hired_worker_contract_expiry,residence_expiry,' +
-          'project_name,bank_account,residence_image_url,health_certificate_url,ajeer_contract_url,health_insurance_expiry,' +
+          'project_name,bank_account,residence_image_url,health_certificate_url,ajeer_contract_url,muqeem_document_url,health_insurance_expiry,' +
           'salary,notes,additional_fields,' +
           'company:companies(name,unified_number),project:projects(name)'
         )
@@ -63,7 +63,7 @@ export default function ImportExport() {
       const empStoragePathsSet = new Set<string>()
       for (const e of (rawEmp ?? [])) {
         const emp = (e as unknown) as Record<string, unknown>
-        for (const col of ['residence_image_url', 'health_certificate_url', 'ajeer_contract_url'] as const) {
+        for (const col of ['residence_image_url', 'health_certificate_url', 'ajeer_contract_url', 'muqeem_document_url'] as const) {
           const p = emp[col] as string | null | undefined
           if (p && !isLegacyExternalUrl(p)) empStoragePathsSet.add(p)
         }
@@ -146,6 +146,12 @@ export default function ImportExport() {
               if (isLegacyExternalUrl(p)) return p
               return exportSignedUrlMap.get(p) ?? ''
             })(),
+            'رابط ملف وثيقة مقيم': (() => {
+              const p = emp.muqeem_document_url as string | null | undefined
+              if (!p) return ''
+              if (isLegacyExternalUrl(p)) return p
+              return exportSignedUrlMap.get(p) ?? ''
+            })(),
             الملاحظات: emp.notes ?? '',
           }
         })
@@ -157,6 +163,7 @@ export default function ImportExport() {
             { header: 'رابط صورة الإقامة', label: 'اضغط هنا لعرض الإقامة', tooltip: 'فتح صورة الإقامة' },
             { header: 'رابط ملف الشهادة الصحية', label: 'اضغط هنا لعرض الملف', tooltip: 'فتح الملف' },
             { header: 'رابط ملف عقد الأجير', label: 'اضغط هنا لعرض الملف', tooltip: 'فتح الملف' },
+            { header: 'رابط ملف وثيقة مقيم', label: 'اضغط هنا لعرض الملف', tooltip: 'فتح الملف' },
           ]
           for (const { header, label, tooltip } of linkHeaders) {
             let linkColIdx = -1

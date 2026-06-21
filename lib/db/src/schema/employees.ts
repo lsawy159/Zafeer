@@ -28,6 +28,7 @@ export const employeesTable = pgTable('employees', {
   residence_image_url: text('residence_image_url'),
   health_certificate_url: text('health_certificate_url'),
   ajeer_contract_url: text('ajeer_contract_url'),
+  muqeem_document_url: text('muqeem_document_url'),
   salary: numeric('salary'),
   notes: text('notes'),
   project_name: text('project_name'),
