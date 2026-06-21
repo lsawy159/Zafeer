@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
+import { useQueryClient } from '@tanstack/react-query'
 import { Employee, Company, ObligationType, supabase } from '@/lib/supabase'
 import {
   RESIDENCE_BUCKET,
@@ -97,6 +98,7 @@ export function useEmployeeCardLogic({
   defaultFinancialOverlayOpen = false,
 }: UseEmployeeCardLogicProps) {
   const { companies, projects } = useEmployeeCardData()
+  const queryClient = useQueryClient()
   const currentMonth = new Date().toISOString().slice(0, 7)
 
   const [formData, setFormData] = useState<EmployeeFormData>({
@@ -605,6 +607,28 @@ export function useEmployeeCardLogic({
       }
 
       await logActivity(actionType, changes, baselineData, newDataFull)
+
+      // سجل نقل المشروع — صف مستقل يقرأه useEmployeeProjectHistory (action='project_transfer')
+      if (changes.project_id) {
+        try {
+          await supabase.from('activity_log').insert({
+            entity_type: 'employee',
+            entity_id: employee.id,
+            action: 'project_transfer',
+            details: {
+              from_project_id: (changes.project_id.old_value as string) ?? null,
+              to_project_id: (changes.project_id.new_value as string) ?? null,
+              from_project_name: (baselineData.project_name as string) ?? null,
+              to_project_name: (actualUpdateData.project_name as string) ?? null,
+              employee_name: employee.name,
+              timestamp: new Date().toISOString(),
+            },
+          })
+          queryClient.invalidateQueries({ queryKey: ['employee-project-history', employee.id] })
+        } catch (err) {
+          logger.error('Error logging project transfer:', err)
+        }
+      }
 
       if (Object.keys(actualUpdateData).length > 0) {
         setFormData((prev) => {

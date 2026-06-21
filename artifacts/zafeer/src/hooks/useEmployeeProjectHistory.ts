@@ -1,4 +1,4 @@
-import { useQuery } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
 
 export interface ProjectTransferRecord {
@@ -37,5 +37,22 @@ export function useEmployeeProjectHistory(employeeId: string) {
       })
     },
     enabled: !!employeeId,
+  })
+}
+
+/**
+ * حذف سجل نقل مشروع واحد (activity_log row).
+ * RLS: DELETE على activity_log مسموح للأدمن فقط (is_admin()).
+ */
+export function useDeleteProjectTransfer(employeeId: string) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: async (recordId: string) => {
+      const { error } = await supabase.from('activity_log').delete().eq('id', recordId)
+      if (error) throw error
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['employee-project-history', employeeId] })
+    },
   })
 }
