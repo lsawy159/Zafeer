@@ -760,10 +760,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
 
     try {
-      const { error: signOutError } = await supabase.auth.signOut()
-      if (signOutError) throw signOutError
-
-      // تسجيل أمني: تسجيل الخروج
+      // تسجيل أمني: تسجيل الخروج — يجب أن يتم قبل signOut لأن RLS على audit_log
+      // يتطلب جلسة صالحة (user_id = auth.uid())؛ بعد signOut الجلسة تنتهي ويفشل الـ insert
       if (currentUserId) {
         await securityLogger
           .logAudit({
@@ -778,6 +776,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             logger.warn('[Auth] Failed to log logout:', err)
           })
       }
+
+      const { error: signOutError } = await supabase.auth.signOut()
+      if (signOutError) throw signOutError
 
       // onAuthStateChange سيتولى الباقي
       setUser(null)

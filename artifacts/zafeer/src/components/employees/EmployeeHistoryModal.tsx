@@ -1,6 +1,8 @@
-import { X, FolderKanban, History, Loader2, ArrowLeft } from 'lucide-react'
+import { X, FolderKanban, History, Loader2, ArrowLeft, Trash2 } from 'lucide-react'
 import { createPortal } from 'react-dom'
-import { useEmployeeProjectHistory } from '@/hooks/useEmployeeProjectHistory'
+import { toast } from 'sonner'
+import { useEmployeeProjectHistory, useDeleteProjectTransfer } from '@/hooks/useEmployeeProjectHistory'
+import { useAuth } from '@/contexts/AuthContext'
 import { Employee } from '@/lib/supabase'
 
 interface EmployeeHistoryModalProps {
@@ -10,6 +12,16 @@ interface EmployeeHistoryModalProps {
 
 export function EmployeeHistoryModal({ employee, onClose }: EmployeeHistoryModalProps) {
   const { data: history, isLoading, isError } = useEmployeeProjectHistory(employee.id)
+  const { isAdmin } = useAuth()
+  const deleteTransfer = useDeleteProjectTransfer(employee.id)
+
+  const handleDelete = (recordId: string) => {
+    if (!window.confirm('هل تريد حذف هذا السجل من سجل نقل المشاريع؟')) return
+    deleteTransfer.mutate(recordId, {
+      onSuccess: () => toast.success('تم حذف السجل'),
+      onError: () => toast.error('فشل حذف السجل'),
+    })
+  }
 
   const formatDate = (dateStr: string) => {
     try {
@@ -89,9 +101,21 @@ export function EmployeeHistoryModal({ employee, onClose }: EmployeeHistoryModal
                     </div>
                     {/* Card */}
                     <div className="flex-1">
-                      <p className="text-xs text-neutral-400 mb-2 mt-1">
-                        {formatDate(record.transferred_at)}
-                      </p>
+                      <div className="flex items-center justify-between mb-2 mt-1">
+                        <p className="text-xs text-neutral-400">
+                          {formatDate(record.transferred_at)}
+                        </p>
+                        {isAdmin && (
+                          <button
+                            onClick={() => handleDelete(record.id)}
+                            disabled={deleteTransfer.isPending}
+                            className="rounded-lg p-1.5 text-neutral-400 transition hover:bg-red-50 hover:text-red-500 disabled:opacity-50"
+                            title="حذف السجل"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        )}
+                      </div>
                       <div className="rounded-xl border border-neutral-200 bg-neutral-50 p-4">
                         {/* From */}
                         <div className="flex items-center gap-2 mb-2">
