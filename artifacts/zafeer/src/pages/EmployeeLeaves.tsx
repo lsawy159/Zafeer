@@ -242,6 +242,16 @@ export default function EmployeeLeaves() {
   const [editLeave, setEditLeave] = useState<EmployeeLeaveWithEmployee | null>(null)
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null)
 
+  const filtered = useMemo(() => {
+    const q = search.trim().toLowerCase()
+    if (!q) return leaves
+    return leaves.filter(
+      (l) =>
+        (l.employee?.name ?? '').toLowerCase().includes(q) ||
+        String(l.employee?.residence_number ?? '').includes(q)
+    )
+  }, [leaves, search])
+
   if (!canView('employeeLeaves')) {
     return (
       <Layout>
@@ -253,16 +263,6 @@ export default function EmployeeLeaves() {
       </Layout>
     )
   }
-
-  const filtered = useMemo(() => {
-    const q = search.trim().toLowerCase()
-    if (!q) return leaves
-    return leaves.filter(
-      (l) =>
-        (l.employee?.name ?? '').toLowerCase().includes(q) ||
-        String(l.employee?.residence_number ?? '').includes(q)
-    )
-  }, [leaves, search])
 
   async function handleDelete(id: string) {
     setDeleteConfirmId(id)

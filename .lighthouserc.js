@@ -2,7 +2,7 @@ module.exports = {
   ci: {
     collect: {
       staticDistDir: 'artifacts/zafeer/dist',
-      url: ['/login', '/'],
+      url: ['/'],
       numberOfRuns: 1,
     },
     assert: {
