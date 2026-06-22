@@ -36,7 +36,7 @@ export default function PDCObligationsSection(ctx: Ctx) {
     handleOpenObligationDetail,
     handleUpdateDetailPlan, handleDeleteDetailPlan,
     updateObligationPlan, deleteObligationPlan,
-    canEdit, canExport, isAdmin,
+    canEdit, canCreate, canExport,
     projects,
     // import dialog
     setObligationImportHeaderError,
@@ -76,7 +76,7 @@ export default function PDCObligationsSection(ctx: Ctx) {
                     )}
                     تحديث
                   </button>
-                  {isAdmin && (
+                  {(canCreate('payroll') || canEdit('payroll')) && (
                     <button
                       type="button"
                       onClick={() => setShowAddObligationDialog(true)}

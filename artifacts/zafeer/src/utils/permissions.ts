@@ -26,7 +26,7 @@ export interface PermissionMatrix {
     export: boolean
   }
   reports: { view: boolean; export: boolean }
-  payroll: { view: boolean; create: boolean; delete: boolean; export: boolean }
+  payroll: { view: boolean; create: boolean; edit: boolean; delete: boolean; export: boolean }
   extracts: { view: boolean; create: boolean; edit: boolean; delete: boolean; export: boolean }
   revenue: { view: boolean; manage: boolean }
   alerts: { view: boolean }

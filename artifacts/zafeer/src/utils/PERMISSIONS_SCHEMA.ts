@@ -59,11 +59,11 @@ export const PERMISSION_SECTIONS = {
     description: 'عرض التقارير النظامية وتصديرها فقط، بدون منح صلاحيات الرواتب أو النقل تلقائيًا.',
     actions: ['view', 'export'] as const,
   },
-  // [active] — payroll.{view,create,delete,export}
+  // [active] — payroll.{view,create,edit,delete,export}
   payroll: {
     label: 'الرواتب والاستقطاعات',
     description: 'صلاحية مستقلة لمسيرات الرواتب والاستقطاعات، منفصلة تمامًا عن التقارير.',
-    actions: ['view', 'create', 'delete', 'export'] as const,
+    actions: ['view', 'create', 'edit', 'delete', 'export'] as const,
   },
   // [active] — activityLogs.view; embedded tab in adminSettings; key retained for future narrowing
   activityLogs: {
