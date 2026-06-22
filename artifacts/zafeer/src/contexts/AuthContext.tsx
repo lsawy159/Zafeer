@@ -652,6 +652,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         // بعد نجاح تسجيل الدخول، إنشاء الجلسة وتسجيل نشاط الدخول مباشرة
         // هذا يضمن تسجيل نشاط الدخول فقط عند تسجيل الدخول اليدوي وليس عند refresh
         if (signInData?.session) {
+          // رفض المستخدم الموقوف فور نجاح المصادقة — قبل إنشاء أي جلسة أو تسجيل دخول
+          const { data: activeRow } = await supabase
+            .from('users')
+            .select('is_active')
+            .eq('id', signInData.session.user.id)
+            .single()
+          if (!activeRow || activeRow.is_active !== true) {
+            logger.warn('[Auth] Suspended account login blocked:', usernameOrEmail)
+            await supabase.auth.signOut({ scope: 'local' })
+            setUser(null)
+            setError('حسابك موقوف، تواصل مع المسؤول')
+            setLoading(false)
+            loadingRef.current = false
+            fetchingRef.current = false
+            return
+          }
+
           logger.debug('[Auth] Sign in successful, creating session and logging login activity...')
 
           // إعادة ضبط عداد الفشل بعد نجاح تسجيل الدخول
