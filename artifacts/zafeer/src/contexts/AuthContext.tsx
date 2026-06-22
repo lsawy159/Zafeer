@@ -455,14 +455,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           setUser(null)
           // لا نستدعي signOut() هنا — الجلسة في Supabase لا تزال صالحة
         } else if (userData) {
-          logger.debug(
-            '[Auth] User data fetched successfully:',
-            userData.email,
-            'Role:',
-            userData.role
-          )
-          setUser(userData)
-          setError(null)
+          if (userData.is_active !== true) {
+            logger.warn('[Auth] Suspended account blocked:', userData.email)
+            await supabase.auth.signOut({ scope: 'local' })
+            setUser(null)
+            setError('حسابك موقوف، تواصل مع المسؤول')
+          } else {
+            logger.debug(
+              '[Auth] User data fetched successfully:',
+              userData.email,
+              'Role:',
+              userData.role
+            )
+            setUser(userData)
+            setError(null)
+          }
         } else {
           logger.warn('[Auth] User session exists but no user data found in "users" table.')
           // قد يكون تأخر شبكي — لا نسجّل خروج فوراً، نعرض خطأ
