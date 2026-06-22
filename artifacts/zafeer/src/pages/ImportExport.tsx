@@ -18,7 +18,7 @@ type TabType = 'export' | 'import' | 'templates'
 type DataEntityType = 'employees' | 'companies' | 'transferProcedures'
 
 export default function ImportExport() {
-  const { canImport, canExport, canView } = usePermissions()
+  const { canImport, canExport, canView, canCreate } = usePermissions()
   const [activeTab, setActiveTab] = useState<TabType>('export')
   const [importEntityType, setImportEntityType] = useState<DataEntityType>('employees')
   const [exportEntityType, setExportEntityType] = useState<DataEntityType>('employees')
@@ -419,7 +419,7 @@ export default function ImportExport() {
               {importEntityType === 'companies' && (
                 <ImportTab key="import-companies" initialImportType="companies" isInModal={true} />
               )}
-              {importEntityType === 'transferProcedures' && (
+              {importEntityType === 'transferProcedures' && canCreate('transferProcedures') && (
                 <TransferProceduresExcelImport canImport={canImport('importExport')} />
               )}
             </>

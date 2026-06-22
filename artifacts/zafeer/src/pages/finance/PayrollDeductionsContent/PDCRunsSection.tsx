@@ -57,7 +57,7 @@ export default function PDCRunsSection(ctx: Ctx) {
     selectedPayrollExportRunIds, exportingSelectedPayrollRuns,
     allExportablePayrollRunsSelected,
     paymentMethodFilter, setPaymentMethodFilter,
-    canDelete, canCreate, canExport, isAdmin,
+    canDelete, canCreate, canExport, canEdit,
     updatePayrollRunStatus, deletePayrollRun, upsertPayrollEntry,
     getRunDisplayName, getPayrollStatusText, getPayrollInputModeText, formatPayrollMonthLabel,
     handleTogglePayrollRunForm, handleRefreshPayrollData,
@@ -141,22 +141,25 @@ export default function PDCRunsSection(ctx: Ctx) {
                 )}
             </div>
           </div>
-          {isAdmin && (
-            <div className="flex flex-col sm:flex-row sm:items-center gap-2 flex-wrap justify-end">
-              <input
-                ref={payrollExcelInputRef}
-                type="file"
-                accept=".xlsx,.xls"
-                className="hidden"
-                onChange={handlePayrollExcelImport}
-              />
-              <input
-                ref={daysExcelInputRef}
-                type="file"
-                accept=".xlsx,.xls"
-                className="hidden"
-                onChange={handleDaysExcelFile}
-              />
+          <div className="flex flex-col sm:flex-row sm:items-center gap-2 flex-wrap justify-end">
+              {canEdit('payroll') && (
+                <input
+                  ref={payrollExcelInputRef}
+                  type="file"
+                  accept=".xlsx,.xls"
+                  className="hidden"
+                  onChange={handlePayrollExcelImport}
+                />
+              )}
+              {canEdit('payroll') && (
+                <input
+                  ref={daysExcelInputRef}
+                  type="file"
+                  accept=".xlsx,.xls"
+                  className="hidden"
+                  onChange={handleDaysExcelFile}
+                />
+              )}
               <div className="flex flex-wrap items-center gap-2">
                 <button
                   type="button"
@@ -166,7 +169,7 @@ export default function PDCRunsSection(ctx: Ctx) {
                   <RefreshCw className="w-4 h-4" />
                   تحديث المسير
                 </button>
-                {selectedPayrollRun.status === 'draft' && isAdmin && (
+                {selectedPayrollRun.status === 'draft' && canEdit('payroll') && (
                   <button
                     type="button"
                     onClick={() => setShowEditMonthModal(true)}
@@ -176,7 +179,7 @@ export default function PDCRunsSection(ctx: Ctx) {
                     تعديل الشهر
                   </button>
                 )}
-                {selectedPayrollRun.status === 'draft' && isAdmin && (
+                {selectedPayrollRun.status === 'draft' && canEdit('payroll') && (
                   <button
                     type="button"
                     onClick={() => setShowAddEmployeeModal(true)}
@@ -186,32 +189,34 @@ export default function PDCRunsSection(ctx: Ctx) {
                     إضافة موظف
                   </button>
                 )}
-                <button
-                  onClick={() => {
-                    if (showPayrollEntryForm) {
-                      setShowPayrollEntryForm(false)
-                      return
+                {canEdit('payroll') && (
+                  <button
+                    onClick={() => {
+                      if (showPayrollEntryForm) {
+                        setShowPayrollEntryForm(false)
+                        return
+                      }
+                      handleOpenPayrollEntryForm()
+                    }}
+                    className={`${primaryCompactButtonClass} disabled:bg-surface-secondary-200 disabled:text-foreground-tertiary disabled:border disabled:border-border-200 whitespace-nowrap`}
+                    disabled={
+                      !selectedPayrollRunEditable ||
+                      scopedEmployeesLoading ||
+                      scopedPayrollEmployees.length === 0
                     }
-                    handleOpenPayrollEntryForm()
-                  }}
-                  className={`${primaryCompactButtonClass} disabled:bg-surface-secondary-200 disabled:text-foreground-tertiary disabled:border disabled:border-border-200 whitespace-nowrap`}
-                  disabled={
-                    !selectedPayrollRunEditable ||
-                    scopedEmployeesLoading ||
-                    scopedPayrollEmployees.length === 0
-                  }
-                  title={
-                    selectedPayrollRun.status === 'cancelled'
-                      ? 'هذا المسير ملغي ويجب إعادة فتحه أولًا'
-                      : scopedPayrollEmployees.length === 0
-                        ? 'لا يوجد موظفون داخل نطاق المسير الحالي'
-                        : undefined
-                  }
-                >
-                  <Plus className="w-4 h-4" />
-                  {showPayrollEntryForm ? 'إخفاء النموذج' : 'إدخال راتب يدوي'}
-                </button>
-                {selectedPayrollRunEditable && (
+                    title={
+                      selectedPayrollRun.status === 'cancelled'
+                        ? 'هذا المسير ملغي ويجب إعادة فتحه أولًا'
+                        : scopedPayrollEmployees.length === 0
+                          ? 'لا يوجد موظفون داخل نطاق المسير الحالي'
+                          : undefined
+                    }
+                  >
+                    <Plus className="w-4 h-4" />
+                    {showPayrollEntryForm ? 'إخفاء النموذج' : 'إدخال راتب يدوي'}
+                  </button>
+                )}
+                {selectedPayrollRunEditable && canEdit('payroll') && (
                   <button
                     type="button"
                     onClick={downloadPayrollTemplate}
@@ -231,7 +236,7 @@ export default function PDCRunsSection(ctx: Ctx) {
                     تصدير كشف المسير
                   </button>
                 )}
-                {selectedPayrollRunEditable && (
+                {selectedPayrollRunEditable && canEdit('payroll') && (
                   <button
                     type="button"
                     onClick={handleOpenPayrollExcelImport}
@@ -251,7 +256,7 @@ export default function PDCRunsSection(ctx: Ctx) {
                     استيراد بيانات الرواتب
                   </button>
                 )}
-                {selectedPayrollRunEditable && isAdmin && (
+                {selectedPayrollRunEditable && canEdit('payroll') && (
                   <button
                     type="button"
                     onClick={handleDownloadDaysTemplate}
@@ -262,7 +267,7 @@ export default function PDCRunsSection(ctx: Ctx) {
                     نموذج الأيام
                   </button>
                 )}
-                {selectedPayrollRunEditable && isAdmin && (
+                {selectedPayrollRunEditable && canEdit('payroll') && (
                   <button
                     type="button"
                     onClick={handleOpenDaysExcelImport}
@@ -280,7 +285,7 @@ export default function PDCRunsSection(ctx: Ctx) {
                 )}
               </div>
               <div className="flex flex-wrap items-center gap-2">
-                {selectedPayrollRunEditable && (
+                {selectedPayrollRunEditable && canEdit('payroll') && (
                   <button
                     onClick={() => handleUpdatePayrollRunStatus('finalized')}
                     className={`${successCompactButtonClass} whitespace-nowrap`}
@@ -294,7 +299,7 @@ export default function PDCRunsSection(ctx: Ctx) {
                     اعتماد المسير
                   </button>
                 )}
-                {selectedPayrollRun.status === 'finalized' && (
+                {selectedPayrollRun.status === 'finalized' && canEdit('payroll') && (
                   <button
                     onClick={() => handleUpdatePayrollRunStatus('draft')}
                     className={`${orangeCompactButtonClass} whitespace-nowrap`}
@@ -308,7 +313,7 @@ export default function PDCRunsSection(ctx: Ctx) {
                     إعادة إلى مسودة
                   </button>
                 )}
-                {selectedPayrollRun.status === 'cancelled' && (
+                {selectedPayrollRun.status === 'cancelled' && canEdit('payroll') && (
                   <button
                     onClick={() => handleUpdatePayrollRunStatus('draft')}
                     className={`${warningCompactButtonClass} whitespace-nowrap`}
@@ -336,7 +341,7 @@ export default function PDCRunsSection(ctx: Ctx) {
                     حذف المسير
                   </button>
                 )}
-                {selectedPayrollRun.status !== 'cancelled' && (
+                {selectedPayrollRun.status !== 'cancelled' && canEdit('payroll') && (
                   <button
                     onClick={() => handleUpdatePayrollRunStatus('cancelled')}
                     className={`${dangerCompactButtonClass} whitespace-nowrap`}
@@ -352,11 +357,10 @@ export default function PDCRunsSection(ctx: Ctx) {
                 )}
               </div>
             </div>
-          )}
         </div>
         </div>
 
-        {selectedPayrollRun && showPayrollEntryForm && isAdmin && (
+        {selectedPayrollRun && showPayrollEntryForm && canEdit('payroll') && (
           <div
             ref={payrollEntryFormRef}
             className="rounded-[24px] border border-sky-200 bg-gradient-to-br from-sky-50 via-white to-cyan-50/60 p-4 md:p-5 space-y-4 shadow-sm"
@@ -674,7 +678,7 @@ export default function PDCRunsSection(ctx: Ctx) {
                   </div>
                 </div>
               )}
-              {selectedPayrollRunEditable && isAdmin && scopedPayrollEmployees.length > 0 && (
+              {selectedPayrollRunEditable && canEdit('payroll') && scopedPayrollEmployees.length > 0 && (
                 <div className="flex flex-wrap items-center justify-center gap-2">
                   <button
                     type="button"
@@ -724,7 +728,7 @@ export default function PDCRunsSection(ctx: Ctx) {
                 </div>
               )}
               {selectedPayrollRunEditable &&
-                isAdmin &&
+                canEdit('payroll') &&
                 scopedPayrollEmployees.length === 0 &&
                 !scopedEmployeesLoading && (
                   <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
@@ -861,7 +865,7 @@ export default function PDCRunsSection(ctx: Ctx) {
                   <th className="px-4 py-3 text-right">الحالة</th>
                   <th className="px-4 py-3 text-right">الإجراءات</th>
                   <th className="px-4 py-3 text-right">القسيمة</th>
-                  {selectedPayrollRun.status === 'draft' && isAdmin && (
+                  {selectedPayrollRun.status === 'draft' && canEdit('payroll') && (
                     <th className="px-4 py-3 text-right" />
                   )}
                 </tr>
@@ -904,7 +908,7 @@ export default function PDCRunsSection(ctx: Ctx) {
                         </span>
                       </td>
                       <td className="px-4 py-3">
-                        {selectedPayrollRunEditable && isAdmin ? (
+                        {selectedPayrollRunEditable && canEdit('payroll') ? (
                           <button
                             type="button"
                             onClick={() => handleEditPayrollEntry(entry)}
@@ -932,7 +936,7 @@ export default function PDCRunsSection(ctx: Ctx) {
                           </span>
                         )}
                       </td>
-                      {selectedPayrollRun.status === 'draft' && isAdmin && (
+                      {selectedPayrollRun.status === 'draft' && canEdit('payroll') && (
                         <td className="px-4 py-3">
                           <button
                             type="button"
@@ -962,7 +966,7 @@ export default function PDCRunsSection(ctx: Ctx) {
                   <td className="px-4 py-3" />
                   <td className="px-4 py-3" />
                   <td className="px-4 py-3" />
-                  {selectedPayrollRun.status === 'draft' && isAdmin && (
+                  {selectedPayrollRun.status === 'draft' && canEdit('payroll') && (
                     <td className="px-4 py-3" />
                   )}
                 </tr>

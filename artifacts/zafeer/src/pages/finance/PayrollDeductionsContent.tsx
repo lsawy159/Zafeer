@@ -52,7 +52,7 @@ export default function PayrollDeductionsContent({
     allEmployees,
     handleObligationImportFile, handleConfirmObligationImport,
     // CreatePayrollRunModal
-    showPayrollRunForm, isAdmin,
+    showPayrollRunForm, canCreate,
     payrollForm, setPayrollForm,
     scopeOptions, newPayrollRunRows, selectedNewPayrollRunRows, allNewPayrollRunRowsSelected,
     payrollRunSeedEmployeesLoading, seedEmployeeIds, normalizedPayrollFormMonth,
@@ -187,7 +187,7 @@ export default function PayrollDeductionsContent({
         onConfirmImport={handleConfirmObligationImport}
       />
       <CreatePayrollRunModal
-        show={showPayrollRunForm && isAdmin}
+        show={showPayrollRunForm && canCreate('payroll')}
         payrollForm={payrollForm}
         scopeOptions={scopeOptions}
         newPayrollRunRows={newPayrollRunRows}
