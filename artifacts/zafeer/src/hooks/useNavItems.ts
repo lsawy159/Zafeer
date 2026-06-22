@@ -11,6 +11,7 @@ import {
   Wallet,
   RefreshCcw,
   CalendarDays,
+  FileBadge,
 } from 'lucide-react'
 import { useAlertsStats } from '@/hooks/useAlertsStats'
 import { usePermissions } from '@/utils/permissions'
@@ -95,6 +96,13 @@ export function useNavItems() {
         icon: BarChart3,
         label: 'تقارير المستندات',
         permission: { section: 'reports' as const, action: 'view' },
+        badge: null,
+      },
+      {
+        path: '/salary-certificate',
+        icon: FileBadge,
+        label: 'تعريف بالراتب',
+        permission: { section: 'employees' as const, action: 'view' },
         badge: null,
       },
       {

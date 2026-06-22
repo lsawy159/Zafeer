@@ -61,6 +61,7 @@ const TransferProcedures = lazy(() => import('./pages/TransferProcedures'))
 const EmployeeLeaves = lazy(() => import('./pages/EmployeeLeaves'))
 const Alerts = lazy(() => import('./pages/Alerts'))
 const Reports = lazy(() => import('./pages/Reports'))
+const SalaryCertificate = lazy(() => import('./pages/SalaryCertificate'))
 const ImportExport = lazy(() => import('./pages/ImportExport'))
 const GeneralSettings = lazy(() => import('./pages/GeneralSettings'))
 const Extracts = lazy(() => import('./pages/Extracts'))
@@ -221,6 +222,14 @@ function AppRoutes() {
             element={
               <RouteGuard>
                 <Reports />
+              </RouteGuard>
+            }
+          />
+          <Route
+            path="/salary-certificate"
+            element={
+              <RouteGuard>
+                <SalaryCertificate />
               </RouteGuard>
             }
           />
