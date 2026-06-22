@@ -249,6 +249,9 @@ export function usePermissions() {
       return true
     }
 
+    // المستخدم الموقوف: لا صلاحية مهما كانت grants
+    if (!user.is_active) return false
+
     // التحقق من الصلاحية المحددة
     const sectionPermissions = permissions[section]
     if (!sectionPermissions || typeof sectionPermissions !== 'object') {
