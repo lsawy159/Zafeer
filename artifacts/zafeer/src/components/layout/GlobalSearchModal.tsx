@@ -78,6 +78,7 @@ async function fetchEmployees(): Promise<EmpRow[]> {
   const { data, error } = await supabase
     .from('employees')
     .select('id, name, residence_number, passport_number, profession, nationality, company:companies(name)')
+    .eq('is_deleted', false)
     .order('name').limit(1000)
   if (error) { console.error('[GlobalSearch] employees:', error.message); return [] }
   return (data || []) as unknown as EmpRow[]
