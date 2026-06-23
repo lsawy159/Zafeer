@@ -3,6 +3,7 @@ import { supabase, ActivityLog, User } from '@/lib/supabase'
 import Layout from '@/components/layout/Layout'
 import { useAuth } from '@/contexts/AuthContext'
 import { logger } from '@/utils/logger'
+import { securityLogger } from '@/utils/securityLogger'
 import {
   Activity,
   RefreshCw,
@@ -450,6 +451,8 @@ export default function ActivityLogs({ embedded = false }: { embedded?: boolean 
             )
           } else {
             toast.success(`تم حذف جميع النشاطات من قاعدة البيانات (${totalDeleted} نشاط) بنجاح`)
+            // مساءلة: مسح السجل حدث أمني يُكتب في security_events (يبقى أثر حتى لو اتمسح activity_log)
+            void securityLogger.logSecurityEvent('activity_log_deleted', `تم حذف كل سجل النشاطات (${totalDeleted} سطر) من قاعدة البيانات`, 'high', { count: totalDeleted, mode: 'all' })
           }
 
           setLogs([])
@@ -510,6 +513,7 @@ export default function ActivityLogs({ embedded = false }: { embedded?: boolean 
             )
           } else {
             toast.success(`تم حذف السجلات المعروضة (${deletedCount} نشاط) بنجاح`)
+            void securityLogger.logSecurityEvent('activity_log_deleted', `تم حذف ${deletedCount} سطر من سجل النشاطات (المعروض)`, 'high', { count: deletedCount, mode: 'filtered' })
           }
 
           setLogs([])
@@ -581,6 +585,7 @@ export default function ActivityLogs({ embedded = false }: { embedded?: boolean 
             )
           } else {
             toast.success(`تم حذف ${deletedCount} نشاط من قاعدة البيانات بنجاح`)
+            void securityLogger.logSecurityEvent('activity_log_deleted', `تم حذف ${deletedCount} سطر محدد من سجل النشاطات`, 'high', { count: deletedCount, mode: 'selected' })
           }
 
           await loadLogs()
