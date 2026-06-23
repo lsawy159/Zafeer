@@ -47,7 +47,8 @@ function sanitize(obj: Record<string, unknown> | null | undefined): Record<strin
 
 export interface LogActivityInput {
   entity_type: string
-  entity_id: string
+  /** uuid الكيان المتأثر. اختياري — بعض الأفعال (إنشاء بلا select) ما عندهاش id بعد. */
+  entity_id?: string | null
   action: string
   /** القيم القبلية (الصف كامل أو الحقول المعنية). تُكتب في عمود old_data بعد التنظيف. */
   old?: Record<string, unknown> | null
@@ -95,7 +96,7 @@ export async function logActivity(input: LogActivityInput): Promise<void> {
 
     await supabase.from('activity_log').insert({
       entity_type: input.entity_type,
-      entity_id: input.entity_id,
+      entity_id: input.entity_id ?? null,
       action: input.action,
       old_data: oldData,
       new_data: newData,

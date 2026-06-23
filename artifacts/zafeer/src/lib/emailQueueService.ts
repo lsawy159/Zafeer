@@ -1,4 +1,5 @@
 import { supabase } from './supabase'
+import { logActivity as writeActivity } from '@/utils/logActivity'
 
 interface EnqueueEmailOptions {
   toEmails: string[]
@@ -129,42 +130,31 @@ export async function enqueueEmail(options: EnqueueEmailOptions): Promise<Enqueu
       .single()
 
     if (error) {
-      // Error logged to activity_log asynchronously
-      // Non-blocking activity log: failure case
-      void Promise.resolve(
-        supabase.from('activity_log').insert({
-          entity_type: 'email_queue',
-          action: 'create_failed',
-          details: error.message,
-        })
-      ).catch(() => {
-        // Silently ignore activity_log failures — email queue operation must succeed
+      // Non-blocking activity log: failure case (مُعلَّم كفشل صراحةً)
+      void writeActivity({
+        entity_type: 'email_queue',
+        action: 'create_failed',
+        operation_status: 'failed',
+        details: { error_message: error.message },
       })
       return { success: false, error: 'Failed to enqueue email.' }
     }
 
     // Non-blocking activity log: success case
-    void Promise.resolve(
-      supabase.from('activity_log').insert({
-        entity_type: 'email_queue',
-        action: 'create_success',
-        entity_id: data.id as unknown as string,
-      })
-    ).catch(() => {
-      // Silently ignore activity_log failures — email queue operation must succeed
+    void writeActivity({
+      entity_type: 'email_queue',
+      action: 'create_success',
+      entity_id: data.id as unknown as string,
     })
 
     return { success: true, id: data.id }
   } catch (err) {
-    // Non-blocking activity log: exception case
-    void Promise.resolve(
-      supabase.from('activity_log').insert({
-        entity_type: 'email_queue',
-        action: 'create_exception',
-        details: (err as Error).message,
-      })
-    ).catch(() => {
-      // Silently ignore activity_log failures — email queue operation must succeed
+    // Non-blocking activity log: exception case (مُعلَّم كفشل صراحةً)
+    void writeActivity({
+      entity_type: 'email_queue',
+      action: 'create_exception',
+      operation_status: 'failed',
+      details: { error_message: (err as Error).message },
     })
     return { success: false, error: 'An unexpected error occurred.' }
   }

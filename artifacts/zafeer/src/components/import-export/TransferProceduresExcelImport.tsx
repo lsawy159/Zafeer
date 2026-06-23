@@ -2,6 +2,7 @@ import { ChangeEvent, useState } from 'react'
 import { Loader2, Upload } from 'lucide-react'
 import { toast } from 'sonner'
 import { supabase } from '@/lib/supabase'
+import { logActivity as writeActivity } from '@/utils/logActivity'
 import { parseDate, normalizeDate } from '@/utils/dateParser'
 import { loadXlsx } from '@/utils/lazyXlsx'
 import {
@@ -166,7 +167,7 @@ export default function TransferProceduresExcelImport({
 
       // تسجيل نشاط الاستيراد بعد انتهاء الـ loop (non-blocking)
       try {
-        await supabase.from('activity_log').insert({
+        await writeActivity({
           entity_type: 'import',
           action: 'استيراد إجراءات نقل',
           details: { added: successCount, failed: failedCount, total: validRows.length },

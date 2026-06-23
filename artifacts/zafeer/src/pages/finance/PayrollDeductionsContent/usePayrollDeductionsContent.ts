@@ -4,6 +4,7 @@ import { useVirtualizer } from '@tanstack/react-virtual'
 import { useLocation } from 'react-router-dom'
 import { useModalScrollLock } from '@/hooks/useModalScrollLock'
 import { supabase } from '@/lib/supabase'
+import { logActivity as writeActivity } from '@/utils/logActivity'
 import { toast } from 'sonner'
 import { saveAs } from 'file-saver'
 import { usePermissions } from '@/utils/permissions'
@@ -800,6 +801,8 @@ export function usePayrollDeductionsContent({
     const successfulTasks = tasks.filter((_, i) => rpcResults[i]?.status === 'fulfilled')
     if (successfulTasks.length > 0) {
       try {
+        // bulk insert مقصود للأداء (صف لكل التزام). الفاعل يُختم تلقائياً
+        // بالـ DB trigger على كل صف — لا حاجة لتمرير user_id. راجع migration 074.
         await supabase.from('activity_log').insert(
           successfulTasks.map((task) => ({
             entity_type: 'obligation',
@@ -2105,16 +2108,12 @@ export function usePayrollDeductionsContent({
   }
 
   const logPayrollActivity = async (action: string, details: Record<string, unknown>) => {
-    try {
-      await supabase.from('activity_log').insert({
-        entity_type: 'payroll',
-        entity_id: selectedPayrollRun?.id,
-        action,
-        details,
-      })
-    } catch (error) {
-      console.error('Error logging payroll activity:', error)
-    }
+    await writeActivity({
+      entity_type: 'payroll',
+      entity_id: selectedPayrollRun?.id ?? null,
+      action,
+      details,
+    })
   }
 
   const handleUpdatePayrollRunStatus = async (status: 'draft' | 'finalized' | 'cancelled') => {

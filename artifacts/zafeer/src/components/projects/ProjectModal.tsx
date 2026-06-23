@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { createPortal } from 'react-dom'
 import { useModalScrollLock } from '@/hooks/useModalScrollLock'
 import { supabase, Project } from '@/lib/supabase'
+import { logActivity as writeActivity } from '@/utils/logActivity'
 import { X, FolderKanban, Loader2 } from 'lucide-react'
 import { toast } from 'sonner'
 import ConfirmationDialog from '@/components/dialogs/ConfirmationDialog'
@@ -118,14 +119,12 @@ export default function ProjectModal({ isOpen, project, onClose, onSuccess }: Pr
           }
         }
 
-        try {
-          await supabase.from('activity_log').insert({
-            entity_type: 'project',
-            entity_id: project.id,
-            action: 'تحديث مشروع',
-            details: { project_name: formData.name.trim(), employee_count: (project as { employee_count?: number }).employee_count ?? 0 },
-          })
-        } catch { /* non-blocking */ }
+        await writeActivity({
+          entity_type: 'project',
+          entity_id: project.id,
+          action: 'تحديث مشروع',
+          details: { project_name: formData.name.trim(), employee_count: (project as { employee_count?: number }).employee_count ?? 0 },
+        })
         toast.success('تم تحديث المشروع بنجاح')
       } else {
         const { error } = await supabase.from('projects').insert({
@@ -142,13 +141,11 @@ export default function ProjectModal({ isOpen, project, onClose, onSuccess }: Pr
           }
           return
         }
-        try {
-          await supabase.from('activity_log').insert({
-            entity_type: 'project',
-            action: 'إنشاء مشروع',
-            details: { project_name: formData.name.trim(), employee_count: 0 },
-          })
-        } catch { /* non-blocking */ }
+        await writeActivity({
+          entity_type: 'project',
+          action: 'إنشاء مشروع',
+          details: { project_name: formData.name.trim(), employee_count: 0 },
+        })
         toast.success('تم إنشاء المشروع بنجاح')
       }
 

@@ -1,6 +1,7 @@
 import { useMutation } from '@tanstack/react-query'
 import { FunctionsHttpError } from '@supabase/supabase-js'
 import { supabase, type User } from '@/lib/supabase'
+import { logActivity as writeActivity } from '@/utils/logActivity'
 
 type UpdateUserVariables = {
   id: string
@@ -39,7 +40,7 @@ export function useUpdateUserProfile() {
 
       const updatedUser = (result as { user: User }).user
       try {
-        await supabase.from('activity_log').insert({
+        await writeActivity({
           entity_type: 'user',
           entity_id: id,
           action: 'تحديث مستخدم',

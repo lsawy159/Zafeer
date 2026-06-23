@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '@/lib/supabase'
+import { logActivity as writeActivity } from '@/utils/logActivity'
 import { logger } from '@/utils/logger'
 import { useAuth } from '@/contexts/AuthContext'
 import { useDeleteAdminExtract } from '@workspace/api-client-react'
@@ -127,7 +128,7 @@ export function useCreateExtract() {
       try {
         const { data: inv } = await supabase.from('extract_invoices').select('total_amount,employee_count,projects(name)').eq('id', invoiceId).maybeSingle()
         const project = (inv as { projects?: { name: string } | null } | null)?.projects
-        await supabase.from('activity_log').insert({
+        await writeActivity({
           entity_type: 'extract',
           entity_id: invoiceId,
           action: 'إنشاء مستخلص',
@@ -175,7 +176,7 @@ export function useMarkExported() {
     onSuccess: async (inv, invoiceId) => {
       try {
         const project = (inv as { projects?: { name: string } | null } | null)?.projects
-        await supabase.from('activity_log').insert({
+        await writeActivity({
           entity_type: 'extract',
           entity_id: invoiceId,
           action: 'تصدير مستخلص',
@@ -243,7 +244,7 @@ export function useDeleteExtract() {
     onSuccess: async (inv, extractId) => {
       try {
         const project = (inv as { projects?: { name: string } | null } | null)?.projects
-        await supabase.from('activity_log').insert({
+        await writeActivity({
           entity_type: 'extract',
           entity_id: extractId,
           action: 'حذف مستخلص',

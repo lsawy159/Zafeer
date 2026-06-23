@@ -7,6 +7,7 @@ import {
   supabase,
 } from '@/lib/supabase'
 import { logger } from '@/utils/logger'
+import { logActivity as writeActivity } from '@/utils/logActivity'
 import { distributeRemainingAmount } from '@/utils/obligationInstallments'
 
 export interface EmployeeObligationPlan extends EmployeeObligationHeader {
@@ -144,7 +145,7 @@ export function useCreateEmployeeObligationPlan() {
     },
     onSuccess: async (_, variables) => {
       try {
-        await supabase.from('activity_log').insert({
+        await writeActivity({
           entity_type: 'obligation',
           entity_id: variables.employee_id,
           action: 'إنشاء التزام',
@@ -262,7 +263,7 @@ export function useUpdateObligationPlan() {
     },
     onSuccess: async (_, { employeeId, employee_name, residence_number, updates }) => {
       try {
-        await supabase.from('activity_log').insert({
+        await writeActivity({
           entity_type: 'obligation',
           entity_id: employeeId,
           action: 'تحديث التزام',
@@ -300,7 +301,7 @@ export function useDeleteObligationPlan() {
     },
     onSuccess: async (_, { employeeId, employee_name, residence_number, obligation_type, total_amount }) => {
       try {
-        await supabase.from('activity_log').insert({
+        await writeActivity({
           entity_type: 'obligation',
           action: 'إلغاء التزام',
           details: {

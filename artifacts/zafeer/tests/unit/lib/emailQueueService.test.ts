@@ -275,7 +275,8 @@ describe('emailQueueService activity logging', () => {
         expect.objectContaining({
           entity_type: 'email_queue',
           action: 'create_failed',
-          details: 'Database connection failed',
+          operation_status: 'failed',
+          details: expect.objectContaining({ error_message: 'Database connection failed' }),
         })
       )
     })
@@ -312,7 +313,8 @@ describe('emailQueueService activity logging', () => {
         expect.objectContaining({
           entity_type: 'email_queue',
           action: 'create_exception',
-          details: 'Network timeout',
+          operation_status: 'failed',
+          details: expect.objectContaining({ error_message: 'Network timeout' }),
         })
       )
     })

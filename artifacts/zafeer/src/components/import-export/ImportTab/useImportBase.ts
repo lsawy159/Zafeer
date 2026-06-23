@@ -1,5 +1,6 @@
 import { useState, useRef, useMemo, useCallback } from 'react'
 import { supabase } from '@/lib/supabase'
+import { logActivity as writeActivity } from '@/utils/logActivity'
 import { toast } from 'sonner'
 import { logger } from '@/utils/logger'
 import { loadXlsx } from '@/utils/lazyXlsx'
@@ -2172,7 +2173,7 @@ export function useImportBase({
           // تسجيل نشاط الاستيراد (non-blocking)
           try {
             const totalProcessedLocal = importType === 'employees' ? uniqueJsonData.length : jsonData.length
-            await supabase.from('activity_log').insert({
+            await writeActivity({
               entity_type: 'import',
               action: importType === 'employees' ? 'استيراد موظفين' : 'استيراد مؤسسات',
               details: {

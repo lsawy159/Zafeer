@@ -1,4 +1,5 @@
 import { supabase } from '@/lib/supabase'
+import { logActivity as writeActivity } from '@/utils/logActivity'
 import { logger } from '@/utils/logger'
 
 export interface BackupRecord {
@@ -178,7 +179,7 @@ export async function triggerManualBackup(): Promise<BackupRecord | null> {
   const record = latest as BackupRecord | null
   if (record) {
     try {
-      await supabase.from('activity_log').insert({
+      await writeActivity({
         entity_type: 'backup',
         action: 'إنشاء نسخة احتياطية',
         details: {
