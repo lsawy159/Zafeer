@@ -1,6 +1,7 @@
 import { useEffect, useState, useCallback, useRef } from 'react'
 import { useLocation } from 'react-router-dom'
 import { supabase, Project } from '@/lib/supabase'
+import { securityLogger } from '@/utils/securityLogger'
 import Layout from '@/components/layout/Layout'
 import ProjectModal from '@/components/projects/ProjectModal'
 import ProjectCard from '@/components/projects/ProjectCard'
@@ -320,6 +321,10 @@ export default function Projects() {
         toast.warning(`تم حذف ${result.deletedCount} مشروع. فشل حذف ${result.failedCount} (${failedNames})`)
       } else {
         toast.success(`تم حذف ${result.deletedCount} مشروع بنجاح`)
+      }
+      // تنبيه أمني عند الحذف الجماعي الكبير
+      if (result.deletedCount >= 5) {
+        void securityLogger.logSecurityEvent('bulk_project_delete', `حذف جماعي لـ ${result.deletedCount} مشروع`, 'high', { count: result.deletedCount })
       }
 
       setSelectedIds(new Set())

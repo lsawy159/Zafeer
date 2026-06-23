@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase'
 import { fetchBackupSettings } from '@/lib/backupService'
 import { toast } from 'sonner'
-import { RefreshCw, Activity, CheckCircle, Shield } from 'lucide-react'
+import { RefreshCw, Activity, CheckCircle, Shield, AlertTriangle } from 'lucide-react'
 import { formatDistanceToNow } from 'date-fns'
 import { ar } from 'date-fns/locale'
 
@@ -24,6 +24,14 @@ interface SecurityEvent {
   iconColor: string
 }
 
+interface CriticalAlert {
+  id: string
+  event_type: string
+  severity: string
+  description: string | null
+  created_at: string
+}
+
 function StatusBadge({ active }: { active: boolean }) {
   return active ? (
     <span className="px-2 py-1 bg-green-100 text-success-800 rounded text-sm">نشط</span>
@@ -41,6 +49,7 @@ export default function AuditDashboard() {
     total_sessions: 0,
   })
   const [recentSecurityEvents, setRecentSecurityEvents] = useState<SecurityEvent[]>([])
+  const [criticalAlerts, setCriticalAlerts] = useState<CriticalAlert[]>([])
   const [isLoading, setIsLoading] = useState(false)
   const [systemStatus, setSystemStatus] = useState({
     dataEncryption: true,
@@ -249,9 +258,42 @@ export default function AuditDashboard() {
     }
   }
 
+  const loadCriticalAlerts = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('security_events')
+        .select('id,event_type,severity,description,created_at')
+        .eq('is_resolved', false)
+        .in('severity', ['high', 'critical'])
+        .order('created_at', { ascending: false })
+        .limit(20)
+      if (error) throw error
+      setCriticalAlerts((data as CriticalAlert[]) ?? [])
+    } catch (error) {
+      console.error('Error loading critical alerts:', error)
+      setCriticalAlerts([])
+    }
+  }
+
+  const resolveAlert = async (id: string) => {
+    try {
+      const { error } = await supabase
+        .from('security_events')
+        .update({ is_resolved: true, resolved_at: new Date().toISOString() })
+        .eq('id', id)
+      if (error) throw error
+      setCriticalAlerts((prev) => prev.filter((a) => a.id !== id))
+      toast.success('تمت مراجعة التنبيه')
+    } catch (error) {
+      console.error('Error resolving alert:', error)
+      toast.error('تعذّر تحديث التنبيه')
+    }
+  }
+
   useEffect(() => {
     loadAuditStats()
     loadRecentSecurityEvents()
+    loadCriticalAlerts()
   }, [])
 
   return (
@@ -267,6 +309,7 @@ export default function AuditDashboard() {
             try {
               await loadAuditStats()
               await loadRecentSecurityEvents()
+              await loadCriticalAlerts()
             } finally {
               setIsLoading(false)
             }
@@ -330,6 +373,45 @@ export default function AuditDashboard() {
           </div>
         </div>
       </div>
+
+      {criticalAlerts.length > 0 && (
+        <div className="border-2 border-red-300 bg-red-50 rounded-lg p-4">
+          <h3 className="font-semibold mb-4 flex items-center gap-2 text-red-800">
+            <AlertTriangle className="w-5 h-5 text-red-600" />
+            تنبيهات أمنية حرجة ({criticalAlerts.length})
+          </h3>
+          <div className="space-y-2 text-sm">
+            {criticalAlerts.map((alert) => (
+              <div
+                key={alert.id}
+                className="flex items-center justify-between gap-2 p-3 bg-white border border-red-200 rounded"
+              >
+                <div className="flex items-center gap-2 min-w-0">
+                  <span
+                    className={`px-2 py-0.5 rounded text-xs font-bold whitespace-nowrap ${
+                      alert.severity === 'critical'
+                        ? 'bg-red-600 text-white'
+                        : 'bg-orange-100 text-orange-800'
+                    }`}
+                  >
+                    {alert.severity === 'critical' ? 'حرج' : 'مرتفع'}
+                  </span>
+                  <span className="truncate">{alert.description ?? alert.event_type}</span>
+                  <span className="text-neutral-400 text-xs whitespace-nowrap">
+                    {formatDistanceToNow(new Date(alert.created_at), { addSuffix: true, locale: ar })}
+                  </span>
+                </div>
+                <button
+                  onClick={() => resolveAlert(alert.id)}
+                  className="text-xs px-3 py-1 bg-red-600 text-white rounded hover:bg-red-700 whitespace-nowrap"
+                >
+                  تمت المراجعة
+                </button>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       <div className="border rounded-lg p-4">
         <h3 className="font-semibold mb-4">الأحداث الأمنية الأخيرة</h3>

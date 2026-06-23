@@ -12,6 +12,7 @@ import { type PostgrestError } from '@supabase/supabase-js'
 import { usePermissions } from '@/utils/permissions'
 import { logger } from '@/utils/logger'
 import { logActivity as writeActivity } from '@/utils/logActivity'
+import { securityLogger } from '@/utils/securityLogger'
 import {
   getEmployeeNotificationThresholdsPublic,
   type EmployeeNotificationThresholds,
@@ -371,6 +372,10 @@ export function useEmployeesPage() {
       }
       if (failedBatches.length > 0) toast.error(`تم حذف ${totalDeleted} موظف، ولكن فشل حذف ${failedBatches.length} موظف`)
       else toast.success(`تم حذف ${totalDeleted} موظف بنجاح`)
+      // تنبيه أمني عند الحذف الجماعي الكبير
+      if (totalDeleted >= 5) {
+        void securityLogger.logSecurityEvent('bulk_employee_delete', `حذف جماعي لـ ${totalDeleted} موظف`, 'high', { count: totalDeleted, choice })
+      }
       await queryClient.invalidateQueries({ queryKey: EMPLOYEES_PAGE_QUERY_KEY })
       await queryClient.invalidateQueries({ queryKey: ['all-obligations-summary'] })
       await queryClient.invalidateQueries({ queryKey: ['deleted-employee-obligations'] })
