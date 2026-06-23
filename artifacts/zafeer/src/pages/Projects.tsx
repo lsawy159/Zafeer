@@ -278,14 +278,7 @@ export default function Projects() {
         return
       }
 
-      try {
-        await supabase.from('activity_log').insert({
-          entity_type: 'project',
-          entity_id: selectedProject.id,
-          action: 'حذف مشروع',
-          details: { project_name: selectedProject.name, employee_count: (selectedProject as Project & { employee_count?: number }).employee_count ?? 0 },
-        })
-      } catch { /* non-blocking */ }
+      // التسجيل يتم داخل edge function admin-projects (actor صحيح + atomic) — لا نكرره هنا
       toast.success('تم حذف المشروع بنجاح')
       setShowDeleteModal(false)
       setSelectedProject(null)
@@ -317,19 +310,7 @@ export default function Projects() {
 
       const result = data as { deletedCount: number; failedCount: number; results: { id: string; success: boolean; error?: string }[] }
 
-      // تسجيل نشاط لكل مشروع حُذف بنجاح
-      const deletedIds = result.results.filter((r) => r.success).map((r) => r.id)
-      for (const deletedId of deletedIds) {
-        const proj = projects.find((p) => p.id === deletedId)
-        try {
-          await supabase.from('activity_log').insert({
-            entity_type: 'project',
-            entity_id: deletedId,
-            action: 'حذف مشروع',
-            details: { project_name: proj?.name ?? '—', employee_count: (proj as (Project & { employee_count?: number }) | undefined)?.employee_count ?? 0 },
-          })
-        } catch { /* non-blocking */ }
-      }
+      // التسجيل يتم داخل edge function admin-projects لكل مشروع (actor صحيح) — لا نكرره هنا
 
       if (result.failedCount > 0) {
         const failedNames = result.results

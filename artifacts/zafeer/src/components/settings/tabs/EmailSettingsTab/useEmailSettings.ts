@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase'
+import { logActivity as writeActivity } from '@/utils/logActivity'
 import { toast } from 'sonner'
 import { usePermissions } from '@/utils/permissions'
 import { logger } from '@/utils/logger'
@@ -202,7 +203,7 @@ export function useEmailSettings() {
       if (error) throw error
 
       try {
-        await supabase.from('activity_log').insert({
+        await writeActivity({
           entity_type: 'email_settings',
           action: 'تحديث إعدادات البريد',
           details: { changed_count: rows.length },

@@ -1,6 +1,7 @@
 import { useState, useCallback, useEffect } from 'react'
 import { useModalScrollLock } from '@/hooks/useModalScrollLock'
 import { supabase, Company } from '@/lib/supabase'
+import { logActivity as writeActivity } from '@/utils/logActivity'
 import { toast } from 'sonner'
 import { normalizeDate } from '@/utils/dateParser'
 import { logger } from '@/utils/logger'
@@ -195,18 +196,17 @@ export function useCompanyModal({ isOpen, company, onClose, onSuccess }: UseComp
         oldDataFiltered[field] = oldDataFull[field]
         newDataFiltered[field] = newDataFull[field]
       })
-      await supabase.from('activity_log').insert({
+      await writeActivity({
         entity_type: 'company',
         entity_id: companyId,
         action: actionName,
+        old: oldDataFiltered,
+        new: newDataFiltered,
         details: {
           company_name: companyName,
           unified_number: unifiedNumber,
           changes: translatedChanges,
-          timestamp: new Date().toISOString(),
         },
-        old_data: JSON.stringify(oldDataFiltered),
-        new_data: JSON.stringify(newDataFiltered),
       })
     } catch (error) {
       console.error('Error logging activity:', error)
@@ -305,13 +305,12 @@ export function useCompanyModal({ isOpen, company, onClose, onSuccess }: UseComp
           Object.keys(newCompanyData).forEach((field) => {
             createdChanges[FIELD_LABELS[field] || field] = { old_value: null, new_value: newCompanyData[field] }
           })
-          await supabase.from('activity_log').insert({
+          await writeActivity({
             entity_type: 'company',
-            entity_id: (result.data as { id?: string } | null)?.id,
+            entity_id: (result.data as { id?: string } | null)?.id ?? null,
             action: 'إضافة مؤسسة جديدة',
+            new: newCompanyData,
             details: { company_name: formData.name, unified_number: newCompanyData.unified_number, created_fields: Object.keys(companyData) },
-            old_data: JSON.stringify({}),
-            new_data: JSON.stringify(newCompanyData),
           })
         }
       }

@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase'
+import { logActivity as writeActivity } from '@/utils/logActivity'
 import { toast } from 'sonner'
 import { RefreshCw, Trash2, Users } from 'lucide-react'
 import { formatDateWithHijri } from '@/utils/dateFormatter'
@@ -175,7 +176,7 @@ export default function SessionsManager() {
       if (error) throw error
 
       try {
-        await supabase.from('activity_log').insert({
+        await writeActivity({
           entity_type: 'session',
           entity_id: sessionToDelete.id,
           action: 'إنهاء جلسة',
@@ -223,7 +224,7 @@ export default function SessionsManager() {
       // جلب اسم مالك الجلسات (يفترض جلسات مستخدم واحد في الغالب)
       try {
         const firstSession = [...activeSessions, ...sessionHistory].find((s) => selectedSessions.has(s.id))
-        await supabase.from('activity_log').insert({
+        await writeActivity({
           entity_type: 'session',
           action: 'إنهاء كل الجلسات',
           details: {

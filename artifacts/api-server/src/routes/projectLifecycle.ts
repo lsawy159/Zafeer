@@ -163,21 +163,9 @@ router.delete("/admin/extracts/:id", requireAdmin, async (req: AuthRequest, res)
     return;
   }
 
-  // Log activity
-  const { error: logError } = await supabaseAdmin
-    .from("activity_log")
-    .insert({
-      user_id: req.userId,
-      entity_type: "extract",
-      entity_id: extractId,
-      action: "delete",
-      details: { project_id: extract.project_id },
-    });
-
-  if (logError) {
-    console.error("Failed to log activity:", logError);
-    // Don't fail the response, just log the error
-  }
+  // ملاحظة: تسجيل النشاط (action='حذف مستخلص' بتفاصيل غنية) يتم في الفرونت
+  // داخل useDeleteExtract.onSuccess. كان هنا تسجيل مكرر بـ action='delete'
+  // (يظهر خطأً كـ "إنشاء" في العارض) — أُزيل لمنع كرتين لنفس الحذف.
 
   res.status(200).json({ success: true });
 });

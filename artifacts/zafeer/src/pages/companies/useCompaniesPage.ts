@@ -1,6 +1,7 @@
 import { useEffect, useState, useCallback, useRef, useMemo } from 'react'
 import { useLocation } from 'react-router-dom'
 import { supabase, Company } from '@/lib/supabase'
+import { logActivity as writeActivity } from '@/utils/logActivity'
 import { usePermissions } from '@/utils/permissions'
 import { useIsMobileView } from '@/hooks/useIsMobileView'
 import { useCardColumns } from '@/hooks/useUiPreferences'
@@ -524,7 +525,7 @@ export function useCompaniesPage() {
       }
       const { error: deleteError } = await supabase.from('companies').delete().eq('id', selectedCompany.id)
       if (deleteError) throw deleteError
-      await supabase.from('activity_log').insert({ action: 'حذف مؤسسة', entity_type: 'company', entity_id: selectedCompany.id, details: { company_name: selectedCompany.name, unified_number: selectedCompany.unified_number, employees_detached: employees?.length || 0 } })
+      await writeActivity({ action: 'حذف مؤسسة', entity_type: 'company', entity_id: selectedCompany.id, details: { company_name: selectedCompany.name, unified_number: selectedCompany.unified_number, employees_detached: employees?.length || 0 } })
       const employeeCount = employees?.length || 0
       toast.success(employeeCount > 0 ? `تم حذف المؤسسة وفصل ${employeeCount} موظف بنجاح. سيبقى الموظفون في النظام بدون تعيين` : 'تم حذف المؤسسة بنجاح')
       await loadCompanies()

@@ -1,6 +1,7 @@
 import { useState, useCallback, useEffect, useRef } from 'react'
 import { useModalScrollLock } from '@/hooks/useModalScrollLock'
 import { supabase, Company, Project, Employee, EmployeeWithRelations } from '@/lib/supabase'
+import { logActivity as writeActivity } from '@/utils/logActivity'
 import { useUploadResidenceFile } from '@/hooks/useResidenceFile'
 import { useUploadEmployeeDoc } from '@/hooks/useEmployeeDocFile'
 import { EMPLOYEE_DOC_TYPES } from '@/lib/employeeDocFile'
@@ -510,18 +511,16 @@ export function useAddEmployeeForm({ isOpen, onClose, onSuccess, initialData }: 
       toast.success('تم إضافة الموظف بنجاح')
 
       if (insertedEmployee?.id) {
-        try {
-          await supabase.from('activity_log').insert({
-            entity_type: 'employee',
-            entity_id: insertedEmployee.id,
-            action: 'إنشاء موظف',
-            details: {
-              employee_name: insertedEmployee.name,
-              residence_number: insertedEmployee.residence_number,
-              company_name: (insertedEmployee as { company?: { name?: string } }).company?.name,
-            },
-          })
-        } catch { /* non-blocking */ }
+        await writeActivity({
+          entity_type: 'employee',
+          entity_id: insertedEmployee.id,
+          action: 'إنشاء موظف',
+          details: {
+            employee_name: insertedEmployee.name,
+            residence_number: insertedEmployee.residence_number,
+            company_name: (insertedEmployee as { company?: { name?: string } }).company?.name,
+          },
+        })
       }
 
       setFormData(createDefaultFormData())

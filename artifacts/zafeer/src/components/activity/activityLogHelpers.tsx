@@ -117,6 +117,14 @@ export const getActionLabel = (action: string) => {
     view: 'عرض',
     export: 'تصدير',
     import: 'استيراد',
+    // ترجمة الأكواد الإنجليزية لعربي — لا يظهر كود إنجليزي في أي كارت
+    full_edit: 'تعديل بيانات',
+    company_transfer: 'نقل مؤسسة',
+    project_transfer: 'نقل مشروع',
+    payroll_run_status_updated: 'تغيير حالة مسير',
+    create_success: 'إضافة بريد',
+    create_failed: 'فشل إضافة بريد',
+    create_exception: 'خطأ إضافة بريد',
     'إنشاء مستخدم': 'إنشاء مستخدم',
     'تحديث مستخدم': 'تحديث مستخدم',
     'إعادة ضبط كلمة المرور': 'إعادة ضبط كلمة المرور',
@@ -234,17 +242,22 @@ export const renderUpdateDetails = (log: ActivityLog): React.JSX.Element => {
   let newData: Record<string, unknown> | null = null
   let hasValidData = false
 
+  // المصدر: الأعمدة top-level أولاً، ثم fallback لـ details.old_data/new_data
+  // (صفوف تاريخية أو كُتّاب قدامى كانوا يحفظون داخل details).
+  const rawOld = log.old_data ?? (details as Record<string, unknown>).old_data
+  const rawNew = log.new_data ?? (details as Record<string, unknown>).new_data
+
   try {
-    if (typeof log.old_data === 'string') {
-      oldData = JSON.parse(log.old_data) as Record<string, unknown>
-    } else if (log.old_data && typeof log.old_data === 'object') {
-      oldData = log.old_data as Record<string, unknown>
+    if (typeof rawOld === 'string') {
+      oldData = JSON.parse(rawOld) as Record<string, unknown>
+    } else if (rawOld && typeof rawOld === 'object') {
+      oldData = rawOld as Record<string, unknown>
     }
 
-    if (typeof log.new_data === 'string') {
-      newData = JSON.parse(log.new_data) as Record<string, unknown>
-    } else if (log.new_data && typeof log.new_data === 'object') {
-      newData = log.new_data as Record<string, unknown>
+    if (typeof rawNew === 'string') {
+      newData = JSON.parse(rawNew) as Record<string, unknown>
+    } else if (rawNew && typeof rawNew === 'object') {
+      newData = rawNew as Record<string, unknown>
     }
 
     hasValidData =
@@ -428,6 +441,21 @@ export const generateActivityDescription = (log: ActivityLog): string | React.JS
   const unifiedNumber = details.unified_number
   const residenceNumber = details.residence_number
 
+  // اسم الموظف دائماً مع رقم الإقامة (فريد)، واسم المؤسسة دائماً مع الرقم الموحّد (فريد)
+  const empLabel = employeeName
+    ? (residenceNumber ? `${employeeName} (${residenceNumber})` : String(employeeName))
+    : '—'
+  const companyLabel = companyName
+    ? (unifiedNumber ? `${companyName} (${unifiedNumber})` : String(companyName))
+    : '—'
+
+  // نقل مشروع — وصف عربي صريح (من مشروع → إلى مشروع) مع رقم الإقامة
+  if (entityType === 'employee' && log.action === 'project_transfer') {
+    const from = details.from_project_name || '—'
+    const to = details.to_project_name || '—'
+    return `تم نقل الموظف "${empLabel}" من مشروع "${from}" إلى مشروع "${to}".`
+  }
+
   // ── handlers للـ entity types الجديدة ──
 
   if (entityType === 'user') {
@@ -523,16 +551,19 @@ export const generateActivityDescription = (log: ActivityLog): string | React.JS
       let oldData: Record<string, unknown> | null = null
       let newData: Record<string, unknown> | null = null
 
-      if (typeof log.old_data === 'string') {
-        oldData = JSON.parse(log.old_data) as Record<string, unknown>
-      } else if (log.old_data && typeof log.old_data === 'object') {
-        oldData = log.old_data as Record<string, unknown>
+      const rawOld = log.old_data ?? (details as Record<string, unknown>).old_data
+      const rawNew = log.new_data ?? (details as Record<string, unknown>).new_data
+
+      if (typeof rawOld === 'string') {
+        oldData = JSON.parse(rawOld) as Record<string, unknown>
+      } else if (rawOld && typeof rawOld === 'object') {
+        oldData = rawOld as Record<string, unknown>
       }
 
-      if (typeof log.new_data === 'string') {
-        newData = JSON.parse(log.new_data) as Record<string, unknown>
-      } else if (log.new_data && typeof log.new_data === 'object') {
-        newData = log.new_data as Record<string, unknown>
+      if (typeof rawNew === 'string') {
+        newData = JSON.parse(rawNew) as Record<string, unknown>
+      } else if (rawNew && typeof rawNew === 'object') {
+        newData = rawNew as Record<string, unknown>
       }
 
       if (oldData && newData) {
@@ -562,11 +593,9 @@ export const generateActivityDescription = (log: ActivityLog): string | React.JS
     action.includes('إضافة')
   ) {
     if (entityType === 'employee' && employeeName) {
-      const empDisplay = residenceNumber ? `${employeeName} (${residenceNumber})` : employeeName
-      return `تم إنشاء موظف جديد "${empDisplay}"${companyName ? ` في المؤسسة "${companyName}"` : ''}.`
+      return `تم إنشاء موظف جديد "${empLabel}"${companyName ? ` في المؤسسة "${companyLabel}"` : ''}.`
     } else if (entityType === 'company' && companyName) {
-      const companyDisplay = unifiedNumber ? `${companyName} (${unifiedNumber})` : companyName
-      return `تم إنشاء مؤسسة جديدة باسم "${companyDisplay}".`
+      return `تم إنشاء مؤسسة جديدة باسم "${companyLabel}".`
     } else if (entityType === 'user') {
       return `تم إنشاء مستخدم جديد.`
     } else {
@@ -578,16 +607,15 @@ export const generateActivityDescription = (log: ActivityLog): string | React.JS
     action.includes('update') ||
     action.includes('edit') ||
     action.includes('تحديث') ||
-    action.includes('تعديل')
+    action.includes('تعديل') ||
+    log.action === 'company_transfer'
   ) {
     if (changedFieldLabels.length > 0) {
       const fieldNames = changedFieldLabels.join(' و ')
       if (entityType === 'employee' && employeeName) {
-        const empDisplay = residenceNumber ? `${employeeName} (${residenceNumber})` : employeeName
-        return `تم تحديث موظف "${empDisplay}" - تحديث ${fieldNames}${companyName ? ` من ${companyName}` : ''}.`
+        return `تم تحديث موظف "${empLabel}" - تحديث ${fieldNames}${companyName ? ` من ${companyLabel}` : ''}.`
       } else if (entityType === 'company' && companyName) {
-        const companyDisplay = unifiedNumber ? `${companyName} (${unifiedNumber})` : companyName
-        return `تم تحديث مؤسسة "${companyDisplay}" - تحديث ${fieldNames}.`
+        return `تم تحديث مؤسسة "${companyLabel}" - تحديث ${fieldNames}.`
       }
     }
     return renderUpdateDetails(log)
@@ -595,11 +623,9 @@ export const generateActivityDescription = (log: ActivityLog): string | React.JS
 
   if (action.includes('delete') || action.includes('remove') || action.includes('حذف')) {
     if (entityType === 'employee' && employeeName) {
-      const empDisplay = residenceNumber ? `${employeeName} (${residenceNumber})` : employeeName
-      return `تم حذف الموظف "${empDisplay}"${companyName ? ` من المؤسسة "${companyName}"` : ''}.`
+      return `تم حذف الموظف "${empLabel}"${companyName ? ` من المؤسسة "${companyLabel}"` : ''}.`
     } else if (entityType === 'company' && companyName) {
-      const companyDisplay = unifiedNumber ? `${companyName} (${unifiedNumber})` : companyName
-      return `تم حذف المؤسسة "${companyDisplay}".`
+      return `تم حذف المؤسسة "${companyLabel}".`
     } else if (entityType === 'user') {
       return `تم حذف مستخدم.`
     } else {
@@ -624,10 +650,9 @@ export const generateActivityDescription = (log: ActivityLog): string | React.JS
   }
 
   if (employeeName) {
-    const empDisplay = residenceNumber ? `${employeeName} (${residenceNumber})` : employeeName
-    return `تم تنفيذ العملية "${getActionLabel(log.action)}" على الموظف "${empDisplay}".`
+    return `تم تنفيذ العملية "${getActionLabel(log.action)}" على الموظف "${empLabel}".`
   } else if (companyName) {
-    return `تم تنفيذ العملية "${getActionLabel(log.action)}" على المؤسسة "${companyName}".`
+    return `تم تنفيذ العملية "${getActionLabel(log.action)}" على المؤسسة "${companyLabel}".`
   } else {
     return `تم تنفيذ العملية "${getActionLabel(log.action)}" على ${entityLabel}.`
   }

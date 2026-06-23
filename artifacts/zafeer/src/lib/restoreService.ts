@@ -1,4 +1,5 @@
 import { supabase } from '@/lib/supabase'
+import { logActivity as writeActivity } from '@/utils/logActivity'
 
 export interface RestoreResult {
   success: boolean
@@ -49,7 +50,7 @@ export async function triggerRestore(
       .select('started_at, table_record_counts')
       .eq('id', backupId)
       .maybeSingle()
-    await supabase.from('activity_log').insert({
+    await writeActivity({
       entity_type: 'backup',
       action: 'استعادة نسخة احتياطية',
       details: {

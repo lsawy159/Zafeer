@@ -1,6 +1,7 @@
 import { useMutation } from '@tanstack/react-query'
 import { FunctionsHttpError } from '@supabase/supabase-js'
 import { supabase, type User } from '@/lib/supabase'
+import { logActivity as writeActivity } from '@/utils/logActivity'
 
 type CreateUserVariables = {
   data: {
@@ -38,7 +39,7 @@ export function useCreateUser() {
 
       const createdUser = (result as { user: User }).user
       try {
-        await supabase.from('activity_log').insert({
+        await writeActivity({
           entity_type: 'user',
           entity_id: createdUser.id,
           action: 'إنشاء مستخدم',
