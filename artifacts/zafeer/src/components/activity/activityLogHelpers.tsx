@@ -234,17 +234,22 @@ export const renderUpdateDetails = (log: ActivityLog): React.JSX.Element => {
   let newData: Record<string, unknown> | null = null
   let hasValidData = false
 
+  // المصدر: الأعمدة top-level أولاً، ثم fallback لـ details.old_data/new_data
+  // (صفوف تاريخية أو كُتّاب قدامى كانوا يحفظون داخل details).
+  const rawOld = log.old_data ?? (details as Record<string, unknown>).old_data
+  const rawNew = log.new_data ?? (details as Record<string, unknown>).new_data
+
   try {
-    if (typeof log.old_data === 'string') {
-      oldData = JSON.parse(log.old_data) as Record<string, unknown>
-    } else if (log.old_data && typeof log.old_data === 'object') {
-      oldData = log.old_data as Record<string, unknown>
+    if (typeof rawOld === 'string') {
+      oldData = JSON.parse(rawOld) as Record<string, unknown>
+    } else if (rawOld && typeof rawOld === 'object') {
+      oldData = rawOld as Record<string, unknown>
     }
 
-    if (typeof log.new_data === 'string') {
-      newData = JSON.parse(log.new_data) as Record<string, unknown>
-    } else if (log.new_data && typeof log.new_data === 'object') {
-      newData = log.new_data as Record<string, unknown>
+    if (typeof rawNew === 'string') {
+      newData = JSON.parse(rawNew) as Record<string, unknown>
+    } else if (rawNew && typeof rawNew === 'object') {
+      newData = rawNew as Record<string, unknown>
     }
 
     hasValidData =
@@ -523,16 +528,19 @@ export const generateActivityDescription = (log: ActivityLog): string | React.JS
       let oldData: Record<string, unknown> | null = null
       let newData: Record<string, unknown> | null = null
 
-      if (typeof log.old_data === 'string') {
-        oldData = JSON.parse(log.old_data) as Record<string, unknown>
-      } else if (log.old_data && typeof log.old_data === 'object') {
-        oldData = log.old_data as Record<string, unknown>
+      const rawOld = log.old_data ?? (details as Record<string, unknown>).old_data
+      const rawNew = log.new_data ?? (details as Record<string, unknown>).new_data
+
+      if (typeof rawOld === 'string') {
+        oldData = JSON.parse(rawOld) as Record<string, unknown>
+      } else if (rawOld && typeof rawOld === 'object') {
+        oldData = rawOld as Record<string, unknown>
       }
 
-      if (typeof log.new_data === 'string') {
-        newData = JSON.parse(log.new_data) as Record<string, unknown>
-      } else if (log.new_data && typeof log.new_data === 'object') {
-        newData = log.new_data as Record<string, unknown>
+      if (typeof rawNew === 'string') {
+        newData = JSON.parse(rawNew) as Record<string, unknown>
+      } else if (rawNew && typeof rawNew === 'object') {
+        newData = rawNew as Record<string, unknown>
       }
 
       if (oldData && newData) {

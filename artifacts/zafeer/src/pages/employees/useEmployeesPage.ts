@@ -11,6 +11,7 @@ import { toast } from 'sonner'
 import { type PostgrestError } from '@supabase/supabase-js'
 import { usePermissions } from '@/utils/permissions'
 import { logger } from '@/utils/logger'
+import { logActivity as writeActivity } from '@/utils/logActivity'
 import {
   getEmployeeNotificationThresholdsPublic,
   type EmployeeNotificationThresholds,
@@ -234,24 +235,25 @@ export function useEmployeesPage() {
 
   const handleUpdateEmployee = async () => { await loadEmployees() }
 
+  // الكتابة عبر الطبقة الموحّدة — الـ DB trigger يختم الفاعل الحقيقي تلقائياً.
   const logActivity = async (employeeId: string, action: string, changes: Record<string, unknown>) => {
-    try {
-      const employee = employees.find((e) => e.id === employeeId)
-      const translatedChanges: Record<string, unknown> = {}
-      const changedFields: string[] = []
-      Object.keys(changes).forEach((key) => {
-        const label = getFieldLabel(key)
-        translatedChanges[label] = changes[key]
-        changedFields.push(label)
-      })
-      let actionName = action
-      if (changedFields.length === 1 && !action.includes('حذف')) actionName = `تحديث ${changedFields[0]}`
-      else if (changedFields.length > 1 && !action.includes('حذف')) actionName = `تحديث متعدد (${changedFields.length} حقول)`
-      await supabase.from('activity_log').insert({
-        entity_type: 'employee', entity_id: employeeId, action: actionName,
-        details: { employee_name: employee?.name, residence_number: employee?.residence_number, changes: translatedChanges, timestamp: new Date().toISOString() },
-      })
-    } catch (err) { logger.error('Error logging activity:', err) }
+    const employee = employees.find((e) => e.id === employeeId)
+    const translatedChanges: Record<string, unknown> = {}
+    const changedFields: string[] = []
+    Object.keys(changes).forEach((key) => {
+      const label = getFieldLabel(key)
+      translatedChanges[label] = changes[key]
+      changedFields.push(label)
+    })
+    let actionName = action
+    if (changedFields.length === 1 && !action.includes('حذف')) actionName = `تحديث ${changedFields[0]}`
+    else if (changedFields.length > 1 && !action.includes('حذف')) actionName = `تحديث متعدد (${changedFields.length} حقول)`
+    await writeActivity({
+      entity_type: 'employee',
+      entity_id: employeeId,
+      action: actionName,
+      details: { employee_name: employee?.name, residence_number: employee?.residence_number, changes: translatedChanges },
+    })
   }
 
   const handleDeleteEmployee = useCallback(async (employee: Employee & { company: Company }) => {

@@ -6,11 +6,17 @@ import {
 
 export const activityLogTable = pgTable('activity_log', {
   id: uuid('id').primaryKey().defaultRandom(),
+  // user_id يُختم تلقائياً بـ DB trigger (auth.uid()) — لا يُمرَّر من الفرونت.
+  // راجع migration 074_activity_log_actor_enforcement.
   user_id: uuid('user_id'),
   entity_type: text('entity_type'),
   entity_id: uuid('entity_id'),
   action: text('action').notNull(),
+  old_data: jsonb('old_data'),
+  new_data: jsonb('new_data'),
   details: jsonb('details').default({}),
+  actor_type: text('actor_type'), // user | system | automation | service | legacy_unknown
+  correlation_id: uuid('correlation_id'), // ربط الأفعال الثانوية بالفعل الأصلي
   created_at: timestamp('created_at', { withTimezone: true }).defaultNow(),
 })
 

@@ -15,6 +15,7 @@ import {
 import { useEmployeeCardData } from '@/hooks/useEmployeeCardData'
 import { toast } from 'sonner'
 import { logger } from '@/utils/logger'
+import { logActivity as writeActivity } from '@/utils/logActivity'
 import {
   useCreateEmployeeObligationPlan,
   useUpdateObligationPlan,
@@ -337,47 +338,44 @@ export function useEmployeeCardLogic({
     return labels[key] || key
   }
 
+  // ملاحظة: الكتابة تمر عبر الطبقة الموحّدة @/utils/logActivity.
+  // القيم القديمة/الجديدة تُكتب في الأعمدة top-level (old_data/new_data) حيث يقرأها العارض،
+  // والـ DB trigger يختم الفاعل الحقيقي تلقائياً (لا نمرر user_id).
   const logActivity = async (
     action: string,
     changes: Record<string, unknown>,
     oldDataFull: Record<string, unknown>,
-    newDataFull: Record<string, unknown>
+    newDataFull: Record<string, unknown>,
+    correlationId?: string
   ) => {
-    try {
-      const changedFields = Object.keys(changes)
-      const detailedChanges: Record<string, { old: unknown; new: unknown }> = {}
-      const translatedChanges: Record<string, unknown> = {}
-      let actionName = action
+    const changedFields = Object.keys(changes)
+    const detailedChanges: Record<string, { old: unknown; new: unknown }> = {}
 
-      changedFields.forEach((field) => {
-        const label = getFieldLabel(field)
-        detailedChanges[label] = { old: oldDataFull[field], new: newDataFull[field] }
-        translatedChanges[label] = newDataFull[field]
-      })
+    changedFields.forEach((field) => {
+      const label = getFieldLabel(field)
+      detailedChanges[label] = { old: oldDataFull[field], new: newDataFull[field] }
+    })
 
-      if (changedFields.length === 1) {
-        actionName = `تحديث ${getFieldLabel(changedFields[0])}`
-      } else if (changedFields.length > 1) {
-        actionName = `تحديث متعدد (${changedFields.length} حقول)`
-      }
-
-      await supabase.from('activity_log').insert({
-        entity_type: 'employee',
-        entity_id: employee.id,
-        action: actionName,
-        details: {
-          employee_name: employee.name,
-          residence_number: employee.residence_number,
-          changes: detailedChanges,
-          changes_simple: translatedChanges,
-          timestamp: new Date().toISOString(),
-          old_data: oldDataFull,
-          new_data: newDataFull,
-        },
-      })
-    } catch (error) {
-      logger.error('Error logging activity:', error)
+    let actionName = action
+    if (changedFields.length === 1) {
+      actionName = `تحديث ${getFieldLabel(changedFields[0])}`
+    } else if (changedFields.length > 1) {
+      actionName = `تحديث متعدد (${changedFields.length} حقول)`
     }
+
+    await writeActivity({
+      entity_type: 'employee',
+      entity_id: employee.id,
+      action: actionName,
+      old: oldDataFull,
+      new: newDataFull,
+      correlation_id: correlationId ?? null,
+      details: {
+        employee_name: employee.name,
+        residence_number: employee.residence_number,
+        changes: detailedChanges,
+      },
+    })
   }
 
   function handleFilesReady(original: File, thumbnail: File | null) {
@@ -606,28 +604,28 @@ export function useEmployeeCardLogic({
         actionType = 'company_transfer'
       }
 
-      await logActivity(actionType, changes, baselineData, newDataFull)
+      // معرّف ربط واحد للعملية: الكارت الرئيسي + كارت نقل المشروع المرتبط به
+      const correlationId = crypto.randomUUID()
 
-      // سجل نقل المشروع — صف مستقل يقرأه useEmployeeProjectHistory (action='project_transfer')
+      await logActivity(actionType, changes, baselineData, newDataFull, correlationId)
+
+      // سجل نقل المشروع — صف مرتبط بالكارت الرئيسي عبر correlation_id
+      // (يقرأه useEmployeeProjectHistory عبر action='project_transfer')
       if (changes.project_id) {
-        try {
-          await supabase.from('activity_log').insert({
-            entity_type: 'employee',
-            entity_id: employee.id,
-            action: 'project_transfer',
-            details: {
-              from_project_id: (changes.project_id.old_value as string) ?? null,
-              to_project_id: (changes.project_id.new_value as string) ?? null,
-              from_project_name: (baselineData.project_name as string) ?? null,
-              to_project_name: (actualUpdateData.project_name as string) ?? null,
-              employee_name: employee.name,
-              timestamp: new Date().toISOString(),
-            },
-          })
-          queryClient.invalidateQueries({ queryKey: ['employee-project-history', employee.id] })
-        } catch (err) {
-          logger.error('Error logging project transfer:', err)
-        }
+        await writeActivity({
+          entity_type: 'employee',
+          entity_id: employee.id,
+          action: 'project_transfer',
+          correlation_id: correlationId,
+          details: {
+            from_project_id: (changes.project_id.old_value as string) ?? null,
+            to_project_id: (changes.project_id.new_value as string) ?? null,
+            from_project_name: (baselineData.project_name as string) ?? null,
+            to_project_name: (actualUpdateData.project_name as string) ?? null,
+            employee_name: employee.name,
+          },
+        })
+        queryClient.invalidateQueries({ queryKey: ['employee-project-history', employee.id] })
       }
 
       if (Object.keys(actualUpdateData).length > 0) {
