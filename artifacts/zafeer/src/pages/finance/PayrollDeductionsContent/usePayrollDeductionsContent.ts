@@ -729,6 +729,7 @@ export function usePayrollDeductionsContent({
     type ObligationTask = {
       employee_id: string
       employee_name: string
+      residence_number: string | number | null
       type: 'advance' | 'transfer' | 'renewal' | 'penalty' | 'other'
       amount: number
       installment_amounts: number[]
@@ -766,6 +767,7 @@ export function usePayrollDeductionsContent({
         tasks.push({
           employee_id: row.employee_id!,
           employee_name: row.employee_name ?? String(row.residence_number),
+          residence_number: row.residence_number ?? null,
           type: def.type,
           amount: def.amount,
           installment_amounts: installmentAmounts,
@@ -809,6 +811,7 @@ export function usePayrollDeductionsContent({
             action: 'إنشاء التزام',
             details: {
               employee_name: task.employee_name,
+              residence_number: task.residence_number,
               obligation_type: OBLIGATION_TYPE_LABELS[task.type] ?? task.type,
               amount: task.amount,
             },

@@ -621,6 +621,7 @@ export function useEmployeeCardLogic({
             from_project_name: (baselineData.project_name as string) ?? null,
             to_project_name: (actualUpdateData.project_name as string) ?? null,
             employee_name: employee.name,
+            residence_number: employee.residence_number,
           },
         })
         queryClient.invalidateQueries({ queryKey: ['employee-project-history', employee.id] })
