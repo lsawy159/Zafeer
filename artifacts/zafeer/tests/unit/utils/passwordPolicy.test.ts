@@ -57,6 +57,27 @@ describe('validatePassword — default policy', () => {
   })
 })
 
+describe('validatePassword — Finding C regression (misleading "8 chars" message)', () => {
+  // Owner repro: a 9-char password of digits + symbol but NO letters was rejected
+  // by Supabase Auth, then mis-reported as a length problem ("8 أحرف على الأقل").
+  // The validator must (a) reject it, and (b) NOT cite length — it is long enough.
+  it('rejects digits+symbol with no letters, and the error is complexity not length', () => {
+    const r = validatePassword('10203040@') // length 9 — long enough
+    expect(r.valid).toBe(false)
+    // No error mentions the length requirement, because length passes
+    expect(r.errors.some((e) => e.includes('8 أحرف'))).toBe(false)
+    // The real failures are missing uppercase + lowercase letters
+    expect(r.errors.some((e) => e.includes('كبير'))).toBe(true)
+    expect(r.errors.some((e) => e.includes('صغير'))).toBe(true)
+  })
+
+  it('first surfaced error for the owner password is the uppercase requirement, not length', () => {
+    const r = validatePassword('10203040@')
+    expect(r.errors[0]).not.toContain('8 أحرف')
+    expect(r.errors[0]).toContain('كبير')
+  })
+})
+
 describe('validatePassword — custom policy', () => {
   const relaxed: PasswordPolicy = {
     minLength: 4,

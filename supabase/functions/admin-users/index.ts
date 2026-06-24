@@ -13,6 +13,20 @@ function jsonResponse(body: unknown, status = 200): Response {
   })
 }
 
+// Password policy (mirrors artifacts/zafeer/src/utils/passwordPolicy.ts DEFAULT_PASSWORD_POLICY).
+// Returns the first failing requirement message, or null when the password is valid.
+// Inlined (not imported) because this Deno edge function cannot import from the app package.
+function validatePasswordComplexity(password: string): string | null {
+  if (password.length < 8) return 'كلمة المرور يجب أن تكون 8 أحرف على الأقل'
+  if (!/[A-Z]/.test(password)) return 'يجب أن تحتوي كلمة المرور على حرف كبير واحد على الأقل (A-Z)'
+  if (!/[a-z]/.test(password)) return 'يجب أن تحتوي كلمة المرور على حرف صغير واحد على الأقل (a-z)'
+  if (!/\d/.test(password)) return 'يجب أن تحتوي كلمة المرور على رقم واحد على الأقل (0-9)'
+  if (!/[!@#$%^&*()_+\-=[\]{};':"\\|,.<>/?`~]/.test(password)) {
+    return 'يجب أن تحتوي كلمة المرور على رمز خاص واحد على الأقل (!@#$%^&*...)'
+  }
+  return null
+}
+
 function mapAuthError(message: string): string {
   const normalized = message.toLowerCase()
 
@@ -24,8 +38,10 @@ function mapAuthError(message: string): string {
     return 'البريد الإلكتروني مستخدم بالفعل'
   }
 
+  // Length is validated explicitly before calling Supabase Auth, so any password
+  // error returned here is a complexity failure — do NOT mislabel it as "too short".
   if (normalized.includes('weak_password') || normalized.includes('password')) {
-    return 'كلمة المرور يجب أن تكون 8 أحرف على الأقل'
+    return 'كلمة المرور ضعيفة: يجب أن تكون 8 أحرف على الأقل وتشمل حرفاً كبيراً وصغيراً ورقماً ورمزاً'
   }
 
   return 'حدث خطأ، حاول مجدداً'
@@ -110,8 +126,9 @@ Deno.serve(async (req: Request) => {
       return jsonResponse({ error: 'حدث خطأ، حاول مجدداً' }, 400)
     }
 
-    if (password.length < 8) {
-      return jsonResponse({ error: 'كلمة المرور يجب أن تكون 8 أحرف على الأقل' }, 400)
+    const createPwError = validatePasswordComplexity(password)
+    if (createPwError) {
+      return jsonResponse({ error: createPwError }, 400)
     }
 
     if (!isValidRole(role)) {
@@ -247,8 +264,9 @@ Deno.serve(async (req: Request) => {
       return jsonResponse({ error: 'حدث خطأ، حاول مجدداً' }, 400)
     }
 
-    if (password.length < 8) {
-      return jsonResponse({ error: 'كلمة المرور يجب أن تكون 8 أحرف على الأقل' }, 400)
+    const resetPwError = validatePasswordComplexity(password)
+    if (resetPwError) {
+      return jsonResponse({ error: resetPwError }, 400)
     }
 
     const { error: resetError } = await adminClient.auth.admin.updateUserById(id, {
