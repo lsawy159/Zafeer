@@ -634,7 +634,7 @@ export default function ActivityLogs({ embedded = false }: { embedded?: boolean 
   const exportToExcel = useCallback(async () => {
     if (totalDbCount != null && totalDbCount > logs.length) {
       toast.warning(
-        `التصدير يشمل ${filteredLogs.length} سجل فقط (المعروض). قاعدة البيانات تحتوي ${totalDbCount.toLocaleString('ar-EG')} سجل إجمالاً.`
+        `التصدير يشمل ${filteredLogs.length} سجل فقط (المعروض). قاعدة البيانات تحتوي ${totalDbCount.toLocaleString('ar-SA')} سجل إجمالاً.`
       )
     }
 
@@ -695,7 +695,7 @@ export default function ActivityLogs({ embedded = false }: { embedded?: boolean 
                   تتبع الإجراءات
                   {totalDbCount != null && totalDbCount > logs.length && (
                     <span className="text-orange-600 mr-1">
-                      — أحدث {logs.length.toLocaleString('ar-EG')} من {totalDbCount.toLocaleString('ar-EG')} إجمالاً
+                      — أحدث {logs.length.toLocaleString('ar-SA')} من {totalDbCount.toLocaleString('ar-SA')} إجمالاً
                     </span>
                   )}
                 </p>

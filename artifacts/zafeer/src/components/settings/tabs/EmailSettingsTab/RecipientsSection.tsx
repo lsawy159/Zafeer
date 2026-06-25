@@ -174,7 +174,7 @@ export function RecipientsSection({
                     <div>
                       <p className="font-medium text-foreground" dir="ltr">{recipient.email}</p>
                       <p className="text-xs text-foreground-tertiary">
-                        تمت الإضافة: {new Date(recipient.added_at).toLocaleDateString('ar-EG')}
+                        تمت الإضافة: {new Date(recipient.added_at).toLocaleDateString('ar-SA')}
                       </p>
                     </div>
                     {canEdit && (

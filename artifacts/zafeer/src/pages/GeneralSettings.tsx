@@ -243,7 +243,7 @@ export default function GeneralSettings() {
               <div>
                 <h3 className="font-bold text-xs text-foreground">
                   {lastUpdatedAt
-                    ? new Date(lastUpdatedAt).toLocaleDateString('ar-EG')
+                    ? new Date(lastUpdatedAt).toLocaleDateString('ar-SA')
                     : '—'}
                 </h3>
                 <p className="text-xs text-foreground-secondary">آخر تحديث</p>

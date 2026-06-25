@@ -94,7 +94,7 @@ export function BackupListItem({ backup, onCsvDownload, csvDownloading }: Props)
             <span>{tableCount} جدول</span>
           )}
           {totalRecords != null && (
-            <span>{totalRecords.toLocaleString('ar-EG')} سجل</span>
+            <span>{totalRecords.toLocaleString('ar-SA')} سجل</span>
           )}
           <span className={`font-medium ${
             backup.status === 'completed' ? 'text-green-600'

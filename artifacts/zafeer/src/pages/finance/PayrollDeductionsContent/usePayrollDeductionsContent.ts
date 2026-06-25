@@ -948,7 +948,7 @@ export function usePayrollDeductionsContent({
       const rows = sourceRows.map((row) => headerDefs.map((d) => d.getValue(row)))
       const worksheet = XLSX.utils.aoa_to_sheet([
         ['قائمة الالتزامات والاستقطاعات'],
-        [`تاريخ التصدير: ${new Date().toLocaleString('ar-EG')}`],
+        [`تاريخ التصدير: ${new Date().toLocaleString('ar-SA')}`],
         [],
         headers,
         ...rows,
