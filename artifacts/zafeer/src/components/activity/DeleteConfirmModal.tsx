@@ -93,7 +93,7 @@ export function DeleteConfirmModal(props: DeleteConfirmModalProps) {
                     <div className="text-sm text-neutral-600">
                       سيتم حذف{' '}
                       <span className="font-bold text-red-600">
-                        {totalDbCount != null ? totalDbCount.toLocaleString('ar-EG') : 'جميع'}{' '}
+                        {totalDbCount != null ? totalDbCount.toLocaleString('ar-SA') : 'جميع'}{' '}
                       </span>
                       سجل من قاعدة البيانات بشكل نهائي
                     </div>

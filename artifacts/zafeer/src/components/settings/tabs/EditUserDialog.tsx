@@ -22,6 +22,7 @@ import {
   SelectValue,
 } from '@/components/ui/Select'
 import { useUpdateUserProfile } from '@/hooks/useUpdateUserProfile'
+import { validatePassword } from '@/utils/passwordPolicy'
 import { supabase } from '@/lib/supabase'
 import { FunctionsHttpError } from '@supabase/supabase-js'
 import { toast } from 'sonner'
@@ -44,13 +45,20 @@ const schema = z.object({
   new_email: z.string().refine(v => v === '' || EMAIL_RE.test(v), {
     message: 'بريد إلكتروني غير صالح',
   }),
-  new_password: z.string().refine(v => v === '' || v.length >= 8, {
-    message: 'كلمة المرور يجب أن تكون 8 أحرف على الأقل',
-  }),
+  new_password: z.string(),
   confirm_password: z.string(),
-}).refine(d => d.new_password === d.confirm_password, {
-  message: 'كلمتا المرور غير متطابقتين',
-  path: ['confirm_password'],
+}).superRefine((d, ctx) => {
+  // كلمة المرور اختيارية هنا (فارغة = إبقاء الحالية). نتحقق فقط لو أُدخلت.
+  if (d.new_password !== '') {
+    const result = validatePassword(d.new_password)
+    if (!result.valid) {
+      // أظهر أول شرط ناقص بدقة بدل رسالة "8 أحرف" المضلِّلة
+      ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['new_password'], message: result.errors[0] })
+    }
+  }
+  if (d.new_password !== d.confirm_password) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['confirm_password'], message: 'كلمتا المرور غير متطابقتين' })
+  }
 })
 
 type FormData = z.infer<typeof schema>
@@ -202,7 +210,7 @@ export function EditUserDialog({
               <label className="text-sm font-medium text-right block">كلمة المرور الجديدة</label>
               <Input
                 type="password"
-                placeholder="8 أحرف على الأقل"
+                placeholder="8 أحرف: حرف كبير وصغير ورقم ورمز"
                 {...register('new_password')}
                 disabled={isSubmitting}
                 autoComplete="new-password"

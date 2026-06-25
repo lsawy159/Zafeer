@@ -156,7 +156,7 @@ export function EmailSettingsTab() {
           backupId={backupEmailModalTarget.id}
           backupDate={
             backupEmailModalTarget.completed_at
-              ? new Date(backupEmailModalTarget.completed_at).toLocaleDateString('ar-EG')
+              ? new Date(backupEmailModalTarget.completed_at).toLocaleDateString('ar-SA')
               : undefined
           }
           onClose={() => setBackupEmailModalTarget(null)}

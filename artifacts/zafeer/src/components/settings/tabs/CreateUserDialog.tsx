@@ -22,6 +22,7 @@ import {
   SelectValue,
 } from '@/components/ui/Select'
 import { useCreateUser } from '@/hooks/useCreateUser'
+import { validatePassword } from '@/utils/passwordPolicy'
 import { toast } from 'sonner'
 import { logger } from '@/utils/logger'
 
@@ -34,13 +35,19 @@ const schema = z
   .object({
     full_name: z.string().min(1, 'الاسم مطلوب'),
     email: z.string().email('بريد إلكتروني غير صالح'),
-    password: z.string().min(8, 'كلمة المرور 8 أحرف على الأقل'),
+    password: z.string().min(1, 'كلمة المرور مطلوبة'),
     confirmPassword: z.string(),
     role: z.enum(['manager', 'user']).default('user'),
   })
-  .refine((d) => d.password === d.confirmPassword, {
-    message: 'كلمتا المرور غير متطابقتين',
-    path: ['confirmPassword'],
+  .superRefine((d, ctx) => {
+    const result = validatePassword(d.password)
+    if (!result.valid) {
+      // أظهر أول شرط ناقص بدقة بدل رسالة "8 أحرف" المضلِّلة
+      ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['password'], message: result.errors[0] })
+    }
+    if (d.password !== d.confirmPassword) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['confirmPassword'], message: 'كلمتا المرور غير متطابقتين' })
+    }
   })
 
 type FormData = z.infer<typeof schema>
@@ -128,7 +135,7 @@ export function CreateUserDialog({ open, onClose }: CreateUserDialogProps) {
             <label className="text-sm font-medium text-right block">كلمة المرور</label>
             <Input
               type="password"
-              placeholder="8 أحرف على الأقل"
+              placeholder="8 أحرف: حرف كبير وصغير ورقم ورمز"
               autoComplete="new-password"
               {...register('password')}
               disabled={isSubmitting}

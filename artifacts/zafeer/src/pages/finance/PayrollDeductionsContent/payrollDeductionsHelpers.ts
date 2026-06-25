@@ -195,7 +195,7 @@ export function buildPayrollExportWorkbook(
 
   const worksheet = XLSX.utils.aoa_to_sheet([
     [runTitle],
-    [`تاريخ التصدير: ${new Date().toLocaleString('ar-EG')}`],
+    [`تاريخ التصدير: ${new Date().toLocaleString('ar-SA')}`],
     [],
     ['الشهر', monthLabel, 'النطاق', scopeName, 'الحالة', getPayrollStatusText(run.status)],
     [
