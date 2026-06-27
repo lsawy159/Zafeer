@@ -37,17 +37,18 @@ export default function GeneralSettings() {
   const [lastUpdatedAt, setLastUpdatedAt] = useState<string | null>(null)
 
   const hasViewPermission = canView('adminSettings')
+  const isAdmin = user?.role === 'admin' && user?.is_active === true
 
   const tabPermissions: Record<string, boolean> = {
-    system: canView('adminSettings'),
-    backup: canView('backupSettings'),
+    system: isAdmin,
+    backup: isAdmin,
     sessions: canView('sessionsManagement'),
-    audit: canView('activityLogs'),
-    permissions: canView('users'),
-    'email-settings': canView('emailSettings'),
-    'alert-settings': canView('alertsSettings'),
+    audit: isAdmin,
+    permissions: isAdmin,
+    'email-settings': isAdmin,
+    'alert-settings': isAdmin,
     'activity-logs': canView('activityLogs'),
-    'adhkar-settings': user?.role === 'admin',
+    'adhkar-settings': isAdmin,
   }
 
   const hasAnyTabAccess = Object.values(tabPermissions).some(Boolean)

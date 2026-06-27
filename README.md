@@ -75,15 +75,6 @@ pnpm --filter @workspace/zafeer run dev     # http://localhost:5173
 pnpm --filter @workspace/api-server run dev  # http://localhost:3000
 ```
 
-### Docker (بديل)
-
-```bash
-pnpm docker:up    # يشغّل api-server + zafeer معاً
-pnpm docker:down
-```
-
----
-
 ## أوامر الـ Workspace
 
 | أمر | الوصف |

@@ -129,3 +129,10 @@ artifacts/zafeer/.impeccable/
 /supabase/SCHEMA_BASELINE.md
 /supabase/schema.sql
 /supabase/seed-staging.sql
+
+# ===== Local Docker runtime only (not required for GitHub/Vercel runtime) =====
+/docker-compose.yml
+/docker-compose.override.yml
+/artifacts/zafeer/Dockerfile
+/artifacts/zafeer/Dockerfile.dev
+/artifacts/zafeer/nginx.conf

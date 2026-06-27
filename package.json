@@ -6,8 +6,6 @@
   "scripts": {
     "preinstall": "npx only-allow pnpm",
     "build": "pnpm --filter @workspace/zafeer run build",
-    "docker:up": "docker compose --env-file artifacts/zafeer/.env up --build",
-    "docker:down": "docker compose down",
     "test:unit": "pnpm --dir artifacts/zafeer run test:unit",
     "test:e2e": "pnpm --dir e2e run test",
     "test:e2e:public": "pnpm --dir e2e run test:public",
