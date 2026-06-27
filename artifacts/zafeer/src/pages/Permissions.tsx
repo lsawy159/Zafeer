@@ -47,6 +47,19 @@ const updatePermissionsSchema = z.object({
   permissions: z.array(permissionKeySchema),
 })
 
+// أقسام إعدادات أصبحت بلا أثر فعلي بعد قصر تبويبات الإعدادات على المدير فقط
+// (التبويبات تُحكم بـ isAdmin في GeneralSettings.tsx). تُخفى من كتالوج المنح حتى
+// لا يُمنح مستخدمٌ صلاحيةً لا تفعل شيئاً. غير هدّامة: لا تُزيل أي منحٍ مخزَّن — تمنع
+// فقط إضافتها من جديد. emailSettings/alertsSettings مُستبقاة لعمل US6 المؤجَّل.
+const INERT_GRANT_SECTIONS: ReadonlySet<string> = new Set([
+  'backupSettings',
+  'sessionsManagement',
+])
+
+const GRANTABLE_PERMISSION_SECTIONS = VALID_PERMISSION_SECTIONS.filter(
+  (section) => !INERT_GRANT_SECTIONS.has(section)
+)
+
 async function fetchUsersForPermissions(): Promise<PermissionRowUser[]> {
   const { data, error } = await supabase.rpc('get_all_users_for_admin')
 
@@ -293,7 +306,7 @@ export function PermissionsPanel({ embedded = true }: PermissionsPanelProps) {
                 </div>
 
                 <div className="grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-3">
-                  {VALID_PERMISSION_SECTIONS.map((section) => (
+                  {GRANTABLE_PERMISSION_SECTIONS.map((section) => (
                     <div
                       key={section}
                       className="rounded-xl border border-border-200 bg-surface-secondary-50/60 p-3"
