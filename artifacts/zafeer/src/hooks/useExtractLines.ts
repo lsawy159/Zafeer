@@ -1,14 +1,26 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { logger } from '@/utils/logger'
-import {
-  useUpdateAdminExtractLine,
-  useAddAdminExtractLine,
-  useDeleteAdminExtractLine,
-} from '@workspace/api-client-react'
+import { supabase } from '@/lib/supabase'
+
+async function invokeAdminProjects<T>(
+  action: string,
+  body: Record<string, unknown>,
+): Promise<T> {
+  const { data, error } = await supabase.functions.invoke('admin-projects', {
+    body,
+    headers: { 'x-action': action },
+  })
+
+  if (error) {
+    const message = (data as { error?: string } | null)?.error ?? error.message
+    throw new Error(message)
+  }
+
+  return data as T
+}
 
 export function useUpdateExtractLine(invoiceId: string) {
   const queryClient = useQueryClient()
-  const baseUpdateMutation = useUpdateAdminExtractLine()
 
   return useMutation({
     mutationFn: async ({ lineId, attendanceDays, totalDaysInMonth, monthlyRate }: {
@@ -17,13 +29,11 @@ export function useUpdateExtractLine(invoiceId: string) {
       totalDaysInMonth: number
       monthlyRate: number
     }) => {
-      return baseUpdateMutation.mutateAsync({
+      return invokeAdminProjects('update-extract-line', {
         lineId,
-        data: {
-          attendanceDays,
-          totalDaysInMonth,
-          monthlyRate,
-        },
+        attendanceDays,
+        totalDaysInMonth,
+        monthlyRate,
       })
     },
     onSuccess: () => {
@@ -37,16 +47,18 @@ export function useUpdateExtractLine(invoiceId: string) {
 
 export function useAddExtractLine(invoiceId: string, projectId: string, totalDaysInMonth: number) {
   const queryClient = useQueryClient()
-  const baseAddMutation = useAddAdminExtractLine()
+  void projectId
+  void totalDaysInMonth
 
   return useMutation({
     mutationFn: async ({ employeeId, attendanceDays }: {
       employeeId: string
       attendanceDays: number
     }) => {
-      return baseAddMutation.mutateAsync({
+      return invokeAdminProjects('add-extract-line', {
         id: invoiceId,
-        data: { employeeId, attendanceDays },
+        employeeId,
+        attendanceDays,
       })
     },
     onSuccess: () => {
@@ -60,11 +72,10 @@ export function useAddExtractLine(invoiceId: string, projectId: string, totalDay
 
 export function useDeleteExtractLine(invoiceId: string) {
   const queryClient = useQueryClient()
-  const baseDeleteMutation = useDeleteAdminExtractLine()
 
   return useMutation({
     mutationFn: async (lineId: string) => {
-      return baseDeleteMutation.mutateAsync({ lineId })
+      return invokeAdminProjects('delete-extract-line', { lineId })
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['extract', invoiceId] })

@@ -62,6 +62,29 @@ const compareNullableNumbers = (
   return left - right
 }
 
+async function getEdgeFunctionErrorMessage(error: unknown, data: unknown) {
+  const dataError = (data as { error?: unknown } | null)?.error
+  if (typeof dataError === 'string' && dataError.trim()) return dataError
+
+  const context = (error as { context?: unknown } | null)?.context
+  if (context instanceof Response) {
+    try {
+      const payload = (await context.clone().json()) as { error?: unknown }
+      if (typeof payload.error === 'string' && payload.error.trim()) return payload.error
+    } catch {
+      try {
+        const text = await context.clone().text()
+        if (text.trim()) return text
+      } catch {
+        // fall through to generic error message
+      }
+    }
+  }
+
+  if (error instanceof Error && error.message.trim()) return error.message
+  return 'حدث خطأ غير معروف'
+}
+
 export default function Projects() {
   const { canView, canCreate } = usePermissions()
   const location = useLocation()
@@ -80,7 +103,9 @@ export default function Projects() {
   const [showDeleteModal, setShowDeleteModal] = useState(false)
   const [showDetailModal, setShowDetailModal] = useState(false)
   const [showBulkDeleteModal, setShowBulkDeleteModal] = useState(false)
-  const [selectedProject, setSelectedProject] = useState<Project | null>(null)
+  const [selectedProject, setSelectedProject] = useState<
+    (Project & { employee_count?: number; total_salaries?: number }) | null
+  >(null)
   const [extractCount, setExtractCount] = useState(0)
 
   // Bulk selection
@@ -259,6 +284,10 @@ export default function Projects() {
 
   const handleDeleteConfirm = async () => {
     if (!selectedProject) return
+    if ((selectedProject.employee_count ?? 0) > 0) {
+      toast.error('لا يمكن حذف المشروع لأنه يحتوي على موظفين نشطين')
+      return
+    }
 
     try {
       setLoading(true)
@@ -268,10 +297,10 @@ export default function Projects() {
       })
 
       if (error) {
-        const msg = (data as { error?: string } | null)?.error ?? error.message
+        const msg = await getEdgeFunctionErrorMessage(error, data)
         if (msg.includes('موظفين نشطين') || msg.includes('active employees')) {
           toast.error('لا يمكن حذف المشروع لأنه يحتوي على موظفين نشطين')
-        } else if (msg.includes('صلاحية') || msg.includes('403') || msg.includes('401')) {
+        } else if (msg.includes('صلاحية') || msg.includes('Forbidden') || msg.includes('403') || msg.includes('401')) {
           toast.error('ليس لديك صلاحية لحذف المشروع')
         } else {
           toast.error(`خطأ: ${msg}`)
@@ -304,7 +333,7 @@ export default function Projects() {
       })
 
       if (error) {
-        const msg = (data as { error?: string } | null)?.error ?? error.message
+        const msg = await getEdgeFunctionErrorMessage(error, data)
         toast.error(`خطأ: ${msg}`)
         return
       }
@@ -664,6 +693,17 @@ export default function Projects() {
                     هل أنت متأكد من حذف المشروع <span className="font-semibold">"{selectedProject.name}"</span>؟
                   </p>
 
+                  {(selectedProject.employee_count ?? 0) > 0 && (
+                    <div className="bg-red-50 border border-red-200 rounded-lg p-3">
+                      <p className="text-sm text-red-900">
+                        لا يمكن حذف المشروع لأنه يحتوي على <span className="font-semibold">{selectedProject.employee_count}</span> موظف نشط.
+                      </p>
+                      <p className="text-xs text-red-800 mt-2">
+                        انقل الموظفين إلى مشروع آخر أو احذفهم حذفاً ناعماً أولاً.
+                      </p>
+                    </div>
+                  )}
+
                   {extractCount > 0 && (
                     <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
                       <p className="text-sm text-blue-900">
@@ -690,7 +730,11 @@ export default function Projects() {
                   <Button onClick={handleModalClose} variant="secondary">
                     إلغاء
                   </Button>
-                  <Button onClick={handleDeleteConfirm} variant="destructive">
+                  <Button
+                    onClick={handleDeleteConfirm}
+                    variant="destructive"
+                    disabled={(selectedProject.employee_count ?? 0) > 0}
+                  >
                     حذف المشروع
                   </Button>
                 </div>

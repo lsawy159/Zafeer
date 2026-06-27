@@ -70,19 +70,32 @@ Deno.serve(async (req: Request) => {
   }
 
   const isAdmin = profile.role === 'admin'
-  const permissions = Array.isArray(profile.permissions) ? profile.permissions : []
-  const canDeleteProjects = isAdmin || permissions.includes('projects.delete')
+  const permissions = profile.permissions
+  const hasPermission = (permission: string) => {
+    if (isAdmin) return true
+    if (Array.isArray(permissions)) return permissions.includes(permission)
+    if (permissions && typeof permissions === 'object') {
+      const permissionMap = permissions as Record<string, unknown>
+      if (permissionMap[permission] === true) return true
 
-  if (!canDeleteProjects) {
-    return jsonResponse({ error: 'غير مصرّح لك بحذف المشاريع' }, 403)
+      const [section, action] = permission.split('.')
+      const sectionPermissions = section ? permissionMap[section] : undefined
+      if (action && sectionPermissions && typeof sectionPermissions === 'object') {
+        return (sectionPermissions as Record<string, unknown>)[action] === true
+      }
+    }
+    return false
   }
-
   const action = req.headers.get('x-action')
 
   // ──────────────────────────────
   // حذف مشروع واحد
   // ──────────────────────────────
   if (action === 'delete') {
+    if (!hasPermission('projects.delete')) {
+      return jsonResponse({ error: 'Forbidden: projects.delete permission required' }, 403)
+    }
+
     let body: Record<string, unknown>
     try {
       body = await req.json()
@@ -140,6 +153,10 @@ Deno.serve(async (req: Request) => {
   // حذف متعدد
   // ──────────────────────────────
   if (action === 'bulk-delete') {
+    if (!hasPermission('projects.delete')) {
+      return jsonResponse({ error: 'Forbidden: projects.delete permission required' }, 403)
+    }
+
     let body: Record<string, unknown>
     try {
       body = await req.json()
@@ -203,6 +220,261 @@ Deno.serve(async (req: Request) => {
     const failedCount = results.filter((r) => !r.success).length
 
     return jsonResponse({ success: true, deletedCount, failedCount, results })
+  }
+
+  if (action === 'delete-extract') {
+    if (!hasPermission('extracts.delete')) {
+      return jsonResponse({ error: 'Forbidden: extracts.delete permission required' }, 403)
+    }
+
+    let body: Record<string, unknown>
+    try {
+      body = await req.json()
+    } catch {
+      return jsonResponse({ error: 'Invalid request body' }, 400)
+    }
+
+    const id = body.id
+    if (!isValidUuid(id)) {
+      return jsonResponse({ error: 'Invalid extract id' }, 400)
+    }
+
+    const { data: extract, error: extractError } = await adminClient
+      .from('extract_invoices')
+      .select('id, project_id')
+      .eq('id', id)
+      .maybeSingle()
+
+    if (extractError) {
+      return jsonResponse({ error: 'Failed to load extract' }, 500)
+    }
+    if (!extract) {
+      return jsonResponse({ error: 'Extract not found' }, 404)
+    }
+
+    const { error: deleteError } = await adminClient
+      .from('extract_invoices')
+      .delete()
+      .eq('id', id)
+
+    if (deleteError) {
+      return jsonResponse({ error: 'Failed to delete extract' }, 500)
+    }
+
+    return jsonResponse({ success: true, extractId: id })
+  }
+
+  if (action === 'delete-extract-line') {
+    if (!hasPermission('extracts.edit')) {
+      return jsonResponse({ error: 'Forbidden: extracts.edit permission required' }, 403)
+    }
+
+    let body: Record<string, unknown>
+    try {
+      body = await req.json()
+    } catch {
+      return jsonResponse({ error: 'Invalid request body' }, 400)
+    }
+
+    const lineId = body.lineId
+    if (!isValidUuid(lineId)) {
+      return jsonResponse({ error: 'Invalid extract line id' }, 400)
+    }
+
+    const { data: line, error: lineError } = await adminClient
+      .from('extract_invoice_lines')
+      .select('id, invoice_id')
+      .eq('id', lineId)
+      .maybeSingle()
+
+    if (lineError) {
+      return jsonResponse({ error: 'Failed to load extract line' }, 500)
+    }
+    if (!line) {
+      return jsonResponse({ error: 'Extract line not found' }, 404)
+    }
+
+    const { error: deleteError } = await adminClient
+      .from('extract_invoice_lines')
+      .delete()
+      .eq('id', lineId)
+
+    if (deleteError) {
+      return jsonResponse({ error: 'Failed to delete extract line' }, 500)
+    }
+
+    await adminClient.rpc('recalculate_extract_totals', { p_invoice_id: line.invoice_id })
+    await adminClient.from('activity_log').insert({
+      user_id: user.id,
+      entity_type: 'extract_line',
+      entity_id: lineId,
+      action: 'delete',
+      details: { invoice_id: line.invoice_id },
+    })
+
+    return jsonResponse({ success: true })
+  }
+
+  if (action === 'add-extract-line') {
+    if (!hasPermission('extracts.edit')) {
+      return jsonResponse({ error: 'Forbidden: extracts.edit permission required' }, 403)
+    }
+
+    let body: Record<string, unknown>
+    try {
+      body = await req.json()
+    } catch {
+      return jsonResponse({ error: 'Invalid request body' }, 400)
+    }
+
+    const id = body.id
+    const employeeId = body.employeeId
+    const attendanceDays = Number(body.attendanceDays)
+    if (!isValidUuid(id) || !isValidUuid(employeeId) || !Number.isFinite(attendanceDays) || attendanceDays < 0) {
+      return jsonResponse({ error: 'Invalid extract line input' }, 400)
+    }
+
+    const { data: extract, error: extractError } = await adminClient
+      .from('extract_invoices')
+      .select('id, project_id, total_days_in_month')
+      .eq('id', id)
+      .maybeSingle()
+
+    if (extractError) {
+      return jsonResponse({ error: 'Failed to load extract' }, 500)
+    }
+    if (!extract) {
+      return jsonResponse({ error: 'Extract not found' }, 404)
+    }
+
+    const { data: employee, error: empError } = await adminClient
+      .from('employees')
+      .select('id, name, profession, residence_number')
+      .eq('id', employeeId)
+      .maybeSingle()
+
+    if (empError) {
+      return jsonResponse({ error: 'Failed to load employee' }, 500)
+    }
+    if (!employee) {
+      return jsonResponse({ error: 'Employee not found' }, 400)
+    }
+
+    const profession = String(employee.profession ?? '').trim()
+    if (!profession) {
+      return jsonResponse({ error: 'Employee has no profession' }, 400)
+    }
+
+    const { data: rateRow, error: rateError } = await adminClient
+      .from('project_job_title_rates')
+      .select('monthly_rate')
+      .eq('project_id', extract.project_id)
+      .ilike('profession', profession)
+      .maybeSingle()
+
+    if (rateError) {
+      return jsonResponse({ error: 'Failed to load job title rate' }, 500)
+    }
+    if (!rateRow) {
+      return jsonResponse({ error: `No rate found for profession "${profession}" in this project` }, 400)
+    }
+
+    const monthlyRate = Number(rateRow.monthly_rate)
+    const totalDaysInMonth = Number(extract.total_days_in_month)
+    const amount = (monthlyRate / totalDaysInMonth) * attendanceDays
+
+    const { data: newLine, error: insertError } = await adminClient
+      .from('extract_invoice_lines')
+      .insert({
+        invoice_id: id,
+        employee_id: employee.id,
+        employee_name_snapshot: employee.name,
+        residence_number_snapshot: employee.residence_number ?? 0,
+        profession_snapshot: profession,
+        monthly_rate_snapshot: monthlyRate,
+        attendance_days: attendanceDays,
+        total_days_in_month: totalDaysInMonth,
+        amount,
+      })
+      .select()
+      .single()
+
+    if (insertError || !newLine) {
+      return jsonResponse({ error: 'Failed to insert extract line' }, 500)
+    }
+
+    await adminClient.rpc('recalculate_extract_totals', { p_invoice_id: id })
+    await adminClient.from('activity_log').insert({
+      user_id: user.id,
+      entity_type: 'extract_line',
+      entity_id: newLine.id,
+      action: 'create',
+      details: { extract_id: id, employee_id: employee.id, amount },
+    })
+
+    return jsonResponse(newLine, 201)
+  }
+
+  if (action === 'update-extract-line') {
+    if (!hasPermission('extracts.edit')) {
+      return jsonResponse({ error: 'Forbidden: extracts.edit permission required' }, 403)
+    }
+
+    let body: Record<string, unknown>
+    try {
+      body = await req.json()
+    } catch {
+      return jsonResponse({ error: 'Invalid request body' }, 400)
+    }
+
+    const lineId = body.lineId
+    const attendanceDays = Number(body.attendanceDays)
+    const totalDaysInMonth = Number(body.totalDaysInMonth)
+    const monthlyRate = Number(body.monthlyRate)
+    if (
+      !isValidUuid(lineId) ||
+      !Number.isFinite(attendanceDays) ||
+      !Number.isFinite(totalDaysInMonth) ||
+      !Number.isFinite(monthlyRate) ||
+      attendanceDays < 0 ||
+      totalDaysInMonth <= 0
+    ) {
+      return jsonResponse({ error: 'Invalid extract line input' }, 400)
+    }
+
+    const { data: line, error: lineError } = await adminClient
+      .from('extract_invoice_lines')
+      .select('id, invoice_id')
+      .eq('id', lineId)
+      .maybeSingle()
+
+    if (lineError) {
+      return jsonResponse({ error: 'Failed to load extract line' }, 500)
+    }
+    if (!line) {
+      return jsonResponse({ error: 'Extract line not found' }, 404)
+    }
+
+    const amount = (monthlyRate / totalDaysInMonth) * attendanceDays
+    const { error: updateError } = await adminClient
+      .from('extract_invoice_lines')
+      .update({ attendance_days: attendanceDays, total_days_in_month: totalDaysInMonth, amount })
+      .eq('id', lineId)
+
+    if (updateError) {
+      return jsonResponse({ error: 'Failed to update extract line' }, 500)
+    }
+
+    await adminClient.rpc('recalculate_extract_totals', { p_invoice_id: line.invoice_id })
+    await adminClient.from('activity_log').insert({
+      user_id: user.id,
+      entity_type: 'extract_line',
+      entity_id: lineId,
+      action: 'update',
+      details: { attendance_days: attendanceDays, amount },
+    })
+
+    return jsonResponse({ success: true })
   }
 
   return jsonResponse({ error: 'إجراء غير معروف' }, 400)

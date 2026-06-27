@@ -4,7 +4,6 @@ import { supabase } from '@/lib/supabase'
 import { logActivity as writeActivity } from '@/utils/logActivity'
 import { logger } from '@/utils/logger'
 import { useAuth } from '@/contexts/AuthContext'
-import { useDeleteAdminExtract } from '@workspace/api-client-react'
 import type { MatchedEmployee } from '@/utils/extractCalculations'
 
 export interface ExtractInvoice {
@@ -223,7 +222,6 @@ export function useDuplicateExtract() {
 export function useDeleteExtract() {
   const queryClient = useQueryClient()
   const navigate = useNavigate()
-  const baseMutation = useDeleteAdminExtract()
 
   return useMutation({
     mutationFn: async (extractId: string) => {
@@ -238,7 +236,16 @@ export function useDeleteExtract() {
         inv = data
       } catch { /* non-blocking */ }
 
-      await baseMutation.mutateAsync({ id: extractId })
+      const { data, error } = await supabase.functions.invoke('admin-projects', {
+        body: { id: extractId },
+        headers: { 'x-action': 'delete-extract' },
+      })
+
+      if (error) {
+        const message = (data as { error?: string } | null)?.error ?? error.message
+        throw new Error(message)
+      }
+
       return inv
     },
     onSuccess: async (inv, extractId) => {
