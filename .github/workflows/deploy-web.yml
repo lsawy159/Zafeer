@@ -4,9 +4,24 @@ on:
   push:
     branches: [main]
     paths:
-      - "artifacts/zafeer/**"
+      - "artifacts/zafeer/src/**"
+      - "artifacts/zafeer/public/**"
+      - "artifacts/zafeer/index.html"
+      - "artifacts/zafeer/package.json"
+      - "artifacts/zafeer/vite.config.ts"
+      - "artifacts/zafeer/tsconfig*.json"
+      - "artifacts/zafeer/components.json"
       - "lib/api-client-react/**"
-      - ".github/workflows/deploy-web.yml"
+      - "lib/db/**"
+      - "package.json"
+      - "pnpm-lock.yaml"
+      - "pnpm-workspace.yaml"
+      - "tsconfig.json"
+      - "tsconfig.base.json"
+      - "vercel.json"
+      - "!artifacts/zafeer/src/test/**"
+      - "!artifacts/zafeer/src/**/*.test.ts"
+      - "!artifacts/zafeer/src/**/*.test.tsx"
 
 concurrency:
   group: deploy-web

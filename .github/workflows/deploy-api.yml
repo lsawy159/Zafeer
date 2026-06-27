@@ -4,11 +4,20 @@ on:
   push:
     branches: [main]
     paths:
-      - "artifacts/api-server/**"
+      - "artifacts/api-server/src/**"
+      - "artifacts/api-server/build.mjs"
+      - "artifacts/api-server/Dockerfile"
+      - "artifacts/api-server/package.json"
+      - "artifacts/api-server/tsconfig.json"
       - "lib/db/**"
       - "lib/api-zod/**"
       - "lib/api-spec/**"
-      - ".github/workflows/deploy-api.yml"
+      - "package.json"
+      - "pnpm-lock.yaml"
+      - "pnpm-workspace.yaml"
+      - "tsconfig.base.json"
+      - "!artifacts/api-server/src/**/__tests__/**"
+      - "!artifacts/api-server/src/**/*.test.ts"
 
 concurrency:
   group: deploy-api
