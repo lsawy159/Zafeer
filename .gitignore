@@ -122,3 +122,10 @@ artifacts/zafeer/.impeccable/
 
 # ===== Project reports & analysis (local-only — لا يُرفع) =====
 /reports/
+
+/testsprite_tests/
+/supabase/.branches/
+/supabase/.temp/
+/supabase/SCHEMA_BASELINE.md
+/supabase/schema.sql
+/supabase/seed-staging.sql
