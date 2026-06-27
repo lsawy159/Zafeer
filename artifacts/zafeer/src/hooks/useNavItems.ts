@@ -14,11 +14,14 @@ import {
   FileBadge,
 } from 'lucide-react'
 import { useAlertsStats } from '@/hooks/useAlertsStats'
+import { useAuth } from '@/contexts/AuthContext'
 import { usePermissions } from '@/utils/permissions'
 
 export function useNavItems() {
   const { alertsStats } = useAlertsStats()
+  const { user } = useAuth()
   const { hasPermission } = usePermissions()
+  const isAdmin = user?.role === 'admin' && user?.is_active === true
   const canAccessFinance =
     hasPermission('extracts', 'view') ||
     hasPermission('payroll', 'view') ||
@@ -130,12 +133,16 @@ export function useNavItems() {
           return canAccessFinance
         }
 
+        if (item.path === '/admin-settings') {
+          return isAdmin
+        }
+
         return (
           !item.permission ||
           hasPermission(item.permission.section, item.permission.action as string)
         )
       }),
-    [navItems, hasPermission, canAccessFinance]
+    [navItems, hasPermission, canAccessFinance, isAdmin]
   )
 
   const quickSearchItems = useMemo(

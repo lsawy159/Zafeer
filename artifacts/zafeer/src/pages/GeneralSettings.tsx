@@ -42,12 +42,12 @@ export default function GeneralSettings() {
   const tabPermissions: Record<string, boolean> = {
     system: isAdmin,
     backup: isAdmin,
-    sessions: canView('sessionsManagement'),
+    sessions: isAdmin,
     audit: isAdmin,
     permissions: isAdmin,
     'email-settings': isAdmin,
     'alert-settings': isAdmin,
-    'activity-logs': canView('activityLogs'),
+    'activity-logs': isAdmin,
     'adhkar-settings': isAdmin,
   }
 
