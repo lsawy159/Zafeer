@@ -104,13 +104,15 @@ export const PERMISSION_SECTIONS = {
     description: 'إعدادات النظام الأساسية وإعدادات الإشعارات العامة.',
     actions: ['view', 'edit'] as const,
   },
-  // [active] — backupSettings.{view,edit}; governs backup tab in /admin-settings
+  // [inert-ui] — backupSettings.{view,edit}; backup tab is admin-only now (GeneralSettings isAdmin gate)
+  // → granting has no effect; hidden from grant catalog via Permissions.tsx INERT_GRANT_SECTIONS. Key kept (no server refs).
   backupSettings: {
     label: 'النسخ الاحتياطية',
     description: 'عرض وإدارة النسخ الاحتياطية وجدولتها.',
     actions: ['view', 'edit'] as const,
   },
-  // [active] — sessionsManagement.{view,delete}; governs sessions tab in /admin-settings
+  // [inert-ui] — sessionsManagement.{view,delete}; sessions tab is admin-only now (GeneralSettings isAdmin gate)
+  // → granting has no effect; hidden from grant catalog via Permissions.tsx INERT_GRANT_SECTIONS. Key kept (no server refs).
   sessionsManagement: {
     label: 'إدارة الجلسات',
     description: 'عرض الجلسات النشطة وإنهاء أي جلسة عن بُعد.',
