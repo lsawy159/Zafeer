@@ -1,10 +1,23 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.45.0'
 import { Resend } from 'https://esm.sh/resend@4.0.0'
 
-const CORS_HEADERS = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-  'Access-Control-Allow-Methods': 'POST, OPTIONS',
+const ALLOWED_ORIGINS = (Deno.env.get('ALLOWED_APP_ORIGINS') ?? '')
+  .split(',')
+  .map((o) => o.trim())
+  .filter(Boolean)
+
+// CORS عبر allowlist: نعكس الـ Origin فقط لو ضمن النطاقات المسموح بها (Spec 080 US4)
+function corsHeaders(req: Request): Record<string, string> {
+  const origin = req.headers.get('Origin') ?? ''
+  const headers: Record<string, string> = {
+    'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+    'Access-Control-Allow-Methods': 'POST, OPTIONS',
+    'Vary': 'Origin',
+  }
+  if (origin && ALLOWED_ORIGINS.includes(origin)) {
+    headers['Access-Control-Allow-Origin'] = origin
+  }
+  return headers
 }
 
 // FK-ordered for safe restore (INSERT forward, DELETE reverse)
@@ -33,13 +46,6 @@ const TABLES_TO_EXPORT = [
 ] as const
 
 const BUCKET = 'backups'
-
-function jsonResponse(body: unknown, status = 200): Response {
-  return new Response(JSON.stringify(body), {
-    status,
-    headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' },
-  })
-}
 
 // JWT decode without verification — Supabase Edge Runtime validates JWT before reaching here
 function extractUserIdFromJwt(authHeader: string | null): string | null {
@@ -111,8 +117,15 @@ function buildScheduledEmailHtml(date: string, fileSize: number, signedUrl: stri
 }
 
 Deno.serve(async (req: Request) => {
+  const CORS = corsHeaders(req)
+  const jsonResponse = (body: unknown, status = 200): Response =>
+    new Response(JSON.stringify(body), {
+      status,
+      headers: { ...CORS, 'Content-Type': 'application/json' },
+    })
+
   if (req.method === 'OPTIONS') {
-    return new Response('ok', { headers: CORS_HEADERS })
+    return new Response('ok', { headers: CORS })
   }
   if (req.method !== 'POST') {
     return jsonResponse({ error: 'Method not allowed' }, 405)
