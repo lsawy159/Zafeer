@@ -1,15 +1,17 @@
 import { useMemo, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { z } from 'zod'
-import { CheckSquare, Edit2, Pencil, Save, Shield, UserPlus, X } from 'lucide-react'
+import { CheckSquare, Edit2, Pencil, Save, Shield, Trash2, UserPlus, X } from 'lucide-react'
 import { toast } from 'sonner'
 
 import Layout from '@/components/layout/Layout'
 import PermissionGuard from '@/components/PermissionGuard'
 import { RoleBadge } from '@/components/ui/StatusBadge'
+import { ConfirmModal } from '@/components/ui/ConfirmModal'
 import { CreateUserDialog } from '@/components/settings/tabs/CreateUserDialog'
 import { EditUserDialog } from '@/components/settings/tabs/EditUserDialog'
 import { useAuth } from '@/contexts/AuthContext'
+import { useDeleteUser } from '@/hooks/useDeleteUser'
 import { useUpdateUserProfile } from '@/hooks/useUpdateUserProfile'
 import { supabase, type User } from '@/lib/supabase'
 import { normalizePermissionsFlat } from '@/utils/permissions'
@@ -79,6 +81,7 @@ export function PermissionsPanel({ embedded = true }: PermissionsPanelProps) {
   const { user: currentUser } = useAuth()
   const canMutate = currentUser?.role === 'admin' && currentUser?.is_active === true
   const updateProfile = useUpdateUserProfile()
+  const deleteUser = useDeleteUser()
   const [editingUser, setEditingUser] = useState<PermissionRowUser | null>(null)
   const [selectedPermissions, setSelectedPermissions] = useState<string[]>([])
   const [showCreateDialog, setShowCreateDialog] = useState(false)
@@ -87,6 +90,7 @@ export function PermissionsPanel({ embedded = true }: PermissionsPanelProps) {
   const [editUserFullName, setEditUserFullName] = useState('')
   const [editUserRole, setEditUserRole] = useState('')
   const [editUserEmail, setEditUserEmail] = useState('')
+  const [deleteConfirmUser, setDeleteConfirmUser] = useState<PermissionRowUser | null>(null)
 
   const usersQuery = useQuery({
     queryKey: ['users', 'permissions'],
@@ -261,6 +265,15 @@ export function PermissionsPanel({ embedded = true }: PermissionsPanelProps) {
                             >
                               {user.is_active ? 'تعطيل' : 'تفعيل'}
                             </button>
+                            <button
+                              type="button"
+                              onClick={() => setDeleteConfirmUser(user)}
+                              disabled={user.id === currentUser?.id || deleteUser.isPending}
+                              className="inline-flex items-center gap-1.5 rounded-lg border border-red-300 bg-red-50 px-3 py-1.5 text-xs font-semibold text-red-700 transition hover:bg-red-100 disabled:cursor-not-allowed disabled:opacity-40"
+                            >
+                              <Trash2 className="h-3.5 w-3.5" />
+                              حذف
+                            </button>
                           </div>
                         ) : (
                           <span className="text-xs text-foreground-tertiary">عرض فقط</span>
@@ -381,6 +394,32 @@ export function PermissionsPanel({ embedded = true }: PermissionsPanelProps) {
         currentRole={editUserRole}
         currentEmail={editUserEmail}
         onClose={() => setEditUserId(null)}
+      />
+
+      <ConfirmModal
+        open={deleteConfirmUser !== null}
+        title="حذف المستخدم"
+        message="متأكد من حذف المستخدم نهائيًا؟ لا يمكن التراجع."
+        confirmLabel="حذف نهائي"
+        danger
+        loading={deleteUser.isPending}
+        onCancel={() => setDeleteConfirmUser(null)}
+        onConfirm={() => {
+          if (!deleteConfirmUser) return
+          const target = deleteConfirmUser
+          setDeleteConfirmUser(null)
+          deleteUser.mutate(
+            { id: target.id, full_name: target.full_name, email: target.email },
+            {
+              onSuccess: () => {
+                queryClient.invalidateQueries({ queryKey: ['users'] })
+                toast.success('تم حذف المستخدم')
+              },
+              onError: (e) =>
+                toast.error(e instanceof Error ? e.message : 'فشل حذف المستخدم'),
+            }
+          )
+        }}
       />
     </PermissionGuard>
   )
