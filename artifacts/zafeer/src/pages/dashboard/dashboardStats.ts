@@ -93,12 +93,9 @@ export function calculateFiveCategories(
     return { expired: 0, urgent: 0, high: 0, medium: 0, valid: 0 }
   }
 
-  const expiry = new Date(expiryDate)
-  const todayNormalized = new Date(today)
-  todayNormalized.setHours(0, 0, 0, 0)
-  expiry.setHours(0, 0, 0, 0)
-
-  const diff = differenceInDays(expiry, todayNormalized)
+  // مطابقة منطق صفحة التقارير/تصدير Excel: differenceInDays بدون تطبيع الساعات.
+  // التطبيع كان يحتسب وثيقة تنتهي اليوم كـ"منتهية" قبل بقية الواجهات بيوم (فرق توقيت UTC/محلي).
+  const diff = differenceInDays(new Date(expiryDate), today)
 
   if (diff < 0) return { expired: 1, urgent: 0, high: 0, medium: 0, valid: 0 }
   if (diff <= thresholds.urgent) return { expired: 0, urgent: 1, high: 0, medium: 0, valid: 0 }
