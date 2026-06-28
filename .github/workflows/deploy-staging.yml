@@ -1,0 +1,104 @@
+name: Deploy Staging (zafeer)
+
+# Spec 080 US3 — staging-only deploy path.
+# Triggers ONLY on push to the `staging` branch. Fail-closed: if any required
+# staging secret is missing, or anything resolves to the production ref, the
+# whole run aborts (exit 1) and NOTHING is deployed. Never falls back to prod.
+
+on:
+  push:
+    branches: [staging]
+
+concurrency:
+  group: deploy-staging
+  cancel-in-progress: false
+
+env:
+  # Hard-coded staging Supabase ref (NOT a secret). Production ref is forbidden below.
+  STAGING_SUPABASE_REF: vpxazxzekkkepfjchjly
+  PROD_SUPABASE_REF: acnkrijhndgbnxabfklx
+
+jobs:
+  guard:
+    name: Verify staging secrets (fail closed)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Assert required staging secrets exist and are not production
+        env:
+          SUPABASE_STAGING_ACCESS_TOKEN: ${{ secrets.SUPABASE_STAGING_ACCESS_TOKEN }}
+          SUPABASE_TEST_URL: ${{ secrets.SUPABASE_TEST_URL }}
+          SUPABASE_TEST_ANON_KEY: ${{ secrets.SUPABASE_TEST_ANON_KEY }}
+        run: |
+          missing=0
+          for v in SUPABASE_STAGING_ACCESS_TOKEN SUPABASE_TEST_URL SUPABASE_TEST_ANON_KEY; do
+            if [ -z "${!v}" ]; then echo "::error::Missing staging secret: $v"; missing=1; fi
+          done
+          if [ "$missing" = "1" ]; then
+            echo "Fail closed: required staging secrets missing — refusing to deploy."
+            exit 1
+          fi
+          # Never allow staging config to point at the production project.
+          if printf '%s' "$SUPABASE_TEST_URL" | grep -q "$PROD_SUPABASE_REF"; then
+            echo "::error::SUPABASE_TEST_URL resolves to the PRODUCTION ref — refusing."
+            exit 1
+          fi
+          if [ "$STAGING_SUPABASE_REF" = "$PROD_SUPABASE_REF" ]; then
+            echo "::error::STAGING ref equals PROD ref — refusing."
+            exit 1
+          fi
+          echo "Staging secrets present and isolated from production. OK."
+
+  deploy-functions:
+    name: Deploy Edge Functions to staging
+    needs: guard
+    runs-on: ubuntu-latest
+    env:
+      SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_STAGING_ACCESS_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Refuse production ref (defense in depth)
+        run: |
+          if [ "$STAGING_SUPABASE_REF" = "$PROD_SUPABASE_REF" ]; then
+            echo "::error::refusing to deploy functions to production"; exit 1
+          fi
+      - name: Deploy functions (verify_jwt preserved per function)
+        run: |
+          set -e
+          # admin-projects + automated-backup run their own auth (verify_jwt=false)
+          npx --yes supabase@latest functions deploy admin-projects   --project-ref "$STAGING_SUPABASE_REF" --no-verify-jwt
+          npx --yes supabase@latest functions deploy automated-backup --project-ref "$STAGING_SUPABASE_REF" --no-verify-jwt
+          # admin-users + restore-backup keep platform JWT verification (verify_jwt=true)
+          npx --yes supabase@latest functions deploy admin-users      --project-ref "$STAGING_SUPABASE_REF"
+          npx --yes supabase@latest functions deploy restore-backup   --project-ref "$STAGING_SUPABASE_REF"
+
+  deploy-web-preview:
+    name: Deploy web to Vercel (preview, staging DB)
+    needs: guard
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.33.4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Build zafeer (against staging Supabase)
+        working-directory: artifacts/zafeer
+        run: pnpm run build
+        env:
+          VITE_SUPABASE_URL: ${{ secrets.SUPABASE_TEST_URL }}
+          VITE_SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_TEST_ANON_KEY }}
+      - name: Deploy to Vercel as PREVIEW (no --prod, staging DB env)
+        run: |
+          # No --prod ⇒ a preview URL only; production alias is never touched.
+          npx vercel --token "${{ secrets.VERCEL_TOKEN }}" \
+            --yes \
+            -e VITE_SUPABASE_URL="${{ secrets.SUPABASE_TEST_URL }}" \
+            -e VITE_SUPABASE_ANON_KEY="${{ secrets.SUPABASE_TEST_ANON_KEY }}"
+        env:
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}

@@ -103,9 +103,33 @@ Vercel Dashboard → Deployments → اختر الـ deployment السابق →
 
 ```sql
 -- اكتب migration عكسي في supabase/migrations/YYYYMMDDHHMMSS_revert_xxx.sql
--- ثم طبّقه عبر MCP أو CLI
-supabase db push
+-- طبّقه كـ migration واحد عبر MCP apply_migration (يطبّق SQL ويسجّله في الـ ledger).
+-- ⛔ لا تستخدم `supabase db push` أبداً على production — راجع "سياسة تغيير قاعدة البيانات" تحت.
 ```
+
+---
+
+## سياسة تغيير قاعدة البيانات (إلزامية — Spec 080 US2)
+
+**⛔ ممنوع منعاً باتاً تشغيل `supabase db push` أو أي "رفع كل الـ migrations" دفعة واحدة ضد production.**
+
+**السبب (مؤكَّد بالفحص 2026-06-28):**
+
+- سجل الـ migrations في production (`supabase_migrations.schema_migrations`) فيه 98 نسخة بأرقام 14-خانة.
+- الملفات المحلية 99 ملف بأسماء مختلطة: 68 بـ 14-خانة + 31 باسم قديم قصير + 7 أرقامها غير موجودة في الـ ledger.
+- `db push` يقارن أسماء الملفات بالـ ledger، فيحاول إعادة تطبيق عشرات الملفات على production ← أخطاء أو تلف بيانات.
+- تم التحقق أن **كل** تغييرات الـ schema مطبّقة فعلاً على production (لا نقص schema) — التعارض في التسمية فقط.
+
+**الطريقة المعتمدة الوحيدة لتغيير قاعدة البيانات:**
+
+1. اكتب migration واحد في `supabase/migrations/`.
+2. طبّقه على staging أولاً وتحقق منه.
+3. طبّقه على production كـ **migration واحد** عبر **MCP `apply_migration`** (يطبّق SQL ويسجّله) — وليس `db push`.
+4. وثّق rollback (migration عكسي) قبل التطبيق.
+
+**تنظيف الـ ledger (اختياري، أولوية منخفضة):** لجعل الـ ledger مطابقاً تماماً لأسماء الملفات يلزم
+`supabase migration repair --status applied <version>` لكل نسخة غير متطابقة — يتطلب كلمة مرور قاعدة
+بيانات production والتنفيذ على staging أولاً. غير ضروري للأمان (القاعدة أعلاه تكفي لإزالة الخطر).
 
 ---
 
