@@ -21,6 +21,23 @@ if (!supabaseUrl || !supabaseAnonKey) {
     )
   }
 } else {
+  // حارس البيئة (وضع التطوير فقط): ارفض الاتصال بقاعدة الإنتاج بالغلط أثناء التطوير المحلي.
+  // لا يعمل في بناء الإنتاج (import.meta.env.DEV = false) ولا في الاختبارات (VITEST).
+  // للتطوير على الإنتاج عمداً: اضبط VITE_ALLOW_PROD_IN_DEV=true.
+  const PRODUCTION_PROJECT_REF = 'acnkrijhndgbnxabfklx'
+  if (
+    import.meta.env.DEV &&
+    !import.meta.env.VITEST &&
+    supabaseUrl.includes(PRODUCTION_PROJECT_REF) &&
+    import.meta.env.VITE_ALLOW_PROD_IN_DEV !== 'true'
+  ) {
+    throw new Error(
+      '[حارس البيئة] رُفض التشغيل: الواجهة في وضع التطوير لكنها موجّهة على قاعدة الإنتاج ' +
+        `(${PRODUCTION_PROJECT_REF}). للتطوير الآمن شغّل بيئة الاختبار عبر ملف "تشغيل-staging.cmd" ` +
+        'أو scripts/run-staging-ui.ps1. إن كنت متعمداً التطوير على الإنتاج اضبط VITE_ALLOW_PROD_IN_DEV=true.'
+    )
+  }
+
   supabase = createClient(supabaseUrl, supabaseAnonKey, {
     auth: {
       autoRefreshToken: true,
