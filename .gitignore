@@ -133,3 +133,6 @@ artifacts/zafeer/.impeccable/
 /artifacts/zafeer/Dockerfile
 /artifacts/zafeer/Dockerfile.dev
 /artifacts/zafeer/nginx.conf
+
+# ===== Personal local launcher (مُشغّل شخصي محلي — لا يُرفع، العميل لا علاقة له به) =====
+/تشغيل-staging.cmd
