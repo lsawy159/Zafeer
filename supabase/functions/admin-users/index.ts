@@ -141,8 +141,72 @@ Deno.serve(async (req: Request) => {
       email_confirm: true,
     })
 
-    if (createError || !authData.user) {
-      return jsonResponse({ error: mapAuthError(createError?.message ?? '') }, 400)
+    // إذا فشل الإنشاء بسبب إيميل مسجَّل مسبقاً، تحقق من وجود صف public.users —
+    // لو الصف غائب فالمستخدم Auth يتيم: تبنَّه بدل رفض الطلب.
+    if (createError) {
+      const normalized = createError.message.toLowerCase()
+      const isDuplicate =
+        normalized.includes('already registered') ||
+        normalized.includes('email_exists') ||
+        normalized.includes('already exists')
+
+      if (isDuplicate) {
+        // هل يوجد صف public.users لهذا الإيميل؟
+        const { data: existingProfile } = await adminClient
+          .from('users')
+          .select('id')
+          .eq('email', email.trim().toLowerCase())
+          .maybeSingle()
+
+        if (existingProfile) {
+          // المستخدم موجود كاملاً — أعد الخطأ الاعتيادي
+          return jsonResponse({ error: 'البريد الإلكتروني مستخدم بالفعل' }, 400)
+        }
+
+        // لا يوجد صف public.users — المستخدم Auth يتيم؛ ابحث عن معرّفه وأنشئ الصف
+        const { data: listData } = await adminClient.auth.admin.listUsers({ perPage: 1000 })
+        const orphanUser = listData?.users?.find(
+          (u) => u.email?.toLowerCase() === email.trim().toLowerCase()
+        )
+
+        if (!orphanUser) {
+          return jsonResponse({ error: 'حدث خطأ، حاول مجدداً' }, 500)
+        }
+
+        // المستخدم Auth يحتفظ بكلمة مروره القديمة المجهولة — اضبطها على ما أدخله المدير
+        const { error: pwResetError } = await adminClient.auth.admin.updateUserById(
+          orphanUser.id,
+          { password, email_confirm: true }
+        )
+        if (pwResetError) {
+          return jsonResponse({ error: mapAuthError(pwResetError.message) }, 400)
+        }
+
+        const { data: adoptedProfile, error: adoptError } = await adminClient
+          .from('users')
+          .insert({
+            id: orphanUser.id,
+            email: email.trim().toLowerCase(),
+            full_name: fullName.trim(),
+            role,
+            permissions: [],
+            is_active: true,
+          })
+          .select()
+          .single()
+
+        if (adoptError || !adoptedProfile) {
+          return jsonResponse({ error: 'حدث خطأ، حاول مجدداً' }, 500)
+        }
+
+        return jsonResponse({ user: adoptedProfile }, 201)
+      }
+
+      return jsonResponse({ error: mapAuthError(createError.message) }, 400)
+    }
+
+    if (!authData.user) {
+      return jsonResponse({ error: 'حدث خطأ، حاول مجدداً' }, 500)
     }
 
     const { data: createdProfile, error: insertError } = await adminClient
@@ -276,6 +340,47 @@ Deno.serve(async (req: Request) => {
     if (resetError) {
       return jsonResponse({ error: mapAuthError(resetError.message) }, 400)
     }
+
+    return jsonResponse({ success: true })
+  }
+
+  if (action === 'delete') {
+    let body: Record<string, unknown>
+    try {
+      body = await req.json()
+    } catch {
+      return jsonResponse({ error: 'حدث خطأ، حاول مجدداً' }, 400)
+    }
+
+    const id = body.id
+    if (!isNonEmptyString(id)) {
+      return jsonResponse({ error: 'حدث خطأ، حاول مجدداً' }, 400)
+    }
+
+    // لا يمكن للمدير حذف حسابه الخاص
+    if (id === user.id) {
+      return jsonResponse({ error: 'لا يمكنك حذف حسابك الخاص' }, 400)
+    }
+
+    // حذف صف public.users (FKs الأخرى كلها SET NULL بعد migration 080)
+    const { error: deleteError } = await adminClient
+      .from('users')
+      .delete()
+      .eq('id', id)
+
+    if (deleteError) {
+      // 23503 = FK violation (RESTRICT لا يزال موجوداً في جدول ما)
+      if (deleteError.code === '23503') {
+        return jsonResponse(
+          { error: 'لا يمكن حذف المستخدم لأنه مرتبط بسجلات؛ عطّله بدل الحذف' },
+          400
+        )
+      }
+      return jsonResponse({ error: 'حدث خطأ، حاول مجدداً' }, 500)
+    }
+
+    // حذف مستخدم Auth لمنع الأيتام — الفشل هنا لا يوقف العملية
+    await adminClient.auth.admin.deleteUser(id).catch(() => { /* ignore */ })
 
     return jsonResponse({ success: true })
   }
