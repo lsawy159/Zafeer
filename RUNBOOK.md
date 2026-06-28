@@ -39,12 +39,10 @@ SELECT id, email, role, is_active FROM public.users WHERE email = 'ahmad.alsawy1
 ```
 خطوات (بالترتيب — لا تتخطَّ):
 1. Supabase Dashboard → Settings → API → Regenerate service_role key
-2. GitHub → Settings → Secrets → حدّث SUPABASE_SERVICE_ROLE_KEY
-3. Fly.io / Render → Environment Variables → حدّث نفس المفتاح
-4. Vercel → Project Settings → Environment Variables → حدّث
-5. أعِد deploy للـ api-server (يلتقط المفتاح الجديد)
-6. تحقق من health: GET https://api.zafeer.app/healthz
-7. سجّل الحادثة في security_events table:
+2. GitHub → Settings → Secrets → حدّث SUPABASE_SERVICE_ROLE_KEY (تستخدمه workflows + e2e cleanup)
+3. Vercel → Project Settings → Environment Variables → حدّث
+4. Edge Functions بتاخد service_role تلقائيًا من منصة Supabase — مفيش redeploy مطلوب للمفتاح
+5. سجّل الحادثة في security_events table:
 ```
 
 ```sql
@@ -65,16 +63,12 @@ VALUES ('key_rotation', 'high', 'service_role_key rotated due to suspected leak'
 
 2. إذا Supabase up — تحقق من الـ connection pool:
    Supabase Dashboard → Database → Connections
-   - إذا ممتلئ: api-server restarts يحرر connections
 
-3. تحقق api-server logs:
-   fly logs -a zafeer-api    (أو Render dashboard)
+3. تحقق Edge Function logs:
+   Supabase Dashboard → Edge Functions → اختر الدالة → Logs
 
 4. تحقق الـ Sentry للـ error:
    https://sentry.io → Projects → zafeer
-
-5. آخر حل — restart api-server:
-   fly machine restart -a zafeer-api
 ```
 
 ---
@@ -82,16 +76,6 @@ VALUES ('key_rotation', 'high', 'service_role_key rotated due to suspected leak'
 ## 4. Deploy Rollback
 
 **السيناريو**: deploy جديد كسر production.
-
-### api-server (Fly.io)
-
-```bash
-# شوف releases
-fly releases -a zafeer-api
-
-# rollback لـ version سابق
-fly deploy -a zafeer-api --image <previous-image-id>
-```
 
 ### zafeer (Vercel)
 

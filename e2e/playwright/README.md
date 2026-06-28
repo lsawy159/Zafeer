@@ -17,10 +17,11 @@ TEST_USER_EMAIL=admin@example.com
 TEST_USER_PASSWORD=replace-with-local-test-password
 ```
 
-`playwright.config.ts` starts both services needed by the app:
+`playwright.config.ts` starts the app dev server:
 
-- `@workspace/api-server` on `http://localhost:3000`
 - `@workspace/zafeer` on `http://localhost:5173`
+
+Tests talk to Supabase directly (`VITE_SUPABASE_URL` → staging/test project) for data setup, REST, and Edge Functions.
 
 Default test discovery intentionally includes only:
 

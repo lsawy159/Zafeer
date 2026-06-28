@@ -11,8 +11,6 @@ on:
       - "artifacts/zafeer/vite.config.ts"
       - "artifacts/zafeer/tsconfig*.json"
       - "artifacts/zafeer/components.json"
-      - "lib/api-client-react/**"
-      - "lib/db/**"
       - "package.json"
       - "pnpm-lock.yaml"
       - "pnpm-workspace.yaml"

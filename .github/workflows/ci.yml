@@ -70,10 +70,6 @@ jobs:
           VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
           VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
 
-      - name: Build api-server
-        working-directory: artifacts/api-server
-        run: pnpm run build
-
   test:
     name: Tests
     runs-on: ubuntu-latest
@@ -99,13 +95,6 @@ jobs:
         env:
           VITE_SUPABASE_URL: https://placeholder.supabase.co
           VITE_SUPABASE_ANON_KEY: placeholder-key-for-tests
-
-      - name: Run api-server tests
-        working-directory: artifacts/api-server
-        run: pnpm run test
-        env:
-          NODE_ENV: test
-          ALLOWED_ORIGINS: http://localhost:5173
 
   lint:
     name: Lint
