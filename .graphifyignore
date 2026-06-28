@@ -1,0 +1,15 @@
+# graphify exclusions — keep the knowledge graph focused on real source
+# (same syntax as .gitignore)
+
+# Screenshots / binary images — noise for an architecture graph, costly vision extraction
+*.png
+*.jpg
+*.jpeg
+*.gif
+*.webp
+*.ico
+
+# Gitignored sandbox / generated output
+artifacts/mockup-sandbox/
+test-results/
+playwright-report/

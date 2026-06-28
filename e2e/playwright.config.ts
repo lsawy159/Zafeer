@@ -27,7 +27,6 @@ function loadEnvFile(filePath: string) {
 
 loadEnvFile(path.join(repoRoot, '.env.local'))
 loadEnvFile(path.join(repoRoot, 'artifacts', 'zafeer', '.env'))
-loadEnvFile(path.join(repoRoot, 'artifacts', 'api-server', '.env'))
 loadEnvFile(path.join(e2eDir, '.env'))
 
 process.env.TEST_USER_EMAIL ??= process.env.ADMIN_EMAIL
@@ -72,12 +71,6 @@ export default defineConfig({
     },
   ],
   webServer: [
-    {
-      command: 'pnpm --dir .. --filter @workspace/api-server run dev',
-      url: 'http://localhost:3000/api/healthz',
-      reuseExistingServer: !process.env.CI,
-      timeout: 120_000,
-    },
     {
       command: 'pnpm --dir .. --filter @workspace/zafeer run dev',
       url: baseURL,

@@ -35,7 +35,6 @@ minimumReleaseAgeExclude:
   - stripe-replit-sync
 
 packages:
-  - artifacts/api-server
   - artifacts/zafeer
   - lib/*
   - lib/integrations/*

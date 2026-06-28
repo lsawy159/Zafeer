@@ -6,7 +6,6 @@ specs
 artifacts/mockup-sandbox
 artifacts/*/node_modules
 artifacts/*/dist
-artifacts/api-server/dist
 lib/*/dist
 *.md
 .env

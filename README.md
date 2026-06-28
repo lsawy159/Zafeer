@@ -14,7 +14,6 @@
 
 ```
 artifacts/
-  ├── api-server/         # خادم Express للعمليات الإدارية (service_role فقط)
   └── zafeer/             # تطبيق الويب (React 19 + Vite + Tailwind v4)
       └── src/
           ├── pages/      # الصفحات: Dashboard, Employees, Companies, Projects,
@@ -28,14 +27,8 @@ artifacts/
           ├── contexts/   # AuthContext
           └── lib/        # supabase.ts, queryClient, backupService, ...
 
-lib/
-  ├── api-client-react/   # React Query hooks مولَّدة من OpenAPI
-  ├── api-spec/           # OpenAPI YAML (source of truth)
-  ├── api-zod/            # Zod schemas مولَّدة من OpenAPI
-  └── db/                 # Drizzle ORM schema (25 جدول)
-
 supabase/
-  ├── migrations/         # ~60+ migration SQL (schema + RLS)
+  ├── migrations/         # ~99 migration SQL (schema + RLS) — مصدر الحقيقة للـ schema
   └── functions/          # Edge Functions: daily-notification-run, automated-backup,
                           #   restore-backup, send-alert-report, admin-users, ...
 
@@ -72,7 +65,6 @@ cp artifacts/zafeer/.env.example artifacts/zafeer/.env
 
 # 4. شغّل بيئة التطوير
 pnpm --filter @workspace/zafeer run dev     # http://localhost:5173
-pnpm --filter @workspace/api-server run dev  # http://localhost:3000
 ```
 
 ## أوامر الـ Workspace
@@ -85,32 +77,33 @@ pnpm --filter @workspace/api-server run dev  # http://localhost:3000
 | `pnpm --filter @workspace/zafeer run dev` | frontend فقط |
 | `pnpm --filter @workspace/zafeer run lint` | ESLint |
 | `pnpm --filter @workspace/zafeer run lint:strict` | ESLint strict mode |
-| `pnpm --filter @workspace/api-server run dev` | backend فقط |
 
 ---
 
-## Express API vs Edge Functions
+## Backend: Browser → Supabase, مع Edge Functions للعمليات الإدارية
 
-ZaFeer uses two backend mechanisms with distinct scopes:
+ZaFeer has a single backend path. كل العمليات بتمرّ عبر Supabase مباشرة:
 
-| | Express API (`artifacts/api-server/`) | Supabase Edge Functions (`supabase/functions/`) |
-|---|---|---|
-| **When it runs** | Local development only | Production (and local via `supabase functions serve`) |
-| **Auth** | Supabase Admin SDK (`service_role`) | Supabase Admin SDK or user JWT |
-| **Deployed to production?** | ❌ No | ✅ Yes |
+| نوع العملية | المسار |
+|---|---|
+| أي عملية آمنة بـ user JWT | **Browser → Supabase مباشرة** (RLS تفرض الأمن) |
+| عملية تحتاج `service_role` (admin) | **Supabase Edge Function** (`supabase/functions/`) |
+
+> **ملاحظة معمارية (2026-06):** كان فيه خادم Express (`artifacts/api-server/`) قديم بيكرّر عمليات الـ admin محليًا.
+> اتشال بالكامل لأن **الواجهة عمرها ما كانت بتناديه في أي بيئة** (لا محلي ولا إنتاج) — كل عمليات الـ admin
+> بتمرّ عبر Edge Functions (`admin-users`, `admin-projects`). مفيش "باب تاني" للـ backend.
 
 ### Rule: when to add a new operation
 
 - **Browser → Supabase directly (RLS)**: for any operation safe with a user JWT
-- **Express route**: if you need `service_role` but it's a local-dev / admin convenience tool only
-- **Edge Function**: if you need `service_role` AND the operation runs in production
+- **Edge Function**: if you need `service_role` (admin / privileged operation)
 
 ### Production Edge Functions
 
 | Function | Purpose |
 |---|---|
-| `admin-users` | User account management (mirrors Express `/admin/users` routes) |
-| `admin-projects` | Project soft-delete + extract lifecycle (mirrors Express `/admin/projects` + `/admin/extracts` routes) |
+| `admin-users` | User account management (admin) |
+| `admin-projects` | Project soft-delete + extract lifecycle (admin) |
 | `automated-backup` | Scheduled full DB backup → Supabase Storage |
 | `restore-backup` | Admin-initiated restore from backup |
 | `daily-notification-run` | Sends daily alert digest email |
@@ -126,8 +119,8 @@ ZaFeer uses two backend mechanisms with distinct scopes:
 
 ```
 Frontend → Supabase مباشرة (RLS تفرض الأمن)
-Express API → admin ops فقط (service_role، لا يلمس المتصفح)
-lib/db Drizzle → مصدر الحقيقة للـ schema
+admin ops → Supabase Edge Functions (service_role، لا يلمس المتصفح)
+supabase/migrations → مصدر الحقيقة للـ schema
 migrations فقط — لا تعديل يدوي من Supabase Studio
 ```
 
@@ -145,9 +138,8 @@ migrations فقط — لا تعديل يدوي من Supabase Studio
 - **Frontend**: React 19.1 + TypeScript 5.9 + Vite 7.3 + Tailwind CSS v4.1 + shadcn/ui (Radix)
 - **State**: React Query + react-hook-form + zod
 - **Backend DB**: Supabase (PostgreSQL + Auth + RLS + pg_cron + Edge Functions)
-- **Admin API**: Express 5 (service_role — admin ops فقط)
-- **Schema**: Drizzle ORM (`lib/db/`)
-- **API Spec**: OpenAPI YAML → Zod + React Query hooks (orval)
+- **Admin ops**: Supabase Edge Functions (service_role — admin ops فقط)
+- **Schema**: `supabase/migrations/` (مصدر الحقيقة)
 - **Hosting**: Vercel (frontend) + Supabase cloud (DB + Edge)
 
 ### Supabase
@@ -193,9 +185,8 @@ migrations فقط — لا تعديل يدوي من Supabase Studio
 |-------|-------|
 | ملفات Frontend | 324+ |
 | Edge Functions | 10 |
-| API server files | 12 |
 | إجمالي الأسطر | 65,000+ |
-| Supabase migrations | 60+ |
+| Supabase migrations | 99 |
 | Specs مكتملة | 43+ |
 
 ---
