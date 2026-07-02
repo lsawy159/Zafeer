@@ -757,7 +757,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       await supabase
         .from('user_sessions')
-        .update({ is_active: false })
+        .update({ is_active: false, logged_out_at: new Date().toISOString() })
         .eq('user_id', userId)
         .eq('is_active', true)
 
