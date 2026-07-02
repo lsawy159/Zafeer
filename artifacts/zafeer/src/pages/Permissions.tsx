@@ -125,7 +125,7 @@ export function PermissionsPanel({ embedded = true }: PermissionsPanelProps) {
   })
 
   const availablePermissionKeys = useMemo(() => {
-    return VALID_PERMISSION_SECTIONS.flatMap((section) => {
+    return GRANTABLE_PERMISSION_SECTIONS.flatMap((section) => {
       return PERMISSION_SECTIONS[section].actions.map((action) => `${section}.${action}`)
     })
   }, [])
@@ -197,7 +197,9 @@ export function PermissionsPanel({ embedded = true }: PermissionsPanelProps) {
               </thead>
               <tbody>
                 {(usersQuery.data || []).map((user) => {
-                  const flatPermissions = normalizePermissionsFlat(user.permissions, user.role)
+                  const flatPermissions = normalizePermissionsFlat(user.permissions, user.role).filter(
+                    (permission) => availablePermissionKeys.includes(permission)
+                  )
 
                   return (
                     <tr key={user.id} className="border-t border-border-100 text-sm text-foreground-secondary">
