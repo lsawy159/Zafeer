@@ -209,49 +209,51 @@ export default function GeneralSettings() {
           </div>
         </div>
 
-        <div className="mt-3 grid grid-cols-1 md:grid-cols-3 gap-2">
-          <div className="app-panel border-primary/30 bg-primary/10 p-2.5">
-            <div className="flex items-center gap-2">
-              <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary text-foreground shadow-sm">
-                <Settings className="w-4 h-4" />
-              </div>
-              <div>
-                <h3 className="font-bold text-xs text-foreground">
-                  {settingsCount ?? '—'}
-                </h3>
-                <p className="text-xs text-foreground-secondary">إجمالي الإعدادات</p>
+        {activeTab === 'system' && (
+          <div className="mt-3 grid grid-cols-1 md:grid-cols-3 gap-2">
+            <div className="app-panel border-primary/30 bg-primary/10 p-2.5">
+              <div className="flex items-center gap-2">
+                <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary text-foreground shadow-sm">
+                  <Settings className="w-4 h-4" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-xs text-foreground">
+                    {settingsCount ?? '—'}
+                  </h3>
+                  <p className="text-xs text-foreground-secondary">إجمالي الإعدادات</p>
+                </div>
               </div>
             </div>
-          </div>
 
-          <div className="bg-gradient-to-br from-green-50 to-green-100 rounded-lg shadow-sm border border-green-200 p-2.5">
-            <div className="flex items-center gap-2">
-              <div className="w-8 h-8 bg-green-500 rounded-full flex items-center justify-center shadow-sm">
-                <Users className="w-4 h-4 text-white" />
-              </div>
-              <div>
-                <h3 className="font-bold text-xs text-foreground">{activeUsersCount ?? '—'}</h3>
-                <p className="text-xs text-foreground-secondary">المستخدمون النشطون</p>
+            <div className="bg-gradient-to-br from-green-50 to-green-100 rounded-lg shadow-sm border border-green-200 p-2.5">
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 bg-green-500 rounded-full flex items-center justify-center shadow-sm">
+                  <Users className="w-4 h-4 text-white" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-xs text-foreground">{activeUsersCount ?? '—'}</h3>
+                  <p className="text-xs text-foreground-secondary">المستخدمون النشطون</p>
+                </div>
               </div>
             </div>
-          </div>
 
-          <div className="app-panel border-border-200 bg-surface-secondary-50 p-2.5">
-            <div className="flex items-center gap-2">
-              <div className="flex h-8 w-8 items-center justify-center rounded-full bg-surface-secondary-800 shadow-sm">
-                <Clock className="w-4 h-4 text-white" />
-              </div>
-              <div>
-                <h3 className="font-bold text-xs text-foreground">
-                  {lastUpdatedAt
-                    ? new Date(lastUpdatedAt).toLocaleDateString('ar-SA')
-                    : '—'}
-                </h3>
-                <p className="text-xs text-foreground-secondary">آخر تحديث</p>
+            <div className="app-panel border-border-200 bg-surface-secondary-50 p-2.5">
+              <div className="flex items-center gap-2">
+                <div className="flex h-8 w-8 items-center justify-center rounded-full bg-surface-secondary-800 shadow-sm">
+                  <Clock className="w-4 h-4 text-white" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-xs text-foreground">
+                    {lastUpdatedAt
+                      ? new Date(lastUpdatedAt).toLocaleDateString('ar-SA')
+                      : '—'}
+                  </h3>
+                  <p className="text-xs text-foreground-secondary">آخر تحديث</p>
+                </div>
               </div>
             </div>
           </div>
-        </div>
+        )}
       </div>
     </Layout>
   )
